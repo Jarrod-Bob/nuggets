@@ -9,7 +9,7 @@ import { IdeaForm, type IdeaDraft } from './components/nuggets/IdeaForm';
 import { RandomNugget, type RandomIdea } from './components/nuggets/RandomNugget';
 import { TrashView } from './components/nuggets/TrashView';
 import { api, ApiError, type Idea, type Tag } from './api';
-import './App.css';
+import { formatRelative } from './lib/formatRelative';
 
 const iconPlus = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
@@ -49,20 +49,23 @@ function App() {
   const [form, setForm] = React.useState<FormState>(null);
   const [formError, setFormError] = React.useState<string | undefined>(undefined);
   const [purgeTarget, setPurgeTarget] = React.useState<Idea | null>(null);
+  const [actionError, setActionError] = React.useState<string | undefined>(undefined);
   // undefined = a fetch for the current tag is still in flight (loading);
   // null = resolved and genuinely empty; Idea = resolved with a result.
   const [nextRandom, setNextRandom] = React.useState<Idea | null | undefined>(undefined);
   const randomReqIdRef = React.useRef(0);
 
+  const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
+
   const refreshTags = React.useCallback(() => {
-    api.tags().then(setTags).catch(() => {});
+    api.tags().then(setTags).catch((err) => setActionError(describeError(err)));
   }, []);
 
   const refreshList = React.useCallback(() => {
     api
       .list({ q: query || undefined, tag: activeTag, archived: showTrash })
       .then(setIdeas)
-      .catch(() => {});
+      .catch((err) => setActionError(describeError(err)));
   }, [query, activeTag, showTrash]);
 
   React.useEffect(() => {
@@ -95,6 +98,9 @@ function App() {
       });
   }, []);
   React.useEffect(() => {
+    // Prefetching the next random draw is inherently a side effect (an async
+    // fetch keyed off the active tag), not state derivable during render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNextRandom(activeTag);
   }, [activeTag, fetchNextRandom]);
   const randomLoading = nextRandom === undefined;
@@ -122,33 +128,50 @@ function App() {
     request
       .then(() => {
         closeForm();
+        setActionError(undefined);
         refreshList();
         refreshTags();
+        fetchNextRandom(activeTag);
       })
       .catch((err) => {
-        setFormError(err instanceof ApiError ? err.message : 'Something went wrong.');
+        setFormError(describeError(err));
       });
   };
 
   const archiveIdea = (id: number) => {
-    api.archive(id).then(() => {
-      refreshList();
-      refreshTags();
-    });
+    api
+      .archive(id)
+      .then(() => {
+        setActionError(undefined);
+        refreshList();
+        refreshTags();
+        fetchNextRandom(activeTag);
+      })
+      .catch((err) => setActionError(describeError(err)));
   };
   const restoreIdea = (id: number) => {
-    api.restore(id).then(() => {
-      refreshList();
-      refreshTags();
-    });
+    api
+      .restore(id)
+      .then(() => {
+        setActionError(undefined);
+        refreshList();
+        refreshTags();
+        fetchNextRandom(activeTag);
+      })
+      .catch((err) => setActionError(describeError(err)));
   };
   const confirmPurge = () => {
     if (!purgeTarget) return;
-    api.purge(purgeTarget.id).then(() => {
-      setPurgeTarget(null);
-      refreshList();
-      refreshTags();
-    });
+    api
+      .purge(purgeTarget.id)
+      .then(() => {
+        setPurgeTarget(null);
+        setActionError(undefined);
+        refreshList();
+        refreshTags();
+        fetchNextRandom(activeTag);
+      })
+      .catch((err) => setActionError(describeError(err)));
   };
 
   const listItems: IdeaListItem[] = ideas.map((i) => ({
@@ -156,7 +179,7 @@ function App() {
     title: i.title,
     notes: i.notes,
     tags: i.tags,
-    date: showTrash ? (i.archived_at ?? undefined) : i.created_at,
+    date: showTrash ? (i.archived_at ? formatRelative(i.archived_at) : undefined) : formatRelative(i.created_at),
   }));
 
   return (
@@ -183,6 +206,32 @@ function App() {
       />
 
       <main style={{ flex: 1, width: '100%', maxWidth: 1240, margin: '0 auto', padding: '28px var(--gutter-web) 72px' }}>
+        {actionError && (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 16,
+              padding: '10px 14px',
+              borderRadius: 'var(--radius-md, 8px)',
+              background: 'var(--nug-red-50, #fef2f2)',
+              color: 'var(--nug-red-700, #b91c1c)',
+              fontSize: 'var(--text-small, 13px)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <span>{actionError}</span>
+            <button
+              type="button"
+              onClick={() => setActionError(undefined)}
+              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 600 }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {showTrash ? (
           <TrashView
             ideas={listItems.map((i) => ({ id: i.id, title: i.title, notes: i.notes, tags: i.tags, archivedAt: i.date }))}
@@ -197,6 +246,7 @@ function App() {
             ideas={listItems}
             tags={tags}
             query={query}
+            showSearch={false}
             activeTag={activeTag}
             onQueryChange={(e) => setQuery(e.target.value)}
             onTagChange={setActiveTag}

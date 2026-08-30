@@ -26,12 +26,14 @@ export interface IdeaListProps {
   /** Button shown in the empty state. */
   emptyAction?: React.ReactNode;
   style?: React.CSSProperties;
+  /** Whether to render this component's own search box. Default true; pass false when the caller already renders one (e.g. in a TopBar). */
+  showSearch?: boolean;
 }
 
-export function IdeaList({ ideas = [], tags = [], query = '', activeTag = null, onQueryChange, onTagChange, onOpen, rowActions, emptyAction, style }: IdeaListProps) {
+export function IdeaList({ ideas = [], tags = [], query = '', activeTag = null, onQueryChange, onTagChange, onOpen, rowActions, emptyAction, style, showSearch = true }: IdeaListProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, ...style }}>
-      <SearchField value={query} onChange={onQueryChange} onClear={() => onQueryChange && onQueryChange({ target: { value: '' } })} />
+      {showSearch && <SearchField value={query} onChange={onQueryChange} onClear={() => onQueryChange?.({ target: { value: '' } })} />}
       {tags.length > 0 && <TagFilter tags={tags} value={activeTag} onChange={onTagChange} />}
       {ideas.length === 0 ? (
         <EmptyState

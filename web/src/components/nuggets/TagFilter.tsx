@@ -20,7 +20,7 @@ export interface TagFilterProps {
 export function TagFilter({ tags = [], value = null, onChange, style }: TagFilterProps) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, ...style }}>
-      <button type="button" onClick={() => onChange && onChange(null)}
+      <button type="button" onClick={() => onChange?.(null)}
         style={{
           height: 26, padding: '0 12px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
           background: value === null ? 'var(--nug-ink-900)' : 'transparent',
@@ -32,7 +32,7 @@ export function TagFilter({ tags = [], value = null, onChange, style }: TagFilte
       {tags.map(t => {
         const name = typeof t === 'string' ? t : t.name;
         const count = typeof t === 'string' ? undefined : t.count;
-        return <Tag key={name} name={name} count={count} active={value === name} onClick={() => onChange && onChange(value === name ? null : name)} />;
+        return <Tag key={name} name={name} count={count} active={value === name} onClick={() => onChange?.(value === name ? null : name)} />;
       })}
     </div>
   );

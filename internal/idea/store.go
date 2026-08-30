@@ -53,10 +53,10 @@ func (s *Store) Create(ctx context.Context, draft Draft) (*Idea, error) {
 		return nil, fmt.Errorf("committing: %w", err)
 	}
 
-	return &Idea{
-		ID: id, Title: title, Notes: draft.Notes, Tags: tags,
-		CreatedAt: now, UpdatedAt: now,
-	}, nil
+	// Re-load rather than hand-assembling the result, so the returned tag
+	// order matches List/Get's alphabetical order instead of the draft's
+	// first-seen order (see store_update.go's Update, which does the same).
+	return s.Get(ctx, id)
 }
 
 // Get loads one idea, archived or not, with its tags.

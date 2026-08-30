@@ -10,8 +10,6 @@ import nuggetTrioBittenSvg from '../../assets/nugget-trio-bitten.svg';
 /**
  * The nugget illustration. NOTE: Nuggets supplied no logo, so this is a brand
  * *motif*, not an official mark — pair it with the wordmark set in Baloo 2.
- * Paths resolve relative to the page, so pass a corrected `src` prefix if your
- * page is not at the project root.
  */
 export interface NuggetMarkProps {
   size?: number;

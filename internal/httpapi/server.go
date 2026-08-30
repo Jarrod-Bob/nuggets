@@ -24,6 +24,17 @@ func NewServer(store *idea.Store, frontend http.Handler) http.Handler {
 	mux.HandleFunc("POST /api/ideas/{id}/restore", h.restore)
 	mux.HandleFunc("GET /api/tags", h.tags)
 
+	// Catch-all for anything under /api/ that didn't match a more specific
+	// route above (wrong method on a path Go's mux can't already 405 for,
+	// unknown sub-path, etc). ServeMux dispatches to the most specific
+	// pattern, so this only catches what nothing else matched — it never
+	// shadows the real endpoints. Without it, unmatched /api/* requests fell
+	// through to the SPA catch-all below and got served index.html with a
+	// 200 instead of a 404.
+	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		writeError(w, http.StatusNotFound, "Not found.")
+	})
+
 	if frontend != nil {
 		mux.Handle("/", frontend)
 	}

@@ -34,6 +34,10 @@ export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [],
 
   React.useEffect(() => {
     if (!open) return;
+    // Form state must reset whenever the dialog reopens with different props
+    // (a fresh create, or editing a different idea) — this is the standard
+    // dialog-reset pattern, not state that should be derived during render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTitle((idea && idea.title) || '');
     setNotes((idea && idea.notes) || '');
     setTags((idea && idea.tags) || []);
@@ -42,7 +46,7 @@ export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [],
 
   const submit = () => {
     if (!title.trim()) { setLocal('A nugget needs a title.'); return; }
-    onSubmit && onSubmit({ title: title.trim(), notes, tags });
+    onSubmit?.({ title: title.trim(), notes, tags });
   };
   const msg = local || error;
 

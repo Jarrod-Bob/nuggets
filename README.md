@@ -44,7 +44,7 @@ msedge --app=http://127.0.0.1:7777
 | | |
 |---|---|
 | Backend | Go — stdlib `net/http`, SQLite via `modernc.org/sqlite` (pure Go, no cgo), `goose` migrations |
-| Frontend | TypeScript, React, Vite, Tailwind, a little shadcn/ui |
+| Frontend | TypeScript, React, Vite, and the nuggets design system (CSS custom-property tokens, no Tailwind, no shadcn) |
 | Shape | One Go binary that serves the API and the embedded frontend, then opens the browser at `127.0.0.1:7777` |
 | Data | A single SQLite file at `%AppData%\nuggets\nuggets.db`. Backup is copying it. |
 

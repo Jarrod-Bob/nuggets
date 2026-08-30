@@ -31,8 +31,8 @@ export function TrashView({ ideas = [], onRestore, onPurge, style }: TrashViewPr
         {ideas.map(i => (
           <IdeaCard key={i.id} archived title={i.title} notes={i.notes} tags={i.tags} date={i.archivedAt}
             actions={<>
-              <Button size="sm" variant="secondary" onClick={() => onRestore && onRestore(i.id)}>Restore</Button>
-              <Button size="sm" variant="danger" onClick={() => onPurge && onPurge(i.id)}>Purge</Button>
+              <Button size="sm" variant="secondary" onClick={() => onRestore?.(i.id)}>Restore</Button>
+              <Button size="sm" variant="danger" onClick={() => onPurge?.(i.id)}>Purge</Button>
             </>} />
         ))}
       </div>

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Jarrod-Bob/nuggets/internal/db"
@@ -20,7 +21,17 @@ func newTestServer(t *testing.T) http.Handler {
 		t.Fatalf("opening test db: %v", err)
 	}
 	t.Cleanup(func() { database.Close() })
-	return NewServer(idea.NewStore(database), nil)
+	// A stub frontend handler, not nil: production (cmd/nuggets/main.go)
+	// always wires a real embedded-frontend handler as the catch-all, so the
+	// route table under test must match — otherwise tests asserting on the
+	// catch-all's behavior (e.g. that /api/ 404s instead of falling through
+	// to the SPA) would pass against a route table the shipped binary never
+	// actually has.
+	stubFrontend := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte("<html><body>stub spa</body></html>"))
+	})
+	return NewServer(idea.NewStore(database), stubFrontend)
 }
 
 func do(t *testing.T, srv http.Handler, method, target string, body any) *httptest.ResponseRecorder {
@@ -123,10 +134,53 @@ func TestUnknownIdeaReturns404(t *testing.T) {
 	}
 }
 
-func TestWrongMethodReturns405(t *testing.T) {
+// TestWrongMethodReturnsAPIErrorNotSPA covers a request for a known resource
+// path with an unsupported method. Go's ServeMux would give this 405 "for
+// free" if /api/ideas were the only pattern in play — but once the /api/
+// catch-all (registered to guard against exactly the bug this test used to
+// certify away, see TestUnknownAPIPathReturns404NotSPA) is also a candidate
+// match, ServeMux routes to the less-specific-but-still-matching catch-all
+// instead of synthesizing a 405. What actually matters for this app is that
+// the request never falls through to the SPA's index.html with a 200 — a
+// JSON 404 from the catch-all satisfies that just as well as a 405 would.
+func TestWrongMethodReturnsAPIErrorNotSPA(t *testing.T) {
 	srv := newTestServer(t)
-	if rec := do(t, srv, "PUT", "/api/ideas", nil); rec.Code != http.StatusMethodNotAllowed {
-		t.Errorf("status = %d, want 405 (ServeMux gives this free)", rec.Code)
+	rec := do(t, srv, "PUT", "/api/ideas", nil)
+	if rec.Code == http.StatusOK {
+		t.Fatalf("status = %d, want an error status, not 200 (would mean it fell through to the SPA)", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); strings.Contains(ct, "text/html") {
+		t.Fatalf("Content-Type = %q, want JSON, not the SPA's HTML", ct)
+	}
+	var body errorBody
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decoding error body: %v; body = %s", err, rec.Body)
+	}
+	if body.Error.Message == "" {
+		t.Errorf("expected a non-empty error message")
+	}
+}
+
+// TestUnknownAPIPathReturns404NotSPA guards against unmatched /api/* requests
+// silently falling through to the SPA catch-all and getting served
+// index.html with a 200. With a real (even stub) frontend handler wired in,
+// as production always does, this must 404 with the standard JSON error
+// shape instead.
+func TestUnknownAPIPathReturns404NotSPA(t *testing.T) {
+	srv := newTestServer(t)
+	rec := do(t, srv, "GET", "/api/bogus", nil)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); strings.Contains(ct, "text/html") {
+		t.Fatalf("Content-Type = %q, want JSON, not the SPA's HTML", ct)
+	}
+	var body errorBody
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decoding error body: %v; body = %s", err, rec.Body)
+	}
+	if body.Error.Message == "" {
+		t.Errorf("expected a non-empty error message")
 	}
 }
 
