@@ -1,4 +1,11 @@
 import React from 'react';
+import nuggetSvg from '../../assets/nugget.svg';
+import nuggetAltSvg from '../../assets/nugget-alt.svg';
+import nuggetTrioSvg from '../../assets/nugget-trio.svg';
+import bucketSvg from '../../assets/bucket.svg';
+import dipCupSvg from '../../assets/dip-cup.svg';
+import nuggetBittenSvg from '../../assets/nugget-bitten.svg';
+import nuggetTrioBittenSvg from '../../assets/nugget-trio-bitten.svg';
 
 /**
  * The nugget illustration. NOTE: Nuggets supplied no logo, so this is a brand
@@ -16,9 +23,9 @@ export interface NuggetMarkProps {
 
 /** Renders the nugget blob illustration shipped in assets/. */
 export function NuggetMark({ size = 40, variant = 'single', bitten = false, style }: NuggetMarkProps) {
-  const files: Record<NonNullable<NuggetMarkProps['variant']>, string> = { single: 'nugget.svg', alt: 'nugget-alt.svg', trio: 'nugget-trio.svg', bucket: 'bucket.svg', dip: 'dip-cup.svg' };
-  const bites: Partial<Record<NonNullable<NuggetMarkProps['variant']>, string>> = { single: 'nugget-bitten.svg', trio: 'nugget-trio-bitten.svg' };
-  const src = (bitten && bites[variant]) || files[variant] || 'nugget.svg';
+  const files: Record<NonNullable<NuggetMarkProps['variant']>, string> = { single: nuggetSvg, alt: nuggetAltSvg, trio: nuggetTrioSvg, bucket: bucketSvg, dip: dipCupSvg };
+  const bites: Partial<Record<NonNullable<NuggetMarkProps['variant']>, string>> = { single: nuggetBittenSvg, trio: nuggetTrioBittenSvg };
+  const src = (bitten && bites[variant]) || files[variant] || nuggetSvg;
   const ratio = ({ single: 100 / 120, alt: 100 / 120, trio: 120 / 260, bucket: 130 / 140, dip: 80 / 100 } as Record<string, number>)[variant] || 1;
-  return <img src={`${(typeof window !== 'undefined' && (window as any).NUG_ASSET_BASE) || 'assets/'}${src}`} alt="" aria-hidden="true" style={{ width: size, height: size * ratio, display: 'block', ...style }} />;
+  return <img src={src} alt="" aria-hidden="true" style={{ width: size, height: size * ratio, display: 'block', ...style }} />;
 }
