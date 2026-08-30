@@ -49,7 +49,10 @@ function App() {
   const [form, setForm] = React.useState<FormState>(null);
   const [formError, setFormError] = React.useState<string | undefined>(undefined);
   const [purgeTarget, setPurgeTarget] = React.useState<Idea | null>(null);
-  const [nextRandom, setNextRandom] = React.useState<Idea | null>(null);
+  // undefined = a fetch for the current tag is still in flight (loading);
+  // null = resolved and genuinely empty; Idea = resolved with a result.
+  const [nextRandom, setNextRandom] = React.useState<Idea | null | undefined>(undefined);
+  const randomReqIdRef = React.useRef(0);
 
   const refreshTags = React.useCallback(() => {
     api.tags().then(setTags).catch(() => {});
@@ -73,14 +76,30 @@ function App() {
   // RandomNugget's onDraw is synchronous, but api.random is async, so we keep a
   // one-ahead prefetched draw: the button always returns whatever was fetched
   // last, then immediately kicks off the next fetch (used on open and reroll).
+  // `nextRandom` is `undefined` while a fetch for the current tag is pending;
+  // RandomNugget's `loading` prop reflects that, and its own trigger/reroll
+  // buttons are disabled while loading, so a click can never surface a false
+  // "nothing to draw" for a fetch that just hasn't resolved yet. A monotonic
+  // request id guards against a stale response from a superseded tag landing
+  // after a newer request has already started.
   const fetchNextRandom = React.useCallback((tag: string | null) => {
-    api.random(tag).then(setNextRandom).catch(() => setNextRandom(null));
+    const reqId = ++randomReqIdRef.current;
+    setNextRandom(undefined);
+    api
+      .random(tag)
+      .then((result) => {
+        if (randomReqIdRef.current === reqId) setNextRandom(result);
+      })
+      .catch(() => {
+        if (randomReqIdRef.current === reqId) setNextRandom(null);
+      });
   }, []);
   React.useEffect(() => {
     fetchNextRandom(activeTag);
   }, [activeTag, fetchNextRandom]);
+  const randomLoading = nextRandom === undefined;
   const handleDraw = (tag: string | null): RandomIdea | null => {
-    const result = nextRandom;
+    const result = nextRandom ?? null;
     fetchNextRandom(tag);
     return result;
   };
@@ -152,7 +171,7 @@ function App() {
         }
         right={
           <>
-            {!showTrash && <RandomNugget tag={activeTag} onDraw={handleDraw} />}
+            {!showTrash && <RandomNugget tag={activeTag} onDraw={handleDraw} loading={randomLoading} />}
             <Button variant="ghost" size="sm" onClick={() => setShowTrash((v) => !v)} iconLeft={showTrash ? iconArrowLeft : iconTrash}>
               {showTrash ? 'Back to the bank' : 'Trash'}
             </Button>

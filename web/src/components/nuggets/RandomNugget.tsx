@@ -16,28 +16,37 @@ export interface RandomNuggetProps {
   tag?: string | null;
   /** Called on open and on each reroll; return the drawn idea, or null for none. */
   onDraw?: (tag: string | null) => RandomIdea | null;
+  /**
+   * True while the caller's draw source (e.g. an in-flight fetch) hasn't
+   * resolved yet for the current `tag`. While true, the dialog shows a
+   * neutral loading state instead of "nothing to draw" — the two are not
+   * the same thing and must not read the same to the user.
+   */
+  loading?: boolean;
   buttonLabel?: string;
   buttonVariant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   style?: React.CSSProperties;
 }
 
-export function RandomNugget({ tag = null, onDraw, buttonLabel = 'Draw a nugget', buttonVariant = 'secondary', style }: RandomNuggetProps) {
+export function RandomNugget({ tag = null, onDraw, loading = false, buttonLabel = 'Draw a nugget', buttonVariant = 'secondary', style }: RandomNuggetProps) {
   const [open, setOpen] = React.useState(false);
   const [idea, setIdea] = React.useState<RandomIdea | null>(null);
   const draw = () => { const next = onDraw ? onDraw(tag) : null; setIdea(next); setOpen(true); };
   return (
     <>
-      <Button variant={buttonVariant} onClick={draw} style={style}
+      <Button variant={buttonVariant} onClick={draw} disabled={loading} style={style}
         iconLeft={<span style={{ width: 15, height: 12, borderRadius: 'var(--radius-nugget)', background: 'var(--nug-golden-400)', border: '1.5px solid var(--nug-golden-700)', display: 'block' }} />}>
         {buttonLabel}
       </Button>
       <Dialog open={open} width={480} onClose={() => setOpen(false)}
-        title={idea ? 'Your challenge' : 'Nothing to draw'}
+        title={loading ? 'Drawing…' : idea ? 'Your challenge' : 'Nothing to draw'}
         footer={<>
           <Button variant="ghost" onClick={() => setOpen(false)}>Close</Button>
-          <Button variant="secondary" onClick={draw}>Reroll</Button>
+          <Button variant="secondary" onClick={draw} disabled={loading}>Reroll</Button>
         </>}>
-        {idea ? (
+        {loading ? (
+          <p style={{ margin: 0, color: 'var(--nug-ink-500)' }}>Drawing a nugget…</p>
+        ) : idea ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0 2px' }}>
             {tag && <span style={{ fontSize: 'var(--text-micro)', fontWeight: 'var(--weight-bold)', letterSpacing: 'var(--tracking-label)', textTransform: 'uppercase', color: 'var(--nug-ink-500)' }}>narrowed to {tag}</span>}
             <h3 style={{ fontSize: 'var(--text-title-1)', fontWeight: 'var(--weight-bold)', textWrap: 'pretty' }}>{idea.title}</h3>
