@@ -18,11 +18,26 @@ nuggets gives them somewhere to live: enough structure to find one on purpose, a
 
 ## Status
 
-**Designed, not built yet.** The full design is in
+**Built.** The full design is in
 [`docs/superpowers/specs/2026-08-29-nuggets-design.md`](docs/superpowers/specs/2026-08-29-nuggets-design.md) —
 data model, API, and the reasoning behind each stack choice.
 
-There is nothing to install or run at the moment. This section gets setup instructions once there's something to set up.
+To build and run:
+
+```powershell
+./build.ps1
+./nuggets.exe
+```
+
+`build.ps1` builds the frontend and embeds it into a single `nuggets.exe`. Running it opens
+`http://127.0.0.1:7777` in your default browser, backed by a SQLite database at
+`%AppData%\nuggets\nuggets.db`.
+
+For a chromeless, app-like window instead of a browser tab:
+
+```
+msedge --app=http://127.0.0.1:7777
+```
 
 ## Stack
 
