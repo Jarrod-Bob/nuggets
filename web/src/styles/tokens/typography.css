@@ -1,0 +1,32 @@
+:root{
+  --font-display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --font-body:"Figtree","Helvetica Neue",system-ui,sans-serif;
+  --font-mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  --text-display-1:clamp(44px,6vw,72px);
+  --text-display-2:clamp(34px,4.4vw,52px);
+  --text-title-1:32px;
+  --text-title-2:24px;
+  --text-title-3:19px;
+  --text-body-lg:17px;
+  --text-body-md:15px;
+  --text-body-sm:13.5px;
+  --text-label:12.5px;
+  --text-micro:11px;
+
+  --leading-tight:1.05;
+  --leading-snug:1.2;
+  --leading-normal:1.5;
+  --leading-loose:1.65;
+
+  --weight-regular:400;
+  --weight-medium:500;
+  --weight-semibold:600;
+  --weight-bold:700;
+  --weight-black:800;
+
+  --tracking-display:-0.015em;
+  --tracking-normal:0em;
+  --tracking-label:0.06em;
+  --tracking-caps:0.1em;
+}

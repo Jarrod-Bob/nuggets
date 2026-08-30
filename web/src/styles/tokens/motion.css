@@ -1,0 +1,20 @@
+:root{
+  --dur-instant:80ms; /* @kind other */
+  --dur-fast:140ms; /* @kind other */
+  --dur-base:200ms; /* @kind other */
+  --dur-slow:320ms; /* @kind other */
+  --dur-lazy:520ms; /* @kind other */
+
+  --ease-out:cubic-bezier(.2,.8,.3,1); /* @kind other */
+  --ease-in-out:cubic-bezier(.6,0,.3,1); /* @kind other */
+  /* The house easing: a small overshoot on anything that appears or is picked up */
+  --ease-bounce:cubic-bezier(.34,1.56,.64,1); /* @kind other */
+}
+@media (prefers-reduced-motion:reduce){
+  :root{
+    --dur-fast:0ms; /* @kind other */
+    --dur-base:0ms; /* @kind other */
+    --dur-slow:0ms; /* @kind other */
+    --dur-lazy:0ms; /* @kind other */
+  }
+}

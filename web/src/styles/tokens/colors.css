@@ -1,0 +1,76 @@
+:root{
+  /* ---- Fried golden: the brand's primary ---- */
+  --nug-golden-50:#FFF8E9;
+  --nug-golden-100:#FDEDCB;
+  --nug-golden-200:#F8DA9C;
+  --nug-golden-300:#F2C46B;
+  --nug-golden-400:#EFAE3A;
+  --nug-golden-500:#E2941B;
+  --nug-golden-600:#C1731A;
+  --nug-golden-700:#95530F;
+
+  /* ---- Ketchup: the action / alert accent ---- */
+  --nug-ketchup-100:#FDE0DC;
+  --nug-ketchup-300:#F6897E;
+  --nug-ketchup-400:#F2564A;
+  --nug-ketchup-500:#E23B2E;
+  --nug-ketchup-600:#BE2A20;
+
+  /* ---- Warm cream: pages, cards, sunken wells ---- */
+  --nug-cream-50:#FFFBF2;
+  --nug-cream-100:#FDF4E3;
+  --nug-cream-200:#F7E8CF;
+  --nug-cream-300:#EEDCBC;
+
+  /* ---- Warm ink: text and borders ---- */
+  --nug-ink-900:#2A1C12;
+  --nug-ink-700:#574230;
+  --nug-ink-400:#7A6248;
+  --nug-ink-500:#6F5A44;
+  --nug-ink-300:#BFA98F;
+  --nug-ink-200:#E4D6C0;
+  --nug-white:#FFFFFF;
+
+  /* ---- Dips: the categorical palette used to colour buckets and tags ---- */
+  --nug-dip-mustard:#F2C230;
+  --nug-dip-bbq:#8B4A2B;
+  --nug-dip-chilli:#E8536A;
+  --nug-dip-herb:#3F9C5D;
+  --nug-dip-curry:#D98324;
+  --nug-dip-ranch:#7C8CDE;
+
+  /* ---- Semantic aliases ---- */
+  --surface-page:var(--nug-cream-100);
+  --surface-card:var(--nug-white);
+  --surface-raised:var(--nug-cream-50);
+  --surface-sunken:var(--nug-cream-200);
+  --surface-inverse:var(--nug-ink-900);
+
+  --text-body:var(--nug-ink-900);
+  --text-muted:var(--nug-ink-500);
+  --text-subtle:var(--nug-ink-400);
+  --text-inverse:var(--nug-cream-50);
+  --text-link:var(--nug-golden-700);
+
+  /* ink-200 and ink-300 are BORDER colours only - neither passes 4.5:1 as text. */
+  --border-soft:var(--nug-ink-200);
+  --border-divider:var(--nug-ink-300);
+  --border-strong:var(--nug-ink-900);
+  --border-crust:var(--nug-golden-600);
+
+  --accent:var(--nug-golden-400);
+  --accent-hover:var(--nug-golden-500);
+  --accent-press:var(--nug-golden-600);
+  --accent-on:var(--nug-ink-900);
+
+  --danger:var(--nug-ketchup-500);
+  --danger-hover:var(--nug-ketchup-600);
+  --success:var(--nug-dip-herb);
+  --warning:var(--nug-dip-mustard);
+
+  --focus-ring:var(--nug-ketchup-400);
+
+  /* Speckled "breading" texture, used at low opacity behind hero areas */
+  --texture-breading:radial-gradient(circle at 20% 30%,rgba(193,115,26,.10) 0 1.5px,transparent 2px),radial-gradient(circle at 70% 65%,rgba(193,115,26,.08) 0 2px,transparent 2.5px),radial-gradient(circle at 45% 85%,rgba(149,83,15,.07) 0 1px,transparent 1.5px); /* @kind other */
+  --texture-breading-size:38px 38px,54px 54px,26px 26px;
+}

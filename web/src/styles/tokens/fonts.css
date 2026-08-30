@@ -1,0 +1,9 @@
+/* Self-hosted replacements for the design system's CDN font imports.
+   The app must render correctly with no network connection. */
+@import "@fontsource/baloo-2/400.css";
+@import "@fontsource/baloo-2/600.css";
+@import "@fontsource/baloo-2/700.css";
+@import "@fontsource/baloo-2/800.css";
+@import "@fontsource-variable/figtree";
+@import "@fontsource/dm-mono/400.css";
+@import "@fontsource/dm-mono/500.css";
