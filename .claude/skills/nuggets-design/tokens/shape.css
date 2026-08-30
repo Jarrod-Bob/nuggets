@@ -1,0 +1,27 @@
+:root{
+  --radius-xs:6px;
+  --radius-sm:10px;
+  --radius-md:14px;
+  --radius-lg:20px;
+  --radius-xl:28px;
+  --radius-pill:999px;
+  /* The nugget: an asymmetric organic blob. Use on brand marks, bucket tiles,
+     avatars and decorative shapes - never on text inputs. */
+  --radius-nugget:58% 42% 46% 54% / 52% 46% 54% 48%;
+  --radius-nugget-alt:44% 56% 62% 38% / 46% 58% 42% 54%;
+
+  --border-hairline:1px;
+  --border-regular:1.5px;
+  --border-chunky:2px;
+
+  --shadow-1:0 1px 2px rgba(42,28,18,.06),0 2px 6px rgba(42,28,18,.05);
+  --shadow-2:0 2px 4px rgba(42,28,18,.05),0 8px 20px rgba(42,28,18,.08);
+  --shadow-3:0 14px 36px rgba(42,28,18,.14);
+  --shadow-inset:inset 0 2px 0 rgba(42,28,18,.08);
+  /* Crust edge: the flat offset shadow that gives buttons and tiles their
+     chunky, pressable feel. Collapses to 1px on :active. */
+  --crust-edge:0 3px 0 var(--nug-golden-600);
+  --crust-edge-ink:0 3px 0 var(--nug-ink-900);
+  --crust-edge-press:0 1px 0 var(--nug-golden-600);
+  --focus-shadow:0 0 0 3px rgba(242,86,74,.35);
+}

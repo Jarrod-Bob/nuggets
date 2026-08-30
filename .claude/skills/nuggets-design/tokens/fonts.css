@@ -1,0 +1,5 @@
+/* Nuggets webfonts.
+   SUBSTITUTION NOTE: no brand font files were supplied, so these are the
+   nearest Google Fonts matches, served from the Google Fonts CDN.
+   Swap for self-hosted @font-face rules when real files arrive. */
+@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Figtree:ital,wght@0,300..900;1,300..900&family=DM+Mono:wght@400;500&display=swap");

@@ -1,0 +1,28 @@
+<!-- @dsCard group="Components" viewport="700x520" name="Nuggets" subtitle="Idea rows, tag filter, tag combobox, random draw" -->
+<!doctype html><html><head><meta charset="utf-8"><script>window.NUG_ASSET_BASE='../../assets/';</script><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>html,body{margin:0;background:var(--nug-cream-50)}#root{padding:18px 20px}.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--nug-ink-500);margin:0 0 8px}</style>
+</head><body><div id="root"></div>
+<script type="text/babel">
+const { IdeaCard, TagFilter, TagCombobox, RandomNugget, IconButton, Button } = window.NuggetsDesignSystem_33854b;
+const ic=(n,s=16)=><i data-lucide={n} style={{width:s,height:s,display:'flex'}}></i>;
+const IDEAS=[{id:1,title:'Tailnet-only sharing',notes:'Expose the bank over Tailscale so the phone can reach it. No accounts, no hosting bill.',tags:['go','infra'],date:'2d ago'},{id:2,title:'Draw a nugget, then timebox it',notes:'The random draw picks an idea; a 25-minute timer starts alongside it.',tags:['product'],date:'6d ago'}];
+function Demo(){const[tag,setTag]=React.useState('go');const[tags,setTags]=React.useState(['go','infra']);
+return <div style={{display:'flex',flexDirection:'column',gap:16}}>
+<div><p className="lbl">TagFilter</p><TagFilter tags={[{name:'go',count:12},{name:'infra',count:4},{name:'product',count:9},{name:'saas',count:3}]} value={tag} onChange={setTag}/></div>
+<div><p className="lbl">IdeaCard — grid layout, fluid shape per nugget, bitten + archived tiles</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))',gap:14}}>
+<IdeaCard {...IDEAS[0]} onClick={()=>{}} actions={<><IconButton label="Edit">{ic('pencil')}</IconButton><IconButton label="Archive">{ic('archive')}</IconButton></>}/>
+<IdeaCard {...IDEAS[1]} bitten biteBackground="var(--nug-cream-50)" onClick={()=>{}} actions={<IconButton label="Edit">{ic('pencil')}</IconButton>}/>
+<IdeaCard archived title="Chrome extension for capture" notes="Superseded by the tailnet idea." tags={['browser']} date="binned 3d ago" actions={<><Button size="sm" variant="secondary">Restore</Button><Button size="sm" variant="danger">Purge</Button></>}/>
+</div></div>
+<div style={{display:'grid',gridTemplateColumns:'1.4fr 1fr',gap:18,alignItems:'start'}}>
+<div><p className="lbl">TagCombobox — autocomplete + new tag</p><TagCombobox value={tags} options={['go','infra','product','saas','hardware','browser']} onChange={setTags}/></div>
+<div><p className="lbl">RandomNugget</p><RandomNugget tag={tag} onDraw={()=>IDEAS[Math.floor(Math.random()*2)]}/></div>
+</div></div>}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+setTimeout(()=>window.lucide&&window.lucide.createIcons({attrs:{width:16,height:16,'stroke-width':2.2}}),60);
+</script></body></html>

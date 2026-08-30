@@ -1,0 +1,42 @@
+<!-- @dsCard group="Components" viewport="700x280" name="Core" subtitle="Buttons, icon buttons, badges, tags, cards" -->
+<!doctype html><html><head><meta charset="utf-8"><script>window.NUG_ASSET_BASE='../../assets/';</script><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>html,body{margin:0;background:var(--nug-cream-50)}#root{padding:18px 20px}.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--nug-ink-500);margin:0 0 8px}</style>
+</head><body><div id="root"></div>
+<script type="text/babel">
+const { Button, IconButton, Badge, Tag, Card } = window.NuggetsDesignSystem_33854b;
+const ic=(n,s=16)=><i data-lucide={n} style={{width:s,height:s,display:'flex'}}></i>;
+function Demo(){const[f,setF]=React.useState('go');return <div style={{display:'flex',flexDirection:'column',gap:16}}>
+<div><p className="lbl">Button — variants & sizes</p><div className="row">
+<Button>Drop a nugget</Button>
+<Button variant="secondary">Draw a nugget</Button>
+<Button variant="ghost">Cancel</Button>
+<Button variant="danger">Purge</Button>
+<Button size="sm">Restore</Button>
+<Button size="lg">Large</Button>
+<Button disabled>Disabled</Button>
+</div></div>
+<div><p className="lbl">IconButton · Badge</p><div className="row">
+<IconButton label="Edit">{ic('pencil')}</IconButton>
+<IconButton label="Archive" variant="outline">{ic('archive')}</IconButton>
+<IconButton label="New" variant="filled">{ic('plus')}</IconButton>
+<span style={{width:10}}/>
+<Badge>Archived</Badge><Badge tone="golden">New tag</Badge><Badge tone="ketchup">Purge</Badge><Badge tone="herb">Restored</Badge><Badge tone="ink">128</Badge>
+</div></div>
+<div><p className="lbl">Tag — colour derived from the name</p><div className="row">
+<Tag name="go"/><Tag name="saas" count={5}/><Tag name="hardware"/><Tag name="infra"/>
+<Tag name="go" active onClick={()=>setF('go')}/><Tag name="side-project" onRemove={()=>{}}/>
+</div></div>
+<div><p className="lbl">Card — tones</p><div className="row" style={{alignItems:'stretch'}}>
+<Card padding={14} style={{flex:1}}><b>plain</b></Card>
+<Card tone="cream" padding={14} style={{flex:1}}><b>cream</b></Card>
+<Card tone="sunken" padding={14} style={{flex:1}}><b>sunken</b></Card>
+<Card tone="ink" padding={14} style={{flex:1}}><b>ink</b></Card>
+</div></div></div>}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+setTimeout(()=>window.lucide&&window.lucide.createIcons({attrs:{width:16,height:16,'stroke-width':2.2}}),60);
+</script></body></html>

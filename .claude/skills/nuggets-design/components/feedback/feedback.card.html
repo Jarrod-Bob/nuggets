@@ -1,0 +1,23 @@
+<!-- @dsCard group="Components" viewport="700x260" name="Feedback" subtitle="Dialog and empty state — no toasts in this product" -->
+<!doctype html><html><head><meta charset="utf-8"><script>window.NUG_ASSET_BASE='../../assets/';</script><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>html,body{margin:0;background:var(--nug-cream-50)}#root{padding:18px 20px}.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--nug-ink-500);margin:0 0 8px}</style>
+</head><body><div id="root"></div>
+<script type="text/babel">
+const { Dialog, EmptyState, Button, Input } = window.NuggetsDesignSystem_33854b;
+const ic=(n,s=16)=><i data-lucide={n} style={{width:s,height:s,display:'flex'}}></i>;
+function Demo(){const[open,setOpen]=React.useState(false);
+return <div style={{display:'flex',gap:24,alignItems:'flex-start'}}>
+<div style={{flex:1}}><p className="lbl">EmptyState</p>
+<EmptyState headline="Nothing in the bank yet" body="Drop your first nugget in. Half-formed is fine." action={<Button>Drop a nugget</Button>} style={{padding:'8px 0'}}/></div>
+<div><p className="lbl">Dialog</p><Button variant="secondary" onClick={()=>setOpen(true)}>Open dialog</Button>
+<p style={{fontSize:12,color:'var(--nug-ink-500)',maxWidth:210,marginTop:10}}>The app has exactly two dialogs: the idea form and the random draw. Errors render inline, never as a toast.</p></div>
+<Dialog open={open} title="Purge this nugget?" description="It's gone for good — restoring won't be an option." onClose={()=>setOpen(false)} footer={<><Button variant="ghost" onClick={()=>setOpen(false)}>Keep it</Button><Button variant="danger" onClick={()=>setOpen(false)}>Purge</Button></>}/>
+</div>}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+setTimeout(()=>window.lucide&&window.lucide.createIcons({attrs:{width:16,height:16,'stroke-width':2.2}}),60);
+</script></body></html>

@@ -1,0 +1,13 @@
+<!-- @dsCard group="Shape" viewport="700x220" name="Fluid nugget shapes" subtitle="Per-card corner variance, and the bite" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css"><style>html,body{margin:0;background:var(--nug-cream-100)}.c{padding:18px 20px;font-family:var(--font-body);color:var(--text-body)}.n{background:#fff;border:1.5px solid var(--nug-ink-200);box-shadow:var(--shadow-1);height:66px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:600;font-size:13px;color:var(--nug-ink-500);position:relative}</style></head><body><div class="c">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+<div class="n" style="border-radius:18px 31px 22px 27px / 24px 19px 30px 21px">go</div>
+<div class="n" style="border-radius:29px 16px 33px 20px / 17px 28px 22px 31px">infra</div>
+<div class="n" style="border-radius:22px 27px 17px 32px / 30px 21px 26px 18px">product</div>
+<div class="n" style="border-radius:33px 21px 26px 15px / 20px 32px 18px 29px">testing<svg width="46" height="24" viewBox="0 0 46 24" style="position:absolute;top:-2px;right:22px"><path d="M0,0 H46 V3 C41,3 39,7 39,11 C39,18 32,22 23,22 C14,22 7,18 7,11 C7,7 5,3 0,3 Z" fill="var(--nug-cream-100)"/><path d="M0,3 C5,3 7,7 7,11 C7,18 14,22 23,22 C32,22 39,18 39,11 C39,7 41,3 46,3" fill="none" stroke="var(--nug-ink-200)" stroke-width="1.5"/></svg></div>
+</div>
+<div style="margin-top:12px;display:flex;gap:18px;align-items:center">
+<img src="../assets/nugget.svg" style="height:48px"><img src="../assets/nugget-bitten.svg" style="height:48px">
+<div style="flex:1;font-size:12px;color:var(--nug-ink-500)">Corners are eight values hashed from the nugget's title, clamped to 14–34px — different every card, deterministic per card, always a legible rectangle. The bite is reserved for nuggets that have been acted on; one per view, never as decoration.</div>
+</div>
+</div></body></html>
