@@ -16,9 +16,12 @@ import (
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
-// DefaultPath returns %AppData%\nuggets\nuggets.db, creating the directory.
-// Never use a relative path: the database would otherwise move depending on
-// which directory the shortcut launched from.
+// DefaultPath returns the nuggets database path under the OS's per-user
+// config directory (os.UserConfigDir): %AppData%\nuggets\nuggets.db on
+// Windows, ~/Library/Application Support/nuggets/nuggets.db on macOS. It
+// creates the directory if needed. Never use a relative path: the database
+// would otherwise move depending on which directory the shortcut launched
+// from.
 func DefaultPath() (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
