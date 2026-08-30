@@ -22,21 +22,44 @@ nuggets gives them somewhere to live: enough structure to find one on purpose, a
 [`docs/superpowers/specs/2026-08-29-nuggets-design.md`](docs/superpowers/specs/2026-08-29-nuggets-design.md) —
 data model, API, and the reasoning behind each stack choice.
 
-To build and run:
+To build and run, pick whichever matches your platform:
 
 ```powershell
+# Windows, PowerShell
 ./build.ps1
 ./nuggets.exe
 ```
 
-`build.ps1` builds the frontend and embeds it into a single `nuggets.exe`. Running it opens
-`http://127.0.0.1:7777` in your default browser, backed by a SQLite database at
-`%AppData%\nuggets\nuggets.db`.
+```bat
+:: Windows, cmd.exe — use this if PowerShell refuses to run build.ps1
+:: ("running scripts is disabled on this system"). Batch scripts aren't
+:: subject to PowerShell's execution policy at all, so this needs no
+:: policy change. (The one-line fix for build.ps1 itself, if you'd
+:: rather keep using it, is: powershell -ExecutionPolicy Bypass -File .\build.ps1)
+build.cmd
+nuggets.exe
+```
+
+```bash
+# macOS / Linux
+chmod +x build.sh   # once
+./build.sh
+./nuggets
+```
+
+All three do the same thing: build the frontend and embed it into a single binary. Running
+it opens `http://127.0.0.1:7777` in your default browser, backed by a SQLite database at
+`%AppData%\nuggets\nuggets.db` on Windows or `~/Library/Application Support/nuggets/nuggets.db`
+on macOS.
 
 For a chromeless, app-like window instead of a browser tab:
 
 ```
+# Windows
 msedge --app=http://127.0.0.1:7777
+
+# macOS
+open -na "Google Chrome" --args --app=http://127.0.0.1:7777
 ```
 
 ## Stack
