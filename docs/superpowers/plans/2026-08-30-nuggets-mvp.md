@@ -127,7 +127,13 @@ internal/web/dist/
 *.db-shm
 nuggets.exe
 dist/
+.claude/worktrees/
+.superpowers/
 ```
+
+Preserve the last two lines if they are already present — `.claude/` is a
+tracked directory in this repo (the design system lives there), so the
+worktree and scratch directories must stay ignored.
 
 The negation matters: `internal/web/embed.go` will not compile before the first
 frontend build unless `dist/` exists, so Task 14 adds a `.gitkeep` that must
