@@ -46,22 +46,58 @@ Status (raw / exploring / building / parked / killed) and rating are the first p
 | Migrations | `goose`, embedded as a library, run at startup | Binary self-migrates; "did I run the migration?" never arises |
 | Frontend | React + Vite + TypeScript | Chosen on volume of TS-specific teaching material |
 | TypeScript | **Pinned to 6.x, not 7** | TS 7.0 ships no stable programmatic API until 7.1, so `typescript-eslint` cannot run on it. ESLint is worth more than compile speed here |
-| Styling | Tailwind v4 + selective shadcn/ui | See 4.1 |
+| Styling | The nuggets design system: CSS custom-property tokens + its own React components. No Tailwind, no shadcn | See 4.1 |
 | Shared types | Hand-written in `web/src/api.ts`, guarded by a golden-JSON Go test | ~4 types; codegen would hide the JSON contract, which is the thing worth learning to design |
 | Testing | Go stdlib `testing` + `httptest` against a real SQLite DB in `t.TempDir()` | No mocks, no store interface, no testify |
 
-### 4.1 Styling: why Tailwind from day one
+### 4.1 Styling: the design system supersedes Tailwind and shadcn
 
-Plain CSS was the initial recommendation and was reversed. Two reasons:
+**Revised 2026-08-30.** This section previously specified Tailwind v4 plus
+selective shadcn/ui. A design system was commissioned and delivered, and it
+makes both redundant. Neither is used.
 
-1. **There is no codemod from plain CSS to Tailwind.** The widely available migration guides cover v3 to v4. Converting hand-written CSS means rewriting every `className` by hand, and reconciling two token systems: CSS custom properties against Tailwind v4's `@theme` OKLCH variables that shadcn generates.
-2. **The MVP already contains the two components where shadcn pays off.** Freeform tags with autocomplete is a combobox; archive-with-restore implies a confirm dialog. An accessible combobox with correct keyboard navigation is fiddly, and hand-rolling one teaches ARIA trivia rather than TypeScript.
+The design system lives at `.claude/skills/nuggets-design/` (installed as a
+project skill so it is invocable, and kept there as the pristine reference
+copy). It provides:
 
-Setup cost is now low: Tailwind v4 is one Vite plugin plus one `@import`, with no JS config file. shadcn is current for Tailwind v4 and React 19, and copies component source into the repo rather than installing a dependency, so those files double as reading material.
+- **Design tokens** as plain CSS custom properties — colour, typography,
+  spacing, shape, motion — aggregated by `styles.css`.
+- **Eighteen React components**, including every component named in section 7.
+- **Voice and microcopy rules**, which encode the section 6.1 request semantics
+  directly into the interface.
 
-**Adopt only Dialog and Command/Popover from shadcn. Hand-write everything else.**
+**Its only dependency is React.** No Radix, no cmdk, no Tailwind.
 
-Note that Tailwind v4 defaults dark mode to `prefers-color-scheme` rather than a class strategy, which matters if a manual theme toggle is wanted later.
+Why Tailwind and shadcn are dropped:
+
+1. **The shadcn case has evaporated.** Adopting shadcn was justified entirely by
+   Dialog and Command/Popover — the combobox being the one component genuinely
+   hard to hand-roll. The design system ships both. `TagCombobox` implements
+   full keyboard navigation, `role="listbox"`, `aria-selected`, and create-new
+   handling.
+2. **The Tailwind case has inverted.** Tailwind was chosen because converting
+   hand-written CSS to it later has no codemod. That cost does not apply here:
+   the components style via inline styles, which do not participate in the
+   cascade, so introducing Tailwind later for new layout work conflicts with
+   nothing. Adopting it *now* would instead mean hand-rewriting eighteen
+   working, accessible components to gain nothing.
+
+The design system's own readme advises porting `tokens/` into a Tailwind
+`@theme` block. **That advice is not followed**, because it assumes the
+components would be rebuilt with Tailwind classes. They ship inline-styled, so
+the advice would cost a full rewrite and buy nothing.
+
+**Components are converted from `.jsx` to `.tsx`** as they are ported into
+`web/src/`, using the supplied `.d.ts` files as the prop-type source. The
+conversion is mechanical because the interfaces are already written. The
+reference copy under `.claude/skills/nuggets-design/` is left untouched, so a
+later re-sync from the designer can be diffed against it.
+
+**Fonts and icons must be vendored.** The system loads Baloo 2, Figtree and DM
+Mono from Google Fonts, and Lucide 0.462.0 from a CDN. A local-first app that
+opens at `127.0.0.1` must not render incorrectly without a network connection,
+nor make an external request to Google on every launch. Both are self-hosted
+into the repo and served from the Go binary.
 
 ## 5. Data model
 
@@ -134,12 +170,22 @@ One screen plus two dialogs.
 |---|---|
 | `IdeaList` | Newest-first list, with search box and tag filter above |
 | `TagFilter` | Narrows the list; sources from `GET /api/tags` |
-| `TagCombobox` | shadcn Command + Popover; used in both the form and the filter |
+| `TagCombobox` | Tag entry with autocomplete; used in both the form and the filter |
 | `IdeaForm` | Dialog for create and edit |
 | `RandomNugget` | Button opening a result dialog with a reroll |
 | `TrashView` | Behind a toggle; restore or purge |
 
+Every one of these is supplied by the design system (section 4.1), converted to
+`.tsx` on the way into `web/src/components/`. None is designed from scratch.
+They sit on a further layer of design-system primitives — `Button`, `Card`,
+`Tag`, `Input`, `Textarea`, `SearchField`, `IconButton`, `Badge`, `Dialog`,
+`EmptyState`, `TopBar`, `Wordmark`, `NuggetMark` — ported alongside them.
+
 Every `fetch` call and every hand-written type lives in `web/src/api.ts`, side by side, so the contract cannot drift unnoticed.
+
+The design system's `ui_kits/web_app/BankApp.jsx` is a working, interactive
+recreation of this whole screen against seed data. It is the reference for how
+the pieces compose, and the closest thing to a target for the frontend work.
 
 ## 8. Error handling
 
