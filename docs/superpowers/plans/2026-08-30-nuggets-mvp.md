@@ -120,20 +120,35 @@ This must come first. Git has already emitted 120+ CRLF warnings on this repo; e
 
 ```
 node_modules/
-internal/web/dist/
+internal/web/dist/*
 !internal/web/dist/.gitkeep
 *.db
 *.db-wal
 *.db-shm
 nuggets.exe
-dist/
 .claude/worktrees/
 .superpowers/
 ```
 
-Preserve the last two lines if they are already present — `.claude/` is a
-tracked directory in this repo (the design system lives there), so the
-worktree and scratch directories must stay ignored.
+Two things about this file are easy to get wrong, and both were caught in
+review during the first execution of this plan:
+
+- **`internal/web/dist/*` needs the asterisk.** With a trailing-slash directory
+  pattern, git prunes the whole tree without descending, and gitignore(5) is
+  explicit that "it is not possible to re-include a file if a parent directory
+  of that file is excluded" — so the `!` negation on the next line would never
+  be consulted, and Task 14 could not commit its `.gitkeep`. With the asterisk
+  git descends, excludes the children, and the negation applies.
+- **There is deliberately no bare `dist/` line.** Vite's `outDir` points at
+  `internal/web/dist`, so no top-level `dist/` is ever produced, and such a line
+  would independently re-ignore the path the negation is trying to rescue.
+
+Preserve the last two lines if already present — `.claude/` is a tracked
+directory in this repo (the design system lives there), so the worktree and
+scratch directories must stay ignored.
+
+Verify with `git check-ignore -v internal/web/dist/x.js` (must be ignored) and
+`git check-ignore -v internal/web/dist/.gitkeep` (must NOT be, exit 1).
 
 The negation matters: `internal/web/embed.go` will not compile before the first
 frontend build unless `dist/` exists, so Task 14 adds a `.gitkeep` that must

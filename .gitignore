@@ -1,2 +1,9 @@
+node_modules/
+internal/web/dist/*
+!internal/web/dist/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+nuggets.exe
 .claude/worktrees/
 .superpowers/

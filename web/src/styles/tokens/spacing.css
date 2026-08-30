@@ -1,0 +1,15 @@
+:root{
+  --space-0:0px; --space-1:2px; --space-2:4px; --space-3:6px; --space-4:8px;
+  --space-5:12px; --space-6:16px; --space-7:20px; --space-8:24px; --space-9:32px;
+  --space-10:40px; --space-11:48px; --space-12:64px; --space-13:80px; --space-14:104px;
+
+  --gutter-mobile:16px;
+  --gutter-web:24px;
+  --gutter-marketing:32px;
+  --measure-prose:62ch;
+  --page-max:1200px;
+  --sidenav-w:248px;
+  --topbar-h:60px;
+  --tabbar-h:64px;
+  --hit-min:44px;
+}
