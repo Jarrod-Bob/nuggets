@@ -9,6 +9,10 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/db"
 )
 
+// ptr returns a pointer to v. Draft's fields are pointers so that absent means
+// unchanged; tests build them through this.
+func ptr[T any](v T) *T { return &v }
+
 // newTestStore gives every test its own real database. SQLite creates one in
 // about a millisecond, which is why there is no store interface and no mocks.
 func newTestStore(t *testing.T) *Store {
@@ -30,13 +34,13 @@ func seedIdeas(t *testing.T, store *Store) {
 	t.Helper()
 	ctx := context.Background()
 	seeds := []Draft{
-		{Title: "Idea bank", Notes: "store nuggets", Tags: []string{"go", "saas"}},
-		{Title: "Tiny CLI", Notes: "for renaming files", Tags: []string{"go"}},
-		{Title: "Recipe sorter", Notes: "BANK of recipes", Tags: []string{"weekend"}},
+		{Title: ptr("Idea bank"), Notes: ptr("store nuggets"), Tags: ptr([]string{"go", "saas"})},
+		{Title: ptr("Tiny CLI"), Notes: ptr("for renaming files"), Tags: ptr([]string{"go"})},
+		{Title: ptr("Recipe sorter"), Notes: ptr("BANK of recipes"), Tags: ptr([]string{"weekend"})},
 	}
 	for _, seed := range seeds {
 		if _, err := store.Create(ctx, seed); err != nil {
-			t.Fatalf("seeding %q: %v", seed.Title, err)
+			t.Fatalf("seeding %q: %v", *seed.Title, err)
 		}
 	}
 }
@@ -63,9 +67,9 @@ func TestCreateNormalizesTags(t *testing.T) {
 	ctx := context.Background()
 
 	got, err := store.Create(ctx, Draft{
-		Title: "Idea bank",
-		Notes: "the one you're reading",
-		Tags:  []string{"  SaaS ", "saas", "Weekend", ""},
+		Title: ptr("Idea bank"),
+		Notes: ptr("the one you're reading"),
+		Tags:  ptr([]string{"  SaaS ", "saas", "Weekend", ""}),
 	})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
@@ -85,7 +89,7 @@ func TestCreateNormalizesTags(t *testing.T) {
 func TestCreateRejectsBlankTitle(t *testing.T) {
 	store := newTestStore(t)
 	for _, title := range []string{"", "   ", "\t\n"} {
-		_, err := store.Create(context.Background(), Draft{Title: title})
+		_, err := store.Create(context.Background(), Draft{Title: ptr(title)})
 		if !errors.Is(err, ErrEmptyTitle) {
 			t.Errorf("Create(title=%q) error = %v, want ErrEmptyTitle", title, err)
 		}
@@ -94,7 +98,7 @@ func TestCreateRejectsBlankTitle(t *testing.T) {
 
 func TestCreateTrimsTitle(t *testing.T) {
 	store := newTestStore(t)
-	got, err := store.Create(context.Background(), Draft{Title: "  Spaced  "})
+	got, err := store.Create(context.Background(), Draft{Title: ptr("  Spaced  ")})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -107,7 +111,7 @@ func TestGetReturnsCreatedIdea(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	created, err := store.Create(ctx, Draft{Title: "Findable", Tags: []string{"go"}})
+	created, err := store.Create(ctx, Draft{Title: ptr("Findable"), Tags: ptr([]string{"go"})})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -139,10 +143,10 @@ func TestTagsAreSharedNotDuplicated(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	if _, err := store.Create(ctx, Draft{Title: "One", Tags: []string{"go"}}); err != nil {
+	if _, err := store.Create(ctx, Draft{Title: ptr("One"), Tags: ptr([]string{"go"})}); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if _, err := store.Create(ctx, Draft{Title: "Two", Tags: []string{"GO"}}); err != nil {
+	if _, err := store.Create(ctx, Draft{Title: ptr("Two"), Tags: ptr([]string{"GO"})}); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 

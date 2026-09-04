@@ -1,5 +1,8 @@
 import React from 'react';
 import { Tag } from '../core/Tag';
+import { Badge } from '../core/Badge';
+import type { Status } from '../../api';
+import { statusLabel, statusTone, isActedOn } from '../../lib/status';
 import { fluidRadius } from './fluidRadius';
 
 export { fluidRadius } from './fluidRadius';
@@ -20,6 +23,10 @@ export interface IdeaCardProps {
   notes?: string;
   /** Normalised lowercase tag names. */
   tags?: string[];
+  /** Lifecycle status — rendered as a Badge, and drives the bitten treatment. */
+  status?: Status;
+  /** How many links the nugget carries — shown as a small count. */
+  linkCount?: number;
   /** Short relative date, rendered in mono. */
   date?: string;
   /** Renders the archived treatment (cream fill, dimmed) for the trash view. */
@@ -63,9 +70,12 @@ function Bite({ background, border }: { background: string; border: string }) {
   );
 }
 
-export function IdeaCard({ title, notes, tags = [], date, archived = false, shape = 'fluid', bitten = false, biteBackground = 'var(--surface-page)', seed, onClick, actions, style }: IdeaCardProps) {
+export function IdeaCard({ title, notes, tags = [], status, linkCount = 0, date, archived = false, shape = 'fluid', bitten, biteBackground = 'var(--surface-page)', seed, onClick, actions, style }: IdeaCardProps) {
   const [hover, setHover] = React.useState(false);
   const radius = shape === 'fluid' ? fluidRadius(seed || title || '') : 'var(--radius-lg)';
+  // Anything past raw is "acted on" — that is what the bite was reserved for.
+  // An explicit bitten prop still wins when the caller sets one.
+  const isBitten = bitten ?? (status ? isActedOn(status) : false);
   return (
     <article onClick={onClick}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
@@ -79,8 +89,13 @@ export function IdeaCard({ title, notes, tags = [], date, archived = false, shap
         transition: 'transform var(--dur-base) var(--ease-bounce), box-shadow var(--dur-base) var(--ease-out)',
         cursor: onClick ? 'pointer' : 'default', opacity: archived ? 0.85 : 1, ...style,
       }}>
-      {bitten && <Bite background={biteBackground} border="var(--nug-ink-200)" />}
+      {isBitten && <Bite background={biteBackground} border="var(--nug-ink-200)" />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+        {status && (
+          <div>
+            <Badge tone={statusTone(status)}>{statusLabel(status)}</Badge>
+          </div>
+        )}
         <h3 style={{ width: '100%', fontSize: 'var(--text-title-3)', fontWeight: 'var(--weight-bold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{truncate(title, 40)}</h3>
         {notes && <p style={{ width: '100%', margin: 0, fontSize: 'var(--text-body-sm)', lineHeight: 'var(--leading-normal)', color: 'var(--nug-ink-700)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{clampSentences(notes, 2)}</p>}
         {tags.length > 0 && (
@@ -90,7 +105,21 @@ export function IdeaCard({ title, notes, tags = [], date, archived = false, shap
         )}
       </div>
       <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 'auto', paddingTop: 2 }}>
-        {date && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--nug-ink-500)', whiteSpace: 'nowrap' }}>{date}</span>}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          {date && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--nug-ink-500)', whiteSpace: 'nowrap' }}>{date}</span>}
+          {linkCount > 0 && (
+            <span
+              title={`${linkCount} link${linkCount === 1 ? '' : 's'}`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--nug-ink-500)', whiteSpace: 'nowrap' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+              {linkCount}
+            </span>
+          )}
+        </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>{actions}</div>
       </div>
     </article>

@@ -78,6 +78,46 @@ func TestListExcludesArchivedByDefault(t *testing.T) {
 	}
 }
 
+func TestListFiltersByStatus(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	if _, err := store.Create(ctx, Draft{Title: ptr("Building it"), Status: ptr(StatusBuilding)}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := store.Create(ctx, Draft{Title: ptr("Just raw")}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	got, err := store.List(ctx, ListFilter{Status: "building"})
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if len(got) != 1 || got[0].Title != "Building it" {
+		t.Errorf("titles = %v, want [Building it]", titles(got))
+	}
+}
+
+func TestListStatusCombinesWithTagByAnd(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	if _, err := store.Create(ctx, Draft{Title: ptr("Go build"), Status: ptr(StatusBuilding), Tags: ptr([]string{"go"})}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := store.Create(ctx, Draft{Title: ptr("Go raw"), Tags: ptr([]string{"go"})}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	got, err := store.List(ctx, ListFilter{Status: "building", Tag: "go"})
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if len(got) != 1 || got[0].Title != "Go build" {
+		t.Errorf("titles = %v, want [Go build]", titles(got))
+	}
+}
+
 func TestListLoadsTags(t *testing.T) {
 	store := newTestStore(t)
 	seedIdeas(t, store)

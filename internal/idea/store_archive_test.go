@@ -10,7 +10,7 @@ func TestArchiveSetsArchivedAt(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	created, _ := store.Create(ctx, Draft{Title: "Bin me"})
+	created, _ := store.Create(ctx, Draft{Title: ptr("Bin me")})
 	if err := store.Archive(ctx, created.ID); err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
@@ -28,7 +28,7 @@ func TestRestoreClearsArchivedAt(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	created, _ := store.Create(ctx, Draft{Title: "Back again"})
+	created, _ := store.Create(ctx, Draft{Title: ptr("Back again")})
 	if err := store.Archive(ctx, created.ID); err != nil {
 		t.Fatalf("Archive() error = %v", err)
 	}
@@ -46,7 +46,7 @@ func TestPurgeRemovesIdeaAndItsTagLinks(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	created, _ := store.Create(ctx, Draft{Title: "Gone", Tags: []string{"go"}})
+	created, _ := store.Create(ctx, Draft{Title: ptr("Gone"), Tags: ptr([]string{"go"})})
 	if err := store.Purge(ctx, created.ID); err != nil {
 		t.Fatalf("Purge() error = %v", err)
 	}
@@ -64,6 +64,36 @@ func TestPurgeRemovesIdeaAndItsTagLinks(t *testing.T) {
 	}
 	if links != 0 {
 		t.Errorf("idea_tags rows = %d, want 0 (cascade should have fired)", links)
+	}
+}
+
+func TestPurgeCascadesToLinks(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	created, err := store.Create(ctx, Draft{
+		Title: ptr("With links"),
+		Links: ptr([]Link{
+			{URL: "https://a.example.com"},
+			{URL: "https://b.example.com"},
+		}),
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := store.Purge(ctx, created.ID); err != nil {
+		t.Fatalf("Purge() error = %v", err)
+	}
+
+	// ON DELETE CASCADE only fires because the foreign_keys pragma is set.
+	var links int
+	if err := store.db.QueryRow(
+		"SELECT COUNT(*) FROM idea_links WHERE idea_id = ?", created.ID,
+	).Scan(&links); err != nil {
+		t.Fatalf("counting links: %v", err)
+	}
+	if links != 0 {
+		t.Errorf("idea_links rows = %d, want 0 (cascade should have fired)", links)
 	}
 }
 

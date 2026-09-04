@@ -9,8 +9,11 @@ import (
 // nothing is recorded, so rerolling is free. ORDER BY RANDOM() is O(n), which
 // is instant at this scale — do not optimise it.
 func (s *Store) Random(ctx context.Context, tag string) (*Idea, error) {
-	query := `SELECT i.id, i.title, i.notes, i.created_at, i.updated_at, i.archived_at
-	          FROM ideas i WHERE i.archived_at IS NULL`
+	// Only live ideas are drawable: being handed one you killed or parked is
+	// noise, and the draw exists to hand back something you could start.
+	query := `SELECT i.id, i.title, i.notes, i.status, i.created_at, i.updated_at, i.archived_at
+	          FROM ideas i
+	          WHERE i.archived_at IS NULL AND i.status IN ('raw','exploring')`
 	var args []any
 
 	if name := NormalizeTag(tag); name != "" {
@@ -27,6 +30,9 @@ func (s *Store) Random(ctx context.Context, tag string) (*Idea, error) {
 		return nil, err // ErrNotFound when the bank (or the tag) is empty
 	}
 	if found.Tags, err = loadTags(ctx, s.db, found.ID); err != nil {
+		return nil, err
+	}
+	if found.Links, err = loadLinks(ctx, s.db, found.ID); err != nil {
 		return nil, err
 	}
 	return found, nil

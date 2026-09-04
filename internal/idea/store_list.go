@@ -6,11 +6,12 @@ import (
 	"strings"
 )
 
-// ListFilter narrows the bank. Query and Tag combine with AND.
+// ListFilter narrows the bank. Query, Tag and Status combine with AND.
 // Archived is a separate place, never merged with active ideas.
 type ListFilter struct {
 	Query    string
 	Tag      string
+	Status   string
 	Archived bool
 }
 
@@ -40,6 +41,11 @@ func (s *Store) List(ctx context.Context, filter ListFilter) ([]Idea, error) {
 		args = append(args, tag)
 	}
 
+	if status := strings.TrimSpace(filter.Status); status != "" {
+		where = append(where, "i.status = ?")
+		args = append(args, status)
+	}
+
 	// Archived ideas sort by when they were binned; active by when created.
 	order := "i.created_at DESC, i.id DESC"
 	if filter.Archived {
@@ -47,7 +53,7 @@ func (s *Store) List(ctx context.Context, filter ListFilter) ([]Idea, error) {
 	}
 
 	query := fmt.Sprintf(
-		`SELECT i.id, i.title, i.notes, i.created_at, i.updated_at, i.archived_at
+		`SELECT i.id, i.title, i.notes, i.status, i.created_at, i.updated_at, i.archived_at
 		 FROM ideas i WHERE %s ORDER BY %s`,
 		strings.Join(where, " AND "), order)
 
@@ -73,6 +79,9 @@ func (s *Store) List(ctx context.Context, filter ListFilter) ([]Idea, error) {
 	// issued while rows are open would deadlock.
 	for i := range ideas {
 		if ideas[i].Tags, err = loadTags(ctx, s.db, ideas[i].ID); err != nil {
+			return nil, err
+		}
+		if ideas[i].Links, err = loadLinks(ctx, s.db, ideas[i].ID); err != nil {
 			return nil, err
 		}
 	}

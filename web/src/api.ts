@@ -1,9 +1,26 @@
+/**
+ * A nugget's place in its lifecycle. Mirrors idea.Status in Go — that list is
+ * the source of truth; this union must stay in step with it.
+ */
+export type Status = 'raw' | 'exploring' | 'building' | 'parked' | 'killed';
+
+/** The five statuses in lifecycle order, for rendering filters and pickers. */
+export const STATUSES: Status[] = ['raw', 'exploring', 'building', 'parked', 'killed'];
+
+/** Mirrors internal/idea.Link. A blank label renders as the URL host. */
+export interface Link {
+  url: string;
+  label: string;
+}
+
 /** Mirrors internal/idea.Idea. Keep in sync with testdata/idea.golden.json. */
 export interface Idea {
   id: number;
   title: string;
   notes: string;
   tags: string[];
+  status: Status;
+  links: Link[];
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -15,16 +32,23 @@ export interface Tag {
   count: number;
 }
 
-/** Mirrors internal/idea.Draft. tags is always the complete set. */
+/**
+ * Mirrors internal/idea.Draft. Every field is optional: absent means "leave it
+ * as it was" (the server distinguishes absent from present-and-empty). A present
+ * tags or links array is the complete set — a save replaces it wholesale.
+ */
 export interface Draft {
-  title: string;
-  notes: string;
-  tags: string[];
+  title?: string;
+  notes?: string;
+  tags?: string[];
+  status?: Status;
+  links?: Link[];
 }
 
 export interface ListFilter {
   q?: string;
   tag?: string | null;
+  status?: Status | null;
   archived?: boolean;
 }
 
@@ -55,6 +79,7 @@ function query(filter: ListFilter): string {
   const params = new URLSearchParams();
   if (filter.q) params.set('q', filter.q);
   if (filter.tag) params.set('tag', filter.tag);
+  if (filter.status) params.set('status', filter.status);
   if (filter.archived) params.set('archived', 'true');
   const encoded = params.toString();
   return encoded ? `?${encoded}` : '';
