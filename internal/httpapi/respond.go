@@ -40,6 +40,10 @@ func writeStoreError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, "That nugget isn't in the bank.")
 	case errors.Is(err, idea.ErrEmptyTitle):
 		writeError(w, http.StatusBadRequest, idea.ErrEmptyTitle.Error())
+	case errors.Is(err, idea.ErrInvalidStatus):
+		writeError(w, http.StatusBadRequest, idea.ErrInvalidStatus.Error())
+	case errors.Is(err, idea.ErrInvalidLink):
+		writeError(w, http.StatusBadRequest, idea.ErrInvalidLink.Error())
 	default:
 		log.Printf("unexpected store error: %v", err)
 		writeError(w, http.StatusInternalServerError, "Something went wrong saving that.")

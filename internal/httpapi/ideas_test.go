@@ -14,6 +14,10 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 )
 
+// ptr returns a pointer to v. idea.Draft's fields are pointers (absent means
+// unchanged), so requests build them through this.
+func ptr[T any](v T) *T { return &v }
+
 func newTestServer(t *testing.T) http.Handler {
 	t.Helper()
 	database, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
@@ -56,7 +60,7 @@ func TestCreateThenListRoundTrip(t *testing.T) {
 	srv := newTestServer(t)
 
 	rec := do(t, srv, "POST", "/api/ideas", idea.Draft{
-		Title: "Idea bank", Notes: "this one", Tags: []string{"GO ", "saas"},
+		Title: ptr("Idea bank"), Notes: ptr("this one"), Tags: ptr([]string{"GO ", "saas"}),
 	})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST status = %d, want 201; body = %s", rec.Code, rec.Body)
@@ -85,7 +89,7 @@ func TestCreateThenListRoundTrip(t *testing.T) {
 
 func TestCreateBlankTitleReturns400WithMessage(t *testing.T) {
 	srv := newTestServer(t)
-	rec := do(t, srv, "POST", "/api/ideas", idea.Draft{Title: "  "})
+	rec := do(t, srv, "POST", "/api/ideas", idea.Draft{Title: ptr("  ")})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
 	}
@@ -108,7 +112,7 @@ func TestEmptyListSerializesAsArrayNotNull(t *testing.T) {
 
 func TestArchiveRemovesFromActiveListAndAddsToTrash(t *testing.T) {
 	srv := newTestServer(t)
-	do(t, srv, "POST", "/api/ideas", idea.Draft{Title: "Bin me"})
+	do(t, srv, "POST", "/api/ideas", idea.Draft{Title: ptr("Bin me")})
 
 	if rec := do(t, srv, "POST", "/api/ideas/1/archive", nil); rec.Code != http.StatusNoContent {
 		t.Fatalf("archive status = %d, want 204", rec.Code)
@@ -184,12 +188,76 @@ func TestUnknownAPIPathReturns404NotSPA(t *testing.T) {
 	}
 }
 
+func TestUnknownStatusReturns400NotServerError(t *testing.T) {
+	srv := newTestServer(t)
+	do(t, srv, "POST", "/api/ideas", idea.Draft{Title: ptr("Real")})
+
+	bogus := idea.Status("shipping")
+	rec := do(t, srv, "PATCH", "/api/ideas/1", idea.Draft{Status: &bogus})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (a readable client error, not a 500)", rec.Code)
+	}
+	var body errorBody
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decoding error body: %v", err)
+	}
+	if body.Error.Message == "" {
+		t.Errorf("expected a readable message")
+	}
+}
+
+func TestDangerousLinkReturns400NotServerError(t *testing.T) {
+	srv := newTestServer(t)
+	rec := do(t, srv, "POST", "/api/ideas", idea.Draft{
+		Title: ptr("Sneaky"),
+		Links: ptr([]idea.Link{{URL: "javascript:alert(1)"}}),
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 for a javascript: link", rec.Code)
+	}
+	var body errorBody
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decoding error body: %v", err)
+	}
+	if body.Error.Message == "" {
+		t.Errorf("expected a readable message")
+	}
+}
+
+func TestLinksRoundTripThroughAPI(t *testing.T) {
+	srv := newTestServer(t)
+	rec := do(t, srv, "POST", "/api/ideas", idea.Draft{
+		Title: ptr("Linked"),
+		Links: ptr([]idea.Link{
+			{URL: "https://github.com/x/y", Label: "repo"},
+			{URL: "https://docs.example.com"},
+		}),
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST status = %d, want 201; body = %s", rec.Code, rec.Body)
+	}
+	var created idea.Idea
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decoding: %v", err)
+	}
+	if len(created.Links) != 2 || created.Links[0].URL != "https://github.com/x/y" {
+		t.Errorf("Links = %v, want both, in order", created.Links)
+	}
+	if created.Status != idea.StatusRaw {
+		t.Errorf("Status = %q, want raw by default", created.Status)
+	}
+}
+
 // TestIdeaJSONMatchesGolden is the drift alarm on the TypeScript contract:
 // rename a field here and this fails, reminding you to update web/src/api.ts.
 func TestIdeaJSONMatchesGolden(t *testing.T) {
 	sample := idea.Idea{
 		ID: 1, Title: "Idea bank", Notes: "this one",
-		Tags: []string{"go", "saas"},
+		Tags:   []string{"go", "saas"},
+		Status: idea.StatusRaw,
+		Links: []idea.Link{
+			{URL: "https://github.com/example/repo", Label: "the repo"},
+		},
 	}
 	encoded, err := json.MarshalIndent(sample, "", "  ")
 	if err != nil {

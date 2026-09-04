@@ -37,6 +37,7 @@ func (h *handlers) list(w http.ResponseWriter, r *http.Request) {
 	ideas, err := h.store.List(r.Context(), idea.ListFilter{
 		Query:    q.Get("q"),
 		Tag:      q.Get("tag"),
+		Status:   q.Get("status"),
 		Archived: q.Get("archived") == "true",
 	})
 	if err != nil {

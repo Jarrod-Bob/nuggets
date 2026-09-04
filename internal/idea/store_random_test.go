@@ -59,7 +59,7 @@ func TestRandomExcludesArchived(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	created, _ := store.Create(ctx, Draft{Title: "Binned"})
+	created, _ := store.Create(ctx, Draft{Title: ptr("Binned")})
 	if err := store.archiveForTest(ctx, created.ID); err != nil {
 		t.Fatalf("archiving: %v", err)
 	}
@@ -75,6 +75,51 @@ func TestRandomOnEmptyBankReturnsErrNotFound(t *testing.T) {
 	_, err := store.Random(context.Background(), "")
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Random() error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestRandomOnlyDrawsLiveStatuses(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	// Two dead ideas and one live: many draws must only ever return the live one.
+	if _, err := store.Create(ctx, Draft{Title: ptr("Parked"), Status: ptr(StatusParked)}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := store.Create(ctx, Draft{Title: ptr("Killed"), Status: ptr(StatusKilled)}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := store.Create(ctx, Draft{Title: ptr("Exploring"), Status: ptr(StatusExploring)}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	for i := 0; i < 25; i++ {
+		got, err := store.Random(ctx, "")
+		if err != nil {
+			t.Fatalf("Random() error = %v", err)
+		}
+		if got.Title != "Exploring" {
+			t.Fatalf("drew %q (%s), want only the live idea", got.Title, got.Status)
+		}
+	}
+}
+
+func TestRandomOnBankOfOnlyDeadIdeasReturnsEmptyState(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	if _, err := store.Create(ctx, Draft{Title: ptr("Parked"), Status: ptr(StatusParked)}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := store.Create(ctx, Draft{Title: ptr("Killed"), Status: ptr(StatusKilled)}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	// The empty case is ErrNotFound, which the API turns into the "nothing to
+	// draw" empty state — not an error.
+	_, err := store.Random(ctx, "")
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("Random() error = %v, want ErrNotFound for a bank of only dead ideas", err)
 	}
 }
 
@@ -103,7 +148,7 @@ func TestTagsOmitsTagsWithOnlyArchivedIdeas(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	created, _ := store.Create(ctx, Draft{Title: "Only user of this tag", Tags: []string{"orphan"}})
+	created, _ := store.Create(ctx, Draft{Title: ptr("Only user of this tag"), Tags: ptr([]string{"orphan"})})
 	if err := store.archiveForTest(ctx, created.ID); err != nil {
 		t.Fatalf("archiving: %v", err)
 	}

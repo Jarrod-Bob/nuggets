@@ -8,7 +8,7 @@ import { IdeaList, type IdeaListItem } from './components/nuggets/IdeaList';
 import { IdeaForm, type IdeaDraft } from './components/nuggets/IdeaForm';
 import { RandomNugget, type RandomIdea } from './components/nuggets/RandomNugget';
 import { TrashView } from './components/nuggets/TrashView';
-import { api, ApiError, type Idea, type Tag } from './api';
+import { api, ApiError, type Idea, type Tag, type Status } from './api';
 import { formatRelative } from './lib/formatRelative';
 
 const iconPlus = (
@@ -45,6 +45,7 @@ function App() {
   const [tags, setTags] = React.useState<Tag[]>([]);
   const [query, setQuery] = React.useState('');
   const [activeTag, setActiveTag] = React.useState<string | null>(null);
+  const [activeStatus, setActiveStatus] = React.useState<Status | null>(null);
   const [showTrash, setShowTrash] = React.useState(false);
   const [form, setForm] = React.useState<FormState>(null);
   const [formError, setFormError] = React.useState<string | undefined>(undefined);
@@ -63,10 +64,10 @@ function App() {
 
   const refreshList = React.useCallback(() => {
     api
-      .list({ q: query || undefined, tag: activeTag, archived: showTrash })
+      .list({ q: query || undefined, tag: activeTag, status: showTrash ? null : activeStatus, archived: showTrash })
       .then(setIdeas)
       .catch((err) => setActionError(describeError(err)));
-  }, [query, activeTag, showTrash]);
+  }, [query, activeTag, activeStatus, showTrash]);
 
   React.useEffect(() => {
     refreshList();
@@ -179,6 +180,8 @@ function App() {
     title: i.title,
     notes: i.notes,
     tags: i.tags,
+    status: i.status,
+    linkCount: i.links.length,
     date: showTrash ? (i.archived_at ? formatRelative(i.archived_at) : undefined) : formatRelative(i.created_at),
   }));
 
@@ -248,8 +251,10 @@ function App() {
             query={query}
             showSearch={false}
             activeTag={activeTag}
+            activeStatus={activeStatus}
             onQueryChange={(e) => setQuery(e.target.value)}
             onTagChange={setActiveTag}
+            onStatusChange={setActiveStatus}
             onOpen={(item) => {
               const idea = ideas.find((i) => i.id === item.id);
               if (idea) openEdit(idea);
