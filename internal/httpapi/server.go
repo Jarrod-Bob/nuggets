@@ -6,11 +6,16 @@ import (
 	"time"
 
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
+	"github.com/Jarrod-Bob/nuggets/internal/settings"
+	"github.com/Jarrod-Bob/nuggets/internal/telegram"
 )
 
 // NewServer builds the full handler: API routes plus the embedded frontend.
-func NewServer(store *idea.Store, frontend http.Handler) http.Handler {
+// settingsStore and poller may be nil only in tests that don't exercise the
+// Telegram routes; cmd/nuggets/main.go always wires both.
+func NewServer(store *idea.Store, settingsStore *settings.Store, poller *telegram.Poller, frontend http.Handler) http.Handler {
 	h := &handlers{store: store}
+	th := newTelegramHandlers(settingsStore, poller)
 	mux := http.NewServeMux()
 
 	// Go 1.22+ method+wildcard patterns. Unmatched methods give 405 for free.
@@ -23,6 +28,12 @@ func NewServer(store *idea.Store, frontend http.Handler) http.Handler {
 	mux.HandleFunc("POST /api/ideas/{id}/archive", h.archive)
 	mux.HandleFunc("POST /api/ideas/{id}/restore", h.restore)
 	mux.HandleFunc("GET /api/tags", h.tags)
+
+	mux.HandleFunc("GET /api/settings/telegram", th.status)
+	mux.HandleFunc("PUT /api/settings/telegram", th.connect)
+	mux.HandleFunc("DELETE /api/settings/telegram", th.disconnect)
+	mux.HandleFunc("POST /api/settings/telegram/pair", th.pair)
+	mux.HandleFunc("POST /api/telegram/sync", th.sync)
 
 	// Catch-all for anything under /api/ that didn't match a more specific
 	// route above (wrong method on a path Go's mux can't already 405 for,

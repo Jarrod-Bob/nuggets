@@ -53,7 +53,7 @@ func (s *Store) List(ctx context.Context, filter ListFilter) ([]Idea, error) {
 	}
 
 	query := fmt.Sprintf(
-		`SELECT i.id, i.title, i.notes, i.status, i.created_at, i.updated_at, i.archived_at
+		`SELECT i.id, i.title, i.notes, i.status, i.created_at, i.updated_at, i.archived_at, i.source, i.source_ref
 		 FROM ideas i WHERE %s ORDER BY %s`,
 		strings.Join(where, " AND "), order)
 

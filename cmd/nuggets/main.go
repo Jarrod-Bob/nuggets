@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net"
@@ -13,6 +14,8 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/db"
 	"github.com/Jarrod-Bob/nuggets/internal/httpapi"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
+	"github.com/Jarrod-Bob/nuggets/internal/settings"
+	"github.com/Jarrod-Bob/nuggets/internal/telegram"
 	"github.com/Jarrod-Bob/nuggets/internal/web"
 )
 
@@ -60,8 +63,19 @@ func main() {
 		}()
 	}
 
+	ideaStore := idea.NewStore(database)
+	settingsStore := settings.NewStore(database)
+	poller := telegram.NewPoller(ideaStore, settingsStore)
+
+	// Started in a goroutine before Serve begins, so a slow or unreachable
+	// Telegram never delays the listener coming up (design §4.2). Loop runs
+	// for the life of the process; there is no shutdown path to cancel it
+	// today, matching how the HTTP server itself is stopped (killing the
+	// process, not a graceful Shutdown call).
+	go poller.Loop(context.Background())
+
 	server := &http.Server{
-		Handler:           httpapi.NewServer(idea.NewStore(database), frontend),
+		Handler:           httpapi.NewServer(ideaStore, settingsStore, poller, frontend),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	if err := server.Serve(listener); err != nil {

@@ -7,6 +7,7 @@ import { IconButton } from '../components/core/IconButton';
 import { IdeaList, type IdeaListItem } from '../components/nuggets/IdeaList';
 import { IdeaForm, type IdeaDraft } from '../components/nuggets/IdeaForm';
 import { RandomNugget, type RandomIdea } from '../components/nuggets/RandomNugget';
+import { SettingsButton } from '../components/settings/SettingsButton';
 import { Main } from '../components/Shell';
 import { ActionError } from '../components/feedback/ActionError';
 import { iconPlus, iconTrash, iconPencil, iconArchive } from '../components/icons';
@@ -193,6 +194,7 @@ export function BankRoute() {
         right={
           <>
             <RandomNugget tag={activeTag} onDraw={handleDraw} loading={randomLoading} />
+            <SettingsButton />
             <Button variant="ghost" size="sm" onClick={() => navigate('/trash')} iconLeft={iconTrash}>
               Trash
             </Button>

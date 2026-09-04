@@ -9,10 +9,11 @@ import (
 )
 
 var (
-	ErrNotFound      = errors.New("nugget not found")
-	ErrEmptyTitle    = errors.New("A nugget needs a title.")
-	ErrInvalidStatus = errors.New("That isn't a status a nugget can have.")
-	ErrInvalidLink   = errors.New("A link needs to be a http or https web address.")
+	ErrNotFound        = errors.New("nugget not found")
+	ErrEmptyTitle      = errors.New("A nugget needs a title.")
+	ErrInvalidStatus   = errors.New("That isn't a status a nugget can have.")
+	ErrInvalidLink     = errors.New("A link needs to be a http or https web address.")
+	ErrAlreadyImported = errors.New("nugget already imported")
 )
 
 // Status is a nugget's place in its lifecycle. It is a real type with a parser
@@ -92,6 +93,11 @@ type Idea struct {
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 	ArchivedAt *time.Time `json:"archived_at"`
+	// Source and SourceRef record where an imported nugget came from — nil for
+	// anything typed directly into the app. Omitted from the wire format when
+	// absent so this stays invisible until a consumer (issue #4) renders it.
+	Source    *string `json:"source,omitempty"`
+	SourceRef *string `json:"source_ref,omitempty"`
 }
 
 // Tag is a tag name with how many active ideas carry it.

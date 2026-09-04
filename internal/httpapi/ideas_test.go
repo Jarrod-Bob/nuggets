@@ -12,6 +12,8 @@ import (
 
 	"github.com/Jarrod-Bob/nuggets/internal/db"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
+	"github.com/Jarrod-Bob/nuggets/internal/settings"
+	"github.com/Jarrod-Bob/nuggets/internal/telegram"
 )
 
 // ptr returns a pointer to v. idea.Draft's fields are pointers (absent means
@@ -35,7 +37,9 @@ func newTestServer(t *testing.T) http.Handler {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte("<html><body>stub spa</body></html>"))
 	})
-	return NewServer(idea.NewStore(database), stubFrontend)
+	settingsStore := settings.NewStore(database)
+	poller := telegram.NewPoller(idea.NewStore(database), settingsStore)
+	return NewServer(idea.NewStore(database), settingsStore, poller, stubFrontend)
 }
 
 func do(t *testing.T, srv http.Handler, method, target string, body any) *httptest.ResponseRecorder {
