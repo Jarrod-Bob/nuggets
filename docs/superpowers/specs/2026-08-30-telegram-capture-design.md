@@ -168,7 +168,7 @@ Keeping these in a table rather than a config file means one storage mechanism, 
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/settings/telegram` | Status: connected, bot username, paired, pairing code if active, last sync, last error. **Never the token.** |
+| `GET` | `/api/settings/telegram` | Status: connected, bot username, paired, pairing code if active, last error. **Never the token.** Last-sync reporting is deferred ([#8](https://github.com/Jarrod-Bob/nuggets/issues/8)). |
 | `PUT` | `/api/settings/telegram` | Store a token. Validates it with `getMe` first and returns 400 with Telegram's reason if it is rejected. |
 | `DELETE` | `/api/settings/telegram` | Disconnect: clears every `telegram_*` setting. Imported nuggets stay. |
 | `POST` | `/api/settings/telegram/pair` | Generate a fresh pairing code. |
@@ -252,7 +252,7 @@ One new screen and one new control:
 - **Settings** — reached from the top bar. Connect a token, show the pairing code, show status and last error, disconnect. It states where the token is stored (§4.3).
 - **Sync now** — a manual fetch. It reflects only "asked", not "found N", per §6.
 
-Imported nuggets show their origin on the individual nugget page (issue [#4](https://github.com/Jarrod-Bob/nuggets/issues/4)) — "arrived from Telegram, 3 days ago". If #4 has not landed, the origin is stored but not shown; nothing about this feature depends on it.
+Showing an imported nugget's origin on the individual nugget page — "arrived from Telegram, 3 days ago" — is deferred to a follow-up ([#7](https://github.com/Jarrod-Bob/nuggets/issues/7)). The origin (`source` + `source_ref`) is stored today but not yet displayed; nothing about this feature depends on it.
 
 Everything uses the existing design system. Status uses the `Badge` component; the screen is a `Dialog` opened from each route's top bar, so it overlays whichever page is showing rather than navigating away from it.
 
