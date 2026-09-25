@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -660,4 +661,56 @@ func TestSyncCutsNetworkBackoffShort(t *testing.T) {
 	waitFor(t, "the first failing getUpdates call", func() bool { return fake.calls() >= 1 })
 	poller.Sync()
 	waitFor(t, "a retry after Sync", func() bool { return fake.calls() >= 2 })
+}
+
+// stubbornTransport answers every getUpdates with a 500 and ignores request
+// cancellation; the first call is held until release is closed.
+type stubbornTransport struct {
+	release chan struct{}
+	mu      sync.Mutex
+	calls   int
+}
+
+func (s *stubbornTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	s.mu.Lock()
+	s.calls++
+	first := s.calls == 1
+	s.mu.Unlock()
+	if first {
+		<-s.release
+	}
+	return &http.Response{
+		StatusCode: http.StatusInternalServerError,
+		Header:     http.Header{"Content-Type": {"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(`{"ok":false,"description":"boom"}`)),
+	}, nil
+}
+
+func (s *stubbornTransport) count() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.calls
+}
+
+// A Sync the loop takes while a failing fetch is already coming back must
+// still cause a prompt retry, not be spent before a long backoff.
+func TestSyncRacingFailedFetchRetriesInsteadOfBackingOff(t *testing.T) {
+	transport := &stubbornTransport{release: make(chan struct{})}
+	poller, settingsStore, _ := newTestPoller(t, &fakeTelegram{},
+		WithHTTPClient(&http.Client{Transport: transport}),
+		WithBackoff(time.Hour, time.Hour),
+	)
+	mustSetToken(t, context.Background(), settingsStore)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { poller.Loop(ctx); close(done) }()
+	defer func() { cancel(); <-done }()
+
+	waitFor(t, "the first getUpdates call", func() bool { return transport.count() >= 1 })
+	poller.Sync()
+	waitFor(t, "the loop to take the wake", func() bool { return len(poller.wake) == 0 })
+	close(transport.release)
+
+	waitFor(t, "a retry after the Sync", func() bool { return transport.count() >= 2 })
 }

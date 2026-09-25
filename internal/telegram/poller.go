@@ -350,6 +350,9 @@ func (p *Poller) Loop(ctx context.Context) {
 			}
 			// 5xx, anything else Telegram sent, and network failures: back
 			// off and retry (design §9), or retry now if Sync()ed.
+			if woken {
+				continue
+			}
 			if !p.sleep(ctx, backoff, true) {
 				return
 			}
