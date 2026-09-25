@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
@@ -17,6 +18,11 @@ import (
 // pollTimeoutSeconds is how long a single getUpdates call holds the request
 // open waiting for something to arrive (design §4.2).
 const pollTimeoutSeconds = 25
+
+// DefaultRequestTimeout bounds every Telegram call that isn't the held-open
+// wait itself (a reply, getMe), and how long past pollTimeoutSeconds a
+// getUpdates may run, so a peer that never answers can't wedge capture.
+const DefaultRequestTimeout = 10 * time.Second
 
 // Poller is the single goroutine allowed to call Telegram (design §4.5). It
 // owns Drain, the one routine that fetches everything waiting and saves it;
@@ -38,7 +44,14 @@ type Poller struct {
 	baseBackoff time.Duration
 	maxBackoff  time.Duration
 
+	requestTimeout time.Duration
+
 	wake chan struct{}
+
+	// mu is held from a batch's arrival through its offset being saved, and
+	// by Reset, so clearing the connection can't interleave with a batch
+	// that was fetched under it.
+	mu sync.Mutex
 }
 
 // Option configures a Poller away from its production defaults. Only tests
@@ -50,18 +63,20 @@ func WithHTTPClient(c *http.Client) Option           { return func(p *Poller) { 
 func WithBackoff(base, max time.Duration) Option {
 	return func(p *Poller) { p.baseBackoff = base; p.maxBackoff = max }
 }
+func WithRequestTimeout(d time.Duration) Option { return func(p *Poller) { p.requestTimeout = d } }
 
 // NewPoller builds a Poller against the real Telegram API. Pass Options to
 // point it at a fake for tests.
 func NewPoller(ideas *idea.Store, settingsStore *settings.Store, opts ...Option) *Poller {
 	p := &Poller{
-		ideas:       ideas,
-		settings:    settingsStore,
-		baseURL:     DefaultBaseURL,
-		httpClient:  http.DefaultClient,
-		baseBackoff: time.Second,
-		maxBackoff:  5 * time.Minute,
-		wake:        make(chan struct{}, 1),
+		ideas:          ideas,
+		settings:       settingsStore,
+		baseURL:        DefaultBaseURL,
+		httpClient:     http.DefaultClient,
+		baseBackoff:    time.Second,
+		maxBackoff:     5 * time.Minute,
+		requestTimeout: DefaultRequestTimeout,
+		wake:           make(chan struct{}, 1),
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -77,6 +92,18 @@ func (p *Poller) Sync() {
 	case p.wake <- struct{}{}:
 	default:
 	}
+}
+
+// Reset runs clear, which removes the stored connection, without racing a
+// batch in progress: a batch already fetched finishes first, and one fetched
+// under the old token is never saved afterwards. It then wakes the loop so a
+// getUpdates still waiting on the old token is abandoned.
+func (p *Poller) Reset(clear func() error) error {
+	p.mu.Lock()
+	err := clear()
+	p.mu.Unlock()
+	p.Sync()
+	return err
 }
 
 // ErrNotConfigured is Drain's answer when no bot token is stored: capture is
@@ -96,6 +123,8 @@ func (p *Poller) Drain(ctx context.Context) error {
 // drain is Drain with the getUpdates wait under its own pollCtx. Cancelling
 // pollCtx abandons the wait, but a batch that has already arrived is imported
 // and its offset saved under ctx, so a Sync can never leave one half-done.
+// The batch is dropped unsaved if the token it was fetched with is no longer
+// the connected one.
 func (p *Poller) drain(ctx, pollCtx context.Context) error {
 	token, ok, err := p.settings.Get(ctx, KeyToken)
 	if err != nil {
@@ -111,11 +140,23 @@ func (p *Poller) drain(ctx, pollCtx context.Context) error {
 	}
 
 	client := NewClient(p.baseURL(token), p.httpClient)
+	pollCtx, cancel := context.WithTimeout(pollCtx, pollTimeoutSeconds*time.Second+p.requestTimeout)
 	updates, err := client.GetUpdates(pollCtx, offset, pollTimeoutSeconds)
+	cancel()
 	if err != nil {
 		return err
 	}
 	if len(updates) == 0 {
+		return nil
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	current, ok, err := p.settings.Get(ctx, KeyToken)
+	if err != nil {
+		return err
+	}
+	if !ok || current != token {
 		return nil
 	}
 
@@ -228,6 +269,8 @@ func (p *Poller) tryPair(ctx context.Context, msg *Message) (bool, error) {
 // ignored: the nugget (if any) is already saved, which is what matters
 // (design §7).
 func (p *Poller) reply(ctx context.Context, client *Client, chatID int64, text string) {
+	ctx, cancel := context.WithTimeout(ctx, p.requestTimeout)
+	defer cancel()
 	if err := client.SendMessage(ctx, chatID, text); err != nil {
 		log.Printf("telegram: replying to chat: %v", err)
 	}
@@ -300,14 +343,14 @@ func (p *Poller) Loop(ctx context.Context) {
 				if wait <= 0 {
 					wait = backoff
 				}
-				if !p.sleep(ctx, wait) {
+				if !p.sleep(ctx, wait, false) {
 					return
 				}
 				continue
 			}
 			// 5xx, anything else Telegram sent, and network failures: back
-			// off and retry (design §9).
-			if !p.sleep(ctx, backoff) {
+			// off and retry (design §9), or retry now if Sync()ed.
+			if !p.sleep(ctx, backoff, true) {
 				return
 			}
 			backoff *= 2
@@ -355,12 +398,20 @@ func (p *Poller) park(ctx context.Context) bool {
 	}
 }
 
-// sleep waits for d or ctx cancellation, reporting which happened.
-func (p *Poller) sleep(ctx context.Context, d time.Duration) bool {
+// sleep waits for d or ctx cancellation, reporting which happened. A
+// wakeable sleep also ends early on Sync(); a 429's retry_after is not
+// wakeable, so a sync can't make the loop break Telegram's rate limit.
+func (p *Poller) sleep(ctx context.Context, d time.Duration, wakeable bool) bool {
+	var wake <-chan struct{}
+	if wakeable {
+		wake = p.wake
+	}
 	timer := time.NewTimer(d)
 	defer timer.Stop()
 	select {
 	case <-timer.C:
+		return true
+	case <-wake:
 		return true
 	case <-ctx.Done():
 		return false

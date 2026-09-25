@@ -3,6 +3,8 @@ package telegram
 import (
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 )
@@ -11,22 +13,31 @@ import (
 // directly. Telegram's own `entities` offsets are UTF-16 code units, which
 // silently mis-slice a UTF-8 Go string the moment the message contains an
 // emoji or any other non-BMP character — the regex sidesteps that conversion
-// entirely (design §7). Like Telegram, a # only starts a hashtag at the start
-// of the text or after a non-word character, so a URL fragment
-// (docs#install) or a word like issue#123 is left alone. RE2 has no
-// lookbehind, so the preceding character is matched too and group 1 is the
-// hashtag itself.
-var hashtagRe = regexp.MustCompile(`(?:^|[^\p{L}\p{N}_])(#[\p{L}\p{N}_]+)`)
+// entirely (design §7). hashtagSpans decides which matches really are
+// hashtags.
+var hashtagRe = regexp.MustCompile(`#[\p{L}\p{N}_]+`)
 
 // hashtagSpans returns the [start, end) byte offsets of each hashtag in text,
-// '#' included.
+// '#' included. Like Telegram, a # only starts a hashtag at the start of the
+// text, after a non-word character, or straight after another hashtag
+// (#go#rust), so a URL fragment (docs#install) or a word like issue#123 is
+// left alone.
 func hashtagSpans(text string) [][2]int {
 	var spans [][2]int
-	for _, m := range hashtagRe.FindAllStringSubmatchIndex(text, -1) {
-		spans = append(spans, [2]int{m[2], m[3]})
+	for _, m := range hashtagRe.FindAllStringIndex(text, -1) {
+		start := m[0]
+		chained := len(spans) > 0 && spans[len(spans)-1][1] == start
+		if !chained && start > 0 {
+			if prev, _ := utf8.DecodeLastRuneInString(text[:start]); isWordRune(prev) {
+				continue
+			}
+		}
+		spans = append(spans, [2]int{m[0], m[1]})
 	}
 	return spans
 }
+
+func isWordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' }
 
 // ParsedMessage is a Telegram message text broken into a nugget's parts,
 // per design §7.
@@ -72,8 +83,17 @@ func ParseMessage(text string) ParsedMessage {
 func removeHashtags(text string) string {
 	var out strings.Builder
 	cursor := 0
+	// Chained hashtags (#go#rust) are removed as one unit.
+	var runs [][2]int
 	for _, sp := range hashtagSpans(text) {
-		start, end := sp[0], sp[1]
+		if n := len(runs); n > 0 && runs[n-1][1] == sp[0] {
+			runs[n-1][1] = sp[1]
+			continue
+		}
+		runs = append(runs, sp)
+	}
+	for _, run := range runs {
+		start, end := run[0], run[1]
 		out.WriteString(text[cursor:start])
 		cursor = end
 

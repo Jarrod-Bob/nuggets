@@ -26,6 +26,8 @@ func newTelegramHandlers(settingsStore *settings.Store, poller *telegram.Poller)
 		settings: settingsStore,
 		poller:   poller,
 		getMe: func(ctx context.Context, token string) (telegram.User, error) {
+			ctx, cancel := context.WithTimeout(ctx, telegram.DefaultRequestTimeout)
+			defer cancel()
 			return telegram.NewClient(telegram.DefaultBaseURL(token), http.DefaultClient).GetMe(ctx)
 		},
 	}
@@ -119,16 +121,23 @@ func (h *telegramHandlers) connect(w http.ResponseWriter, r *http.Request) {
 
 func (h *telegramHandlers) disconnect(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	for _, key := range []string{telegram.KeyToken, telegram.KeyUsername, telegram.KeyChatID, telegram.KeyOffset, telegram.KeyPairCode, telegram.KeyLastError} {
-		if err := h.settings.Delete(ctx, key); err != nil {
-			writeError(w, http.StatusInternalServerError, "Something went wrong disconnecting.")
-			return
+	clear := func() error {
+		for _, key := range []string{telegram.KeyToken, telegram.KeyUsername, telegram.KeyChatID, telegram.KeyOffset, telegram.KeyPairCode, telegram.KeyLastError} {
+			if err := h.settings.Delete(ctx, key); err != nil {
+				return err
+			}
 		}
+		return nil
 	}
-	// Abandon any getUpdates still waiting on the old token, so it can't
-	// write that bot's offset back after it was cleared.
+	var err error
 	if h.poller != nil {
-		h.poller.Sync()
+		err = h.poller.Reset(clear)
+	} else {
+		err = clear()
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Something went wrong disconnecting.")
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -62,7 +62,7 @@ func (f *fakeTelegram) server() *httptest.Server {
 	}))
 }
 
-func newTestPoller(t *testing.T, fake *fakeTelegram) (*Poller, *settings.Store, *idea.Store) {
+func newTestPoller(t *testing.T, fake *fakeTelegram, opts ...Option) (*Poller, *settings.Store, *idea.Store) {
 	t.Helper()
 	srv := fake.server()
 	t.Cleanup(srv.Close)
@@ -75,11 +75,11 @@ func newTestPoller(t *testing.T, fake *fakeTelegram) (*Poller, *settings.Store, 
 
 	settingsStore := settings.NewStore(database)
 	ideaStore := idea.NewStore(database)
-	poller := NewPoller(ideaStore, settingsStore,
+	poller := NewPoller(ideaStore, settingsStore, append([]Option{
 		WithBaseURL(func(string) string { return srv.URL }),
 		WithHTTPClient(srv.Client()),
 		WithBackoff(time.Millisecond, 20*time.Millisecond),
-	)
+	}, opts...)...)
 	return poller, settingsStore, ideaStore
 }
 
@@ -558,4 +558,106 @@ func TestSyncDuringBatchProcessingFinishesTheBatch(t *testing.T) {
 		v, _, _ := settingsStore.Get(ctx, KeyOffset)
 		return v == "3"
 	})
+}
+
+// Disconnecting while a fetched batch is still being processed (here, stuck
+// on a reply) must not let that batch save the old bot's offset afterwards,
+// or a newly connected bot would silently skip its lower-numbered updates.
+func TestResetDuringBatchLeavesNoOffset(t *testing.T) {
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var once sync.Once
+	fake := &fakeTelegram{
+		batches: [][]Update{{
+			{UpdateID: 7, Message: &Message{MessageID: 1, Chat: Chat{ID: 555}, Text: "First"}},
+		}},
+		onSend: func() { once.Do(func() { close(entered); <-release }) },
+	}
+	poller, settingsStore, _ := newTestPoller(t, fake)
+	ctx := context.Background()
+	mustSetToken(t, ctx, settingsStore)
+	mustPair(t, ctx, settingsStore, 555)
+
+	loopCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { poller.Loop(loopCtx); close(done) }()
+	defer func() { cancel(); <-done }()
+
+	select {
+	case <-entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for the reply")
+	}
+
+	reset := make(chan error, 1)
+	go func() {
+		reset <- poller.Reset(func() error {
+			for _, key := range []string{KeyToken, KeyChatID, KeyOffset} {
+				if err := settingsStore.Delete(ctx, key); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}()
+	time.Sleep(20 * time.Millisecond)
+	close(release)
+
+	select {
+	case err := <-reset:
+		if err != nil {
+			t.Fatalf("Reset: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Reset never returned")
+	}
+	time.Sleep(20 * time.Millisecond)
+	if offset, ok, _ := settingsStore.Get(ctx, KeyOffset); ok {
+		t.Errorf("offset = %q after reset, want none — the old batch wrote it back", offset)
+	}
+}
+
+// A reply that never gets an answer must time out rather than hold up the
+// rest of the batch (and so every later fetch) forever.
+func TestStalledReplyTimesOutAndBatchFinishes(t *testing.T) {
+	release := make(chan struct{})
+	fake := &fakeTelegram{
+		batches: [][]Update{{
+			{UpdateID: 1, Message: &Message{MessageID: 1, Chat: Chat{ID: 555}, Text: "First"}},
+			{UpdateID: 2, Message: &Message{MessageID: 2, Chat: Chat{ID: 555}, Text: "Second"}},
+		}},
+		onSend: func() { <-release },
+	}
+	poller, settingsStore, ideaStore := newTestPoller(t, fake, WithRequestTimeout(20*time.Millisecond))
+	t.Cleanup(func() { close(release) })
+	ctx := context.Background()
+	mustSetToken(t, ctx, settingsStore)
+	mustPair(t, ctx, settingsStore, 555)
+
+	if err := poller.Drain(ctx); err != nil {
+		t.Fatalf("Drain: %v", err)
+	}
+	ideas, _ := ideaStore.List(ctx, idea.ListFilter{})
+	if len(ideas) != 2 {
+		t.Errorf("ideas = %d, want 2", len(ideas))
+	}
+	if offset, _, _ := settingsStore.Get(ctx, KeyOffset); offset != "3" {
+		t.Errorf("offset = %q, want %q", offset, "3")
+	}
+}
+
+// A long network backoff must not make the sync button a no-op.
+func TestSyncCutsNetworkBackoffShort(t *testing.T) {
+	fake := &fakeTelegram{failStatus: http.StatusInternalServerError}
+	poller, settingsStore, _ := newTestPoller(t, fake, WithBackoff(time.Hour, time.Hour))
+	mustSetToken(t, context.Background(), settingsStore)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { poller.Loop(ctx); close(done) }()
+	defer func() { cancel(); <-done }()
+
+	waitFor(t, "the first failing getUpdates call", func() bool { return fake.calls() >= 1 })
+	poller.Sync()
+	waitFor(t, "a retry after Sync", func() bool { return fake.calls() >= 2 })
 }

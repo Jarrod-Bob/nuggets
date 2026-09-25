@@ -122,6 +122,16 @@ func TestParseMessage(t *testing.T) {
 			want: ParsedMessage{Title: "see issue#123", Notes: "", Tags: []string{"bug"}},
 		},
 		{
+			name: "chained hashtags are both tags",
+			text: "#go#rust",
+			want: ParsedMessage{Title: "", Notes: "", Tags: []string{"go", "rust"}},
+		},
+		{
+			name: "chained hashtags mid line are removed together",
+			text: "Learn #go#rust today",
+			want: ParsedMessage{Title: "Learn today", Notes: "", Tags: []string{"go", "rust"}},
+		},
+		{
 			name: "hashtag after punctuation",
 			text: "Plan (#work) today",
 			want: ParsedMessage{Title: "Plan () today", Notes: "", Tags: []string{"work"}},
