@@ -125,6 +125,11 @@ func (h *telegramHandlers) disconnect(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// Abandon any getUpdates still waiting on the old token, so it can't
+	// write that bot's offset back after it was cleared.
+	if h.poller != nil {
+		h.poller.Sync()
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -111,6 +111,21 @@ func TestParseMessage(t *testing.T) {
 			text: "Try #golang, then rust",
 			want: ParsedMessage{Title: "Try, then rust", Notes: "", Tags: []string{"golang"}},
 		},
+		{
+			name: "url fragment is not a hashtag",
+			text: "Read this\nhttps://example.com/docs#install",
+			want: ParsedMessage{Title: "Read this", Notes: "https://example.com/docs#install", Tags: []string{}},
+		},
+		{
+			name: "hash inside a word is not a hashtag",
+			text: "see issue#123 #bug",
+			want: ParsedMessage{Title: "see issue#123", Notes: "", Tags: []string{"bug"}},
+		},
+		{
+			name: "hashtag after punctuation",
+			text: "Plan (#work) today",
+			want: ParsedMessage{Title: "Plan () today", Notes: "", Tags: []string{"work"}},
+		},
 	}
 
 	for _, tc := range cases {

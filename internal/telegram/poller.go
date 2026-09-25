@@ -79,18 +79,30 @@ func (p *Poller) Sync() {
 	}
 }
 
+// ErrNotConfigured is Drain's answer when no bot token is stored: capture is
+// idle, not failing (design §3.4), and there is nothing to fetch until a
+// token is connected.
+var ErrNotConfigured = errors.New("telegram: no bot token connected")
+
 // Drain fetches everything Telegram is holding for this bot and imports it.
-// It returns nil when there is nothing configured to do (no token yet) and
-// nil after a successful fetch, however many messages that fetch contained.
-// A non-nil error is a Telegram or network failure the caller (Loop) decides
-// how to handle (design §9).
+// It returns ErrNotConfigured when there is no token yet and nil after a
+// successful fetch, however many messages that fetch contained. Any other
+// error is a Telegram or network failure the caller (Loop) decides how to
+// handle (design §9).
 func (p *Poller) Drain(ctx context.Context) error {
+	return p.drain(ctx, ctx)
+}
+
+// drain is Drain with the getUpdates wait under its own pollCtx. Cancelling
+// pollCtx abandons the wait, but a batch that has already arrived is imported
+// and its offset saved under ctx, so a Sync can never leave one half-done.
+func (p *Poller) drain(ctx, pollCtx context.Context) error {
 	token, ok, err := p.settings.Get(ctx, KeyToken)
 	if err != nil {
 		return err
 	}
 	if !ok || token == "" {
-		return nil // not configured: capture is idle, not an error (design §3.4)
+		return ErrNotConfigured
 	}
 
 	offset, err := p.getOffset(ctx)
@@ -99,7 +111,7 @@ func (p *Poller) Drain(ctx context.Context) error {
 	}
 
 	client := NewClient(p.baseURL(token), p.httpClient)
-	updates, err := client.GetUpdates(ctx, offset, pollTimeoutSeconds)
+	updates, err := client.GetUpdates(pollCtx, offset, pollTimeoutSeconds)
 	if err != nil {
 		return err
 	}
@@ -238,22 +250,24 @@ func (p *Poller) clearError(ctx context.Context) {
 // immediately (Drain's own getUpdates call already held the connection open
 // for up to 25s), a manual Sync() cancels the current wait and loops
 // immediately, and a failure backs off or parks depending on what Telegram
-// said. Parking (401, 409) stops all calls to Telegram but keeps this, the
-// only getUpdates goroutine, alive: the next Sync() — reconnecting a token
-// from settings, or the manual sync button — resumes capture without a
+// said. Parking (no token, 401, 409) stops all calls to Telegram but keeps
+// this, the only getUpdates goroutine, alive: the next Sync() — connecting a
+// token from settings, or the manual sync button — resumes capture without a
 // process restart.
 func (p *Poller) Loop(ctx context.Context) {
 	backoff := p.baseBackoff
 
 	for {
-		iterCtx, cancel := context.WithCancel(ctx)
+		pollCtx, cancel := context.WithCancel(ctx)
 		done := make(chan error, 1)
-		go func() { done <- p.Drain(iterCtx) }()
+		go func() { done <- p.drain(ctx, pollCtx) }()
 
 		var err error
+		woken := false
 		select {
 		case err = <-done:
 		case <-p.wake:
+			woken = true
 			cancel()
 			err = <-done
 		case <-ctx.Done():
@@ -264,42 +278,35 @@ func (p *Poller) Loop(ctx context.Context) {
 		cancel()
 
 		if err != nil && !errors.Is(err, context.Canceled) {
-			var apiErr *APIError
-			if errors.As(err, &apiErr) {
-				switch apiErr.StatusCode {
-				case http.StatusUnauthorized:
-					// Retrying cannot help (design §9): stop calling Telegram
-					// until the user connects a new token, which Syncs us.
-					p.recordError(ctx, "The bot token is wrong or was revoked.")
-					if !p.park(ctx) {
-						return
-					}
-					backoff = p.baseBackoff
+			if reason, ok := parkReason(err); ok {
+				if woken {
+					// The Sync that raced this result may carry its fix (a
+					// newly connected token), so it earns one more try.
 					continue
-				case http.StatusConflict:
-					// Retrying makes it worse (design §9): stop until the user
-					// clears the conflict and reconnects or presses sync.
-					p.recordError(ctx, "Another poller or a registered webhook is already using this bot.")
-					if !p.park(ctx) {
-						return
-					}
-					backoff = p.baseBackoff
-					continue
-				case http.StatusTooManyRequests:
-					p.recordError(ctx, "Telegram is rate-limiting this bot.")
-					wait := time.Duration(apiErr.RetryAfter) * time.Second
-					if wait <= 0 {
-						wait = backoff
-					}
-					if !p.sleep(ctx, wait) {
-						return
-					}
-					continue
-				default:
-					// 5xx and anything else Telegram sent: treat like a
-					// network failure and back off (design §9).
 				}
+				if reason != "" {
+					p.recordError(ctx, reason)
+				}
+				if !p.park(ctx) {
+					return
+				}
+				backoff = p.baseBackoff
+				continue
 			}
+			var apiErr *APIError
+			if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusTooManyRequests {
+				p.recordError(ctx, "Telegram is rate-limiting this bot.")
+				wait := time.Duration(apiErr.RetryAfter) * time.Second
+				if wait <= 0 {
+					wait = backoff
+				}
+				if !p.sleep(ctx, wait) {
+					return
+				}
+				continue
+			}
+			// 5xx, anything else Telegram sent, and network failures: back
+			// off and retry (design §9).
 			if !p.sleep(ctx, backoff) {
 				return
 			}
@@ -313,6 +320,28 @@ func (p *Poller) Loop(ctx context.Context) {
 		backoff = p.baseBackoff
 		p.clearError(ctx)
 	}
+}
+
+// parkReason reports whether err means calling Telegram again cannot help
+// until the user changes something and Syncs, and the message to show them
+// for it, if any (design §9).
+func parkReason(err error) (string, bool) {
+	if errors.Is(err, ErrNotConfigured) {
+		return "", true
+	}
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.StatusCode {
+		case http.StatusUnauthorized:
+			// Retrying cannot help: wait for the user to connect a new token.
+			return "The bot token is wrong or was revoked.", true
+		case http.StatusConflict:
+			// Retrying makes it worse: wait for the user to clear the
+			// conflict and reconnect or press sync.
+			return "Another poller or a registered webhook is already using this bot.", true
+		}
+	}
+	return "", false
 }
 
 // park waits, without calling Telegram, until Sync() wakes the loop or ctx is

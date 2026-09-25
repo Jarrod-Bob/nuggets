@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -26,10 +27,15 @@ type fakeTelegram struct {
 	getCalls   int
 	sent       []string // texts passed to sendMessage, in order
 	failStatus int      // if nonzero, every getUpdates call fails with this status
+	// onSend, if set, runs before each sendMessage is answered, outside mu.
+	onSend func()
 }
 
 func (f *fakeTelegram) server() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if f.onSend != nil && strings.HasSuffix(r.URL.Path, "/sendMessage") {
+			f.onSend()
+		}
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		switch {
@@ -95,8 +101,8 @@ func TestDrainWithNoTokenIsIdleNotError(t *testing.T) {
 	fake := &fakeTelegram{}
 	poller, _, ideaStore := newTestPoller(t, fake)
 
-	if err := poller.Drain(context.Background()); err != nil {
-		t.Fatalf("Drain with no token = %v, want nil", err)
+	if err := poller.Drain(context.Background()); !errors.Is(err, ErrNotConfigured) {
+		t.Fatalf("Drain with no token = %v, want ErrNotConfigured", err)
 	}
 	if fake.getCalls != 0 {
 		t.Errorf("getUpdates called %d times, want 0 — no token means idle", fake.getCalls)
@@ -469,4 +475,87 @@ func TestLoopContinuesAfterNetworkError(t *testing.T) {
 	if calls < 2 {
 		t.Errorf("getUpdates called %d times, want several — a 5xx must back off and retry, not stop", calls)
 	}
+}
+
+// With no token there is nothing to fetch, so the loop must park until Sync()
+// rather than spin through no-op Drains. Connecting a token (which Syncs)
+// starts capture.
+func TestLoopWithNoTokenParksUntilSync(t *testing.T) {
+	fake := &fakeTelegram{batches: [][]Update{
+		{{UpdateID: 1, Message: &Message{MessageID: 1, Chat: Chat{ID: 555}, Text: "First capture"}}},
+	}}
+	poller, settingsStore, ideaStore := newTestPoller(t, fake)
+	ctx := context.Background()
+	mustPair(t, ctx, settingsStore, 555)
+	// A loop spinning on no-op Drains treats each one as a successful fetch
+	// and clears this; a parked loop leaves it alone.
+	if err := settingsStore.Set(ctx, KeyLastError, "left over"); err != nil {
+		t.Fatalf("seeding last error: %v", err)
+	}
+
+	loopCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { poller.Loop(loopCtx); close(done) }()
+	defer func() { cancel(); <-done }()
+
+	time.Sleep(50 * time.Millisecond)
+	if _, ok, _ := settingsStore.Get(ctx, KeyLastError); !ok {
+		t.Fatal("last error was cleared with no token stored — the loop is spinning instead of parking")
+	}
+	if n := fake.calls(); n != 0 {
+		t.Fatalf("getUpdates called %d times with no token, want 0", n)
+	}
+
+	mustSetToken(t, ctx, settingsStore)
+	poller.Sync()
+
+	waitFor(t, "the queued message to be imported", func() bool {
+		ideas, err := ideaStore.List(ctx, idea.ListFilter{})
+		return err == nil && len(ideas) == 1 && ideas[0].Title == "First capture"
+	})
+}
+
+// A Sync() only cuts short the getUpdates wait. Once a batch has arrived it
+// must be imported in full and its offset saved, or the rest of the batch is
+// lost (or, mid-pairing, the code is re-imported as a nugget).
+func TestSyncDuringBatchProcessingFinishesTheBatch(t *testing.T) {
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var once sync.Once
+	fake := &fakeTelegram{
+		batches: [][]Update{{
+			{UpdateID: 1, Message: &Message{MessageID: 1, Chat: Chat{ID: 555}, Text: "First"}},
+			{UpdateID: 2, Message: &Message{MessageID: 2, Chat: Chat{ID: 555}, Text: "Second"}},
+		}},
+		onSend: func() { once.Do(func() { close(entered); <-release }) },
+	}
+	poller, settingsStore, ideaStore := newTestPoller(t, fake)
+	ctx := context.Background()
+	mustSetToken(t, ctx, settingsStore)
+	mustPair(t, ctx, settingsStore, 555)
+
+	loopCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { poller.Loop(loopCtx); close(done) }()
+	defer func() { cancel(); <-done }()
+
+	select {
+	case <-entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for the first reply")
+	}
+	// The first reply is in flight: press sync, give the loop time to act on
+	// it, then let the reply finish.
+	poller.Sync()
+	time.Sleep(20 * time.Millisecond)
+	close(release)
+
+	waitFor(t, "both messages to be imported", func() bool {
+		ideas, err := ideaStore.List(ctx, idea.ListFilter{})
+		return err == nil && len(ideas) == 2
+	})
+	waitFor(t, "the offset to pass the batch", func() bool {
+		v, _, _ := settingsStore.Get(ctx, KeyOffset)
+		return v == "3"
+	})
 }

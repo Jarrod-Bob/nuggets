@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Jarrod-Bob/nuggets/internal/db"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
@@ -191,5 +193,71 @@ func TestSyncWakesLoopAndReturns202Immediately(t *testing.T) {
 	rec := do(t, srv, "POST", "/api/telegram/sync", nil)
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("status = %d, want 202", rec.Code)
+	}
+}
+
+// A getUpdates call for the old bot can still be waiting when the user
+// disconnects. Disconnect must cut it short so it never writes that bot's
+// offset back, where a newly connected bot would inherit it and silently
+// skip its own lower-numbered updates.
+func TestDisconnectStopsInFlightPollFromRestoringOffset(t *testing.T) {
+	polling := make(chan struct{}, 1)
+	release := make(chan struct{})
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "/getUpdates") {
+			json.NewEncoder(w).Encode(map[string]any{"ok": true, "result": map[string]any{}})
+			return
+		}
+		select {
+		case polling <- struct{}{}:
+		default:
+		}
+		<-release
+		json.NewEncoder(w).Encode(map[string]any{"ok": true, "result": []telegram.Update{
+			{UpdateID: 500, Message: &telegram.Message{MessageID: 1, Chat: telegram.Chat{ID: 555}, Text: "late"}},
+		}})
+	}))
+	defer fake.Close()
+	defer close(release)
+
+	database, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("opening test db: %v", err)
+	}
+	t.Cleanup(func() { database.Close() })
+	settingsStore := settings.NewStore(database)
+	poller := telegram.NewPoller(idea.NewStore(database), settingsStore,
+		telegram.WithBaseURL(func(string) string { return fake.URL }),
+		telegram.WithHTTPClient(fake.Client()),
+	)
+	th := &telegramHandlers{settings: settingsStore, poller: poller}
+
+	ctx := context.Background()
+	if err := settingsStore.Set(ctx, telegram.KeyToken, "old-token"); err != nil {
+		t.Fatalf("setting token: %v", err)
+	}
+	loopCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { poller.Loop(loopCtx); close(done) }()
+	defer func() { cancel(); <-done }()
+
+	select {
+	case <-polling:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for the long poll to start")
+	}
+
+	rec := httptest.NewRecorder()
+	th.disconnect(rec, httptest.NewRequest("DELETE", "/api/settings/telegram", nil))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
+
+	// Let the old poll answer, then give a still-live Drain time to save it.
+	release <- struct{}{}
+	time.Sleep(50 * time.Millisecond)
+
+	if offset, ok, _ := settingsStore.Get(ctx, telegram.KeyOffset); ok {
+		t.Errorf("offset = %q after disconnect, want none — the old poll wrote it back", offset)
 	}
 }
