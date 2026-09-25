@@ -351,27 +351,96 @@ func TestSecondChatCannotRepairOnceBound(t *testing.T) {
 	}
 }
 
-func TestLoopStopsOn401(t *testing.T) {
+// waitFor polls cond until it holds or the deadline passes.
+func waitFor(t *testing.T, what string, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for %s", what)
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+}
+
+func (f *fakeTelegram) calls() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.getCalls
+}
+
+// A 401 or 409 must stop the loop calling Telegram (retrying cannot help, or
+// makes it worse), but it must not kill the only getUpdates goroutine: once
+// the user reconnects a working token from the settings screen — which calls
+// Sync() — capture has to resume without restarting the app.
+func TestLoopParksOnFatalStatusAndResumesOnSync(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusConflict} {
+		t.Run(strconv.Itoa(status), func(t *testing.T) {
+			fake := &fakeTelegram{failStatus: status}
+			poller, settingsStore, ideaStore := newTestPoller(t, fake)
+			ctx := context.Background()
+			mustSetToken(t, ctx, settingsStore)
+			mustPair(t, ctx, settingsStore, 555)
+
+			loopCtx, cancel := context.WithCancel(ctx)
+			done := make(chan struct{})
+			go func() { poller.Loop(loopCtx); close(done) }()
+			defer func() { cancel(); <-done }()
+
+			waitFor(t, "the failing getUpdates call", func() bool { return fake.calls() >= 1 })
+			waitFor(t, "the recorded last error", func() bool {
+				v, ok, _ := settingsStore.Get(ctx, KeyLastError)
+				return ok && v != ""
+			})
+
+			// Backoff is 1ms in tests, so a loop that kept retrying would rack
+			// up dozens of calls in this window.
+			time.Sleep(50 * time.Millisecond)
+			if n := fake.calls(); n != 1 {
+				t.Fatalf("getUpdates called %d times after a %d, want exactly 1 — the loop must stop retrying", n, status)
+			}
+			select {
+			case <-done:
+				t.Fatalf("Loop returned after a %d; it must stay alive so a reconnect can resume capture", status)
+			default:
+			}
+
+			// The user fixes the problem (a new token, the webhook removed) and
+			// the settings handler wakes the loop.
+			fake.mu.Lock()
+			fake.failStatus = 0
+			fake.batches = [][]Update{{{UpdateID: 1, Message: &Message{MessageID: 42, Chat: Chat{ID: 555}, Text: "Resumed after reconnect"}}}}
+			fake.getCalls = 0
+			fake.mu.Unlock()
+			poller.Sync()
+
+			waitFor(t, "the queued message to be imported", func() bool {
+				ideas, err := ideaStore.List(ctx, idea.ListFilter{})
+				return err == nil && len(ideas) == 1 && ideas[0].Title == "Resumed after reconnect"
+			})
+			waitFor(t, "the last error to clear", func() bool {
+				_, ok, _ := settingsStore.Get(ctx, KeyLastError)
+				return !ok
+			})
+		})
+	}
+}
+
+func TestLoopParkedOnFatalStatusStillStopsOnCancel(t *testing.T) {
 	fake := &fakeTelegram{failStatus: http.StatusUnauthorized}
 	poller, settingsStore, _ := newTestPoller(t, fake)
 	mustSetToken(t, context.Background(), settingsStore)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
+	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { poller.Loop(ctx); close(done) }()
 
+	waitFor(t, "the failing getUpdates call", func() bool { return fake.calls() >= 1 })
+	cancel()
 	select {
 	case <-done:
-		// Loop returned on its own, meaning it stopped retrying — correct.
-	case <-ctx.Done():
-		t.Fatal("Loop did not stop on a 401; a bad token cannot be fixed by retrying")
-	}
-
-	lastErr, ok, err := settingsStore.Get(context.Background(), KeyLastError)
-	if err != nil || !ok || lastErr == "" {
-		t.Errorf("expected a recorded last error, got ok=%v err=%v", ok, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Loop parked on a 401 did not return after its context was cancelled")
 	}
 }
 

@@ -71,6 +71,46 @@ func TestParseMessage(t *testing.T) {
 			text: "Big idea #ShipIt",
 			want: ParsedMessage{Title: "Big idea", Notes: "", Tags: []string{"shipit"}},
 		},
+		{
+			name: "intentional spacing without hashtags is preserved",
+			text: "Title\nStep 1:  mix\n    indented  code\tcol",
+			want: ParsedMessage{Title: "Title", Notes: "Step 1:  mix\n    indented  code\tcol", Tags: []string{}},
+		},
+		{
+			name: "spacing elsewhere survives a hashtag removal",
+			text: "Title\nkeep  this  gap #tag and  this",
+			want: ParsedMessage{Title: "Title", Notes: "keep  this  gap and  this", Tags: []string{"tag"}},
+		},
+		{
+			name: "indentation survives a hashtag later on the line",
+			text: "Title\n    indented #tag line\n  next",
+			want: ParsedMessage{Title: "Title", Notes: "indented line\n  next", Tags: []string{"tag"}},
+		},
+		{
+			name: "indentation on an inner notes line survives",
+			text: "Title\nfirst\n    indented #tag line",
+			want: ParsedMessage{Title: "Title", Notes: "first\n    indented line", Tags: []string{"tag"}},
+		},
+		{
+			name: "consecutive hashtags mid line",
+			text: "Ship #a #b the thing",
+			want: ParsedMessage{Title: "Ship the thing", Notes: "", Tags: []string{"a", "b"}},
+		},
+		{
+			name: "consecutive hashtags at end of a notes line",
+			text: "Title\nline one #a #b\nline two",
+			want: ParsedMessage{Title: "Title", Notes: "line one\nline two", Tags: []string{"a", "b"}},
+		},
+		{
+			name: "hashtag at start of a notes line",
+			text: "Title\n#tag   rest of line",
+			want: ParsedMessage{Title: "Title", Notes: "rest of line", Tags: []string{"tag"}},
+		},
+		{
+			name: "hashtag before punctuation",
+			text: "Try #golang, then rust",
+			want: ParsedMessage{Title: "Try, then rust", Notes: "", Tags: []string{"golang"}},
+		},
 	}
 
 	for _, tc := range cases {

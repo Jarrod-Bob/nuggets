@@ -237,8 +237,11 @@ func (p *Poller) clearError(ctx context.Context) {
 // decides when to call Telegram again (design §4.2, §9): on success it loops
 // immediately (Drain's own getUpdates call already held the connection open
 // for up to 25s), a manual Sync() cancels the current wait and loops
-// immediately, and a failure backs off or stops depending on what Telegram
-// said.
+// immediately, and a failure backs off or parks depending on what Telegram
+// said. Parking (401, 409) stops all calls to Telegram but keeps this, the
+// only getUpdates goroutine, alive: the next Sync() — reconnecting a token
+// from settings, or the manual sync button — resumes capture without a
+// process restart.
 func (p *Poller) Loop(ctx context.Context) {
 	backoff := p.baseBackoff
 
@@ -265,11 +268,23 @@ func (p *Poller) Loop(ctx context.Context) {
 			if errors.As(err, &apiErr) {
 				switch apiErr.StatusCode {
 				case http.StatusUnauthorized:
+					// Retrying cannot help (design §9): stop calling Telegram
+					// until the user connects a new token, which Syncs us.
 					p.recordError(ctx, "The bot token is wrong or was revoked.")
-					return // retrying cannot help (design §9)
+					if !p.park(ctx) {
+						return
+					}
+					backoff = p.baseBackoff
+					continue
 				case http.StatusConflict:
+					// Retrying makes it worse (design §9): stop until the user
+					// clears the conflict and reconnects or presses sync.
 					p.recordError(ctx, "Another poller or a registered webhook is already using this bot.")
-					return // retrying makes it worse (design §9)
+					if !p.park(ctx) {
+						return
+					}
+					backoff = p.baseBackoff
+					continue
 				case http.StatusTooManyRequests:
 					p.recordError(ctx, "Telegram is rate-limiting this bot.")
 					wait := time.Duration(apiErr.RetryAfter) * time.Second
@@ -297,6 +312,17 @@ func (p *Poller) Loop(ctx context.Context) {
 
 		backoff = p.baseBackoff
 		p.clearError(ctx)
+	}
+}
+
+// park waits, without calling Telegram, until Sync() wakes the loop or ctx is
+// cancelled, reporting whether it was woken.
+func (p *Poller) park(ctx context.Context) bool {
+	select {
+	case <-p.wake:
+		return true
+	case <-ctx.Done():
+		return false
 	}
 }
 

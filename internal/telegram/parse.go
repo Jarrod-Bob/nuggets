@@ -14,11 +14,6 @@ import (
 // conversion entirely (design §7).
 var hashtagRe = regexp.MustCompile(`#[\p{L}\p{N}_]+`)
 
-// squeezeSpaces collapses runs of horizontal whitespace left behind by
-// removing a hashtag from the middle of a line. Newlines are untouched, so
-// intentional paragraph breaks in notes survive.
-var squeezeSpaces = regexp.MustCompile(`[ \t]{2,}`)
-
 // ParsedMessage is a Telegram message text broken into a nugget's parts,
 // per design §7.
 type ParsedMessage struct {
@@ -44,8 +39,7 @@ func ParseMessage(text string) ParsedMessage {
 		tags = append(tags, idea.NormalizeTag(strings.TrimPrefix(m, "#")))
 	}
 
-	cleaned := hashtagRe.ReplaceAllString(text, "")
-	cleaned = squeezeSpaces.ReplaceAllString(cleaned, " ")
+	cleaned := removeHashtags(text)
 
 	lines := strings.SplitN(cleaned, "\n", 2)
 	title := strings.TrimSpace(lines[0])
@@ -56,3 +50,51 @@ func ParseMessage(text string) ParsedMessage {
 
 	return ParsedMessage{Title: title, Notes: notes, Tags: tags}
 }
+
+// removeHashtags deletes every #hashtag from text, together with only the
+// whitespace that deletion would otherwise leave dangling — one separator
+// beside the tag, or the trailing gap when the tag ended its line. Every other
+// run of spaces, tabs or indentation is the user's and is left exactly as sent.
+func removeHashtags(text string) string {
+	var out strings.Builder
+	cursor := 0
+	for _, m := range hashtagRe.FindAllStringIndex(text, -1) {
+		start, end := m[0], m[1]
+		out.WriteString(text[cursor:start])
+		cursor = end
+
+		built := out.String()
+		atLineStart := built == "" || strings.HasSuffix(built, "\n")
+		atLineEnd := end == len(text) || text[end] == '\n' || text[end] == '\r'
+
+		switch {
+		case atLineEnd:
+			// Nothing follows on this line, so the gap before the tag is now
+			// trailing whitespace.
+			trimmed := strings.TrimRight(built, " \t")
+			out.Reset()
+			out.WriteString(trimmed)
+		case isHorizontalSpace(text[end]):
+			if atLineStart {
+				// The tag opened the line: drop the gap after it so the line
+				// starts at its first real word.
+				for cursor < len(text) && isHorizontalSpace(text[cursor]) {
+					cursor++
+				}
+			} else {
+				cursor++ // drop the one separator the tag brought with it
+			}
+		default:
+			// Punctuation follows ("#go, then"): drop the separator before the
+			// tag so the punctuation rejoins the preceding word.
+			if strings.HasSuffix(built, " ") || strings.HasSuffix(built, "\t") {
+				out.Reset()
+				out.WriteString(built[:len(built)-1])
+			}
+		}
+	}
+	out.WriteString(text[cursor:])
+	return out.String()
+}
+
+func isHorizontalSpace(b byte) bool { return b == ' ' || b == '\t' }

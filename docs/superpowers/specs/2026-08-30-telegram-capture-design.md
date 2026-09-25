@@ -224,8 +224,8 @@ If contention ever becomes visible, the fix is to raise the connection limit and
 | Condition | Response |
 |---|---|
 | Network unreachable, DNS failure, timeout | Back off: 1s doubling to a 5-minute ceiling, reset on success. Not surfaced to the user; this is ordinary laptop life. |
-| `401 Unauthorized` | The token is wrong or revoked. Stop polling, record it, surface it on the settings screen. Retrying cannot help. |
-| `409 Conflict` | Another poller or a registered webhook. Stop, surface it — retrying makes it worse. |
+| `401 Unauthorized` | The token is wrong or revoked. Stop polling, record it, surface it on the settings screen. Retrying cannot help. The loop parks rather than exits: reconnecting a token (or the sync button) wakes it and capture resumes without a restart. |
+| `409 Conflict` | Another poller or a registered webhook. Stop, surface it — retrying makes it worse. Parks like a 401 until the next sync. |
 | `429 Too Many Requests` | Honour `parameters.retry_after` exactly. Never retry sooner. |
 | `5xx` | Treat as a network failure and back off. |
 | Malformed update | Skip the update, log it, **advance the position**. One bad message must never wedge the queue permanently. |
