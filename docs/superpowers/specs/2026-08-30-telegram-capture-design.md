@@ -161,6 +161,7 @@ DROP TABLE settings;
 | `telegram_offset` | Next update number to request | Up to 24h of messages re-fetched — and rejected by the unique origin index, so the visible effect is nil |
 | `telegram_pair_code` | Active code and its expiry | A new one is generated on demand |
 | `telegram_last_error` | Last failure, for the settings screen | Status shows as unknown until the next cycle |
+| `telegram_last_sync_at` | When `getUpdates` last answered successfully (even with nothing new), RFC 3339 ([#8](https://github.com/Jarrod-Bob/nuggets/issues/8)) | The settings screen shows "not synced yet" until the next successful poll |
 
 Keeping these in a table rather than a config file means one storage mechanism, one backup, and one thing to reason about — and the table is immediately reusable by the next preference the app needs.
 
@@ -168,9 +169,9 @@ Keeping these in a table rather than a config file means one storage mechanism, 
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/settings/telegram` | Status: connected, bot username, paired, pairing code if active, last error. **Never the token.** Last-sync reporting is deferred ([#8](https://github.com/Jarrod-Bob/nuggets/issues/8)). |
-| `PUT` | `/api/settings/telegram` | Store a token. Validates it with `getMe` first and returns 400 with Telegram's reason if it is rejected. |
-| `DELETE` | `/api/settings/telegram` | Disconnect: clears every `telegram_*` setting. Imported nuggets stay. |
+| `GET` | `/api/settings/telegram` | Status: connected, bot username, paired, pairing code if active, last error, and `last_sync_at` — when `getUpdates` last answered successfully ([#8](https://github.com/Jarrod-Bob/nuggets/issues/8)). **Never the token.** |
+| `PUT` | `/api/settings/telegram` | Store a token. Validates it with `getMe` first and returns 400 with Telegram's reason if it is rejected. Clears the previous token's last error and last sync time. |
+| `DELETE` | `/api/settings/telegram` | Disconnect: clears every `telegram_*` setting, the last sync time included. Imported nuggets stay. |
 | `POST` | `/api/settings/telegram/pair` | Generate a fresh pairing code. |
 | `POST` | `/api/telegram/sync` | Wake the loop. Returns `202` immediately; it does not wait for the fetch. |
 
@@ -252,12 +253,12 @@ One new screen and one new control:
 - **Settings** — reached from the top bar. Connect a token, show the pairing code, show status and last error, disconnect. It states where the token is stored (§4.3).
 - **Sync now** — a manual fetch. It reflects only "asked", not "found N", per §6.
 
-Showing an imported nugget's origin on the individual nugget page — "arrived from Telegram, 3 days ago" — is deferred to a follow-up ([#7](https://github.com/Jarrod-Bob/nuggets/issues/7)). The origin (`source` + `source_ref`) is stored today but not yet displayed; nothing about this feature depends on it.
+An imported nugget's page shows its origin — "arrived via Telegram, 3d ago" ([#7](https://github.com/Jarrod-Bob/nuggets/issues/7), shipped with the spices pull; see [`2026-09-26-spices-pull-design.md`](2026-09-26-spices-pull-design.md) §7). The settings screen shows each source's last successful sync ([#8](https://github.com/Jarrod-Bob/nuggets/issues/8)).
 
-Everything uses the existing design system. Status uses the `Badge` component; the screen is a `Dialog` opened from each route's top bar, so it overlays whichever page is showing rather than navigating away from it.
+Everything uses the existing design system. Status uses the `Badge` component; the screen is a `Dialog` opened from each route's top bar, so it overlays whichever page is showing rather than navigating away from it. Since the spices pull it holds one section per source, Telegram first.
 
 ## 12. Future paths
 
-- **Capture from other chats.** The `source` column already distinguishes origins, so a second adapter is a new package and a new value, not a change to this design.
+- **Capture from other chats.** The `source` column already distinguishes origins, so a second adapter is a new package and a new value, not a change to this design. The first one is spices ([`2026-09-26-spices-pull-design.md`](2026-09-26-spices-pull-design.md)), which runs alongside this capture.
 - **Photos and voice notes.** Both need attachment storage, which the MVP doc keeps out of scope; the skip-and-reply behaviour is what keeps that decision honest in the meantime.
 - **Reaching the bank from the phone directly.** MVP doc §9.1's tailnet path remains the answer for *reading* on a phone. This feature solves capture, not browsing, and the two do not overlap.
