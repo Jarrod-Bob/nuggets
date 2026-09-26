@@ -1,22 +1,21 @@
 import React from 'react';
-import { Dialog } from '../feedback/Dialog';
 import { Button } from '../core/Button';
 import { Badge } from '../core/Badge';
 import { Input } from '../forms/Input';
 import { api, ApiError, type TelegramStatus } from '../../api';
+import { describeLastSync } from '../../lib/origin';
+import { SettingsSection } from './SettingsSection';
 
 export interface TelegramSettingsProps {
+  /** Whether the settings dialog is showing: status is fetched each time it opens. */
   open: boolean;
-  onClose: () => void;
 }
 
 /**
- * The app's first settings screen (design §11): connect a bot token, pair it
- * to one chat, see status, disconnect. Rendered as a Dialog opened from the
- * top bar (see SettingsButton) so it overlays whichever route you are on
- * rather than navigating away from it.
+ * The Telegram section of the settings dialog (design §11): connect a bot
+ * token, pair it to one chat, see status, disconnect.
  */
-export function TelegramSettings({ open, onClose }: TelegramSettingsProps) {
+export function TelegramSettings({ open }: TelegramSettingsProps) {
   const [status, setStatus] = React.useState<TelegramStatus | null>(null);
   const [token, setToken] = React.useState('');
   const [error, setError] = React.useState<string | undefined>(undefined);
@@ -40,14 +39,15 @@ export function TelegramSettings({ open, onClose }: TelegramSettingsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // While a pairing code is showing, poll status so the dialog notices the
-  // moment the phone sends it — the alternative is asking the user to close
-  // and reopen the dialog to see they're paired.
+  // While connected, poll status so the dialog notices the moment the phone
+  // sends a pairing code, and keeps the last-sync line current — the
+  // alternative is asking the user to close and reopen the dialog.
+  const connected = !!status?.connected;
   React.useEffect(() => {
-    if (!open || !status || status.paired || !status.pair_code) return;
+    if (!open || !connected) return;
     const id = window.setInterval(() => refresh(false), 3000);
     return () => window.clearInterval(id);
-  }, [open, status, refresh]);
+  }, [open, connected, refresh]);
 
   const connect = () => {
     if (!token.trim()) return;
@@ -92,7 +92,7 @@ export function TelegramSettings({ open, onClose }: TelegramSettingsProps) {
   };
 
   return (
-    <Dialog open={open} title="Telegram" description="Capture nuggets by texting a bot from your phone." onClose={onClose} width={480}>
+    <SettingsSection title="Telegram" description="Capture nuggets by texting a bot from your phone.">
       {error && (
         <div style={{ marginBottom: 14, padding: '8px 12px', borderRadius: 'var(--radius-md, 8px)', background: 'var(--nug-red-50, #fef2f2)', color: 'var(--nug-red-700, #b91c1c)', fontSize: 'var(--text-small, 13px)' }}>
           {error}
@@ -123,6 +123,9 @@ export function TelegramSettings({ open, onClose }: TelegramSettingsProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <Badge tone="herb">Connected</Badge>
             {status.username && <span style={{ fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-700)' }}>@{status.username}</span>}
+            <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--nug-ink-500)' }}>
+              {describeLastSync(status.last_sync_at)}
+            </span>
           </div>
 
           {status.paired ? (
@@ -183,6 +186,6 @@ export function TelegramSettings({ open, onClose }: TelegramSettingsProps) {
           </div>
         </div>
       )}
-    </Dialog>
+    </SettingsSection>
   );
 }
