@@ -42,6 +42,8 @@ type telegramStatus struct {
 	PairCode  string  `json:"pair_code,omitempty"`
 	ExpiresAt *string `json:"pair_code_expires_at,omitempty"`
 	LastError string  `json:"last_error,omitempty"`
+	// LastSyncAt is when getUpdates last answered successfully (issue #8).
+	LastSyncAt *string `json:"last_sync_at,omitempty"`
 }
 
 func (h *telegramHandlers) status(w http.ResponseWriter, r *http.Request) {
@@ -78,6 +80,12 @@ func (h *telegramHandlers) status(w http.ResponseWriter, r *http.Request) {
 		status.LastError = lastErr
 	}
 
+	if connected {
+		if lastSync, ok, err := h.settings.Get(ctx, telegram.KeyLastSync); err == nil && ok && lastSync != "" {
+			status.LastSyncAt = &lastSync
+		}
+	}
+
 	writeJSON(w, http.StatusOK, status)
 }
 
@@ -111,6 +119,7 @@ func (h *telegramHandlers) connect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.settings.Delete(r.Context(), telegram.KeyLastError)
+	_ = h.settings.Delete(r.Context(), telegram.KeyLastSync) // belonged to the previous token, if any
 
 	if h.poller != nil {
 		h.poller.Sync()
@@ -122,7 +131,7 @@ func (h *telegramHandlers) connect(w http.ResponseWriter, r *http.Request) {
 func (h *telegramHandlers) disconnect(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	clear := func() error {
-		for _, key := range []string{telegram.KeyToken, telegram.KeyUsername, telegram.KeyChatID, telegram.KeyOffset, telegram.KeyPairCode, telegram.KeyLastError} {
+		for _, key := range []string{telegram.KeyToken, telegram.KeyUsername, telegram.KeyChatID, telegram.KeyOffset, telegram.KeyPairCode, telegram.KeyLastError, telegram.KeyLastSync} {
 			if err := h.settings.Delete(ctx, key); err != nil {
 				return err
 			}

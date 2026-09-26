@@ -261,3 +261,34 @@ func TestDisconnectStopsInFlightPollFromRestoringOffset(t *testing.T) {
 		t.Errorf("offset = %q after disconnect, want none — the old poll wrote it back", offset)
 	}
 }
+
+func TestTelegramStatusReportsLastSyncAndDisconnectClearsIt(t *testing.T) {
+	database, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("opening test db: %v", err)
+	}
+	t.Cleanup(func() { database.Close() })
+	settingsStore := settings.NewStore(database)
+	th := &telegramHandlers{settings: settingsStore}
+	ctx := context.Background()
+	settingsStore.Set(ctx, telegram.KeyToken, "tok")
+	settingsStore.Set(ctx, telegram.KeyLastSync, "2026-09-26T08:00:00Z")
+
+	rec := httptest.NewRecorder()
+	th.status(rec, httptest.NewRequest("GET", "/api/settings/telegram", nil))
+	var status struct {
+		LastSyncAt *string `json:"last_sync_at"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &status); err != nil {
+		t.Fatalf("decoding: %v", err)
+	}
+	if status.LastSyncAt == nil || *status.LastSyncAt != "2026-09-26T08:00:00Z" {
+		t.Errorf("last_sync_at = %v, want the stored time", status.LastSyncAt)
+	}
+
+	rec = httptest.NewRecorder()
+	th.disconnect(rec, httptest.NewRequest("DELETE", "/api/settings/telegram", nil))
+	if _, ok, _ := settingsStore.Get(ctx, telegram.KeyLastSync); ok {
+		t.Error("disconnect left the last sync time behind")
+	}
+}

@@ -7,15 +7,18 @@ import (
 
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
+	"github.com/Jarrod-Bob/nuggets/internal/spices"
 	"github.com/Jarrod-Bob/nuggets/internal/telegram"
 )
 
 // NewServer builds the full handler: API routes plus the embedded frontend.
-// settingsStore and poller may be nil only in tests that don't exercise the
-// Telegram routes; cmd/nuggets/main.go always wires both.
-func NewServer(store *idea.Store, settingsStore *settings.Store, poller *telegram.Poller, frontend http.Handler) http.Handler {
+// settingsStore, poller and syncer may be nil only in tests that don't
+// exercise the Telegram or spices routes; cmd/nuggets/main.go always wires
+// all three.
+func NewServer(store *idea.Store, settingsStore *settings.Store, poller *telegram.Poller, syncer *spices.Syncer, frontend http.Handler) http.Handler {
 	h := &handlers{store: store}
 	th := newTelegramHandlers(settingsStore, poller)
+	sh := &spicesHandlers{settings: settingsStore, syncer: syncer}
 	mux := http.NewServeMux()
 
 	// Go 1.22+ method+wildcard patterns. Unmatched methods give 405 for free.
@@ -34,6 +37,12 @@ func NewServer(store *idea.Store, settingsStore *settings.Store, poller *telegra
 	mux.HandleFunc("DELETE /api/settings/telegram", th.disconnect)
 	mux.HandleFunc("POST /api/settings/telegram/pair", th.pair)
 	mux.HandleFunc("POST /api/telegram/sync", th.sync)
+
+	mux.HandleFunc("GET /api/settings/spices", sh.status)
+	mux.HandleFunc("PUT /api/settings/spices", sh.connect)
+	mux.HandleFunc("DELETE /api/settings/spices", sh.disconnect)
+	mux.HandleFunc("POST /api/spices/sync", sh.sync)
+	mux.HandleFunc("POST /api/spices/resync", sh.resync)
 
 	// Catch-all for anything under /api/ that didn't match a more specific
 	// route above (wrong method on a path Go's mux can't already 405 for,

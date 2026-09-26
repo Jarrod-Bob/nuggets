@@ -15,6 +15,7 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/httpapi"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
+	"github.com/Jarrod-Bob/nuggets/internal/spices"
 	"github.com/Jarrod-Bob/nuggets/internal/telegram"
 	"github.com/Jarrod-Bob/nuggets/internal/web"
 )
@@ -74,8 +75,15 @@ func main() {
 	// process, not a graceful Shutdown call).
 	go poller.Loop(context.Background())
 
+	// The spices pull loop, likewise: its first pull runs at startup when a
+	// token is stored, then every interval and on Sync now. It runs alongside
+	// Telegram capture; both import into the same bank under their own
+	// source (docs/superpowers/specs/2026-09-26-spices-pull-design.md).
+	syncer := spices.NewSyncer(ideaStore, settingsStore)
+	go syncer.Loop(context.Background())
+
 	server := &http.Server{
-		Handler:           httpapi.NewServer(ideaStore, settingsStore, poller, frontend),
+		Handler:           httpapi.NewServer(ideaStore, settingsStore, poller, syncer, frontend),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	if err := server.Serve(listener); err != nil {

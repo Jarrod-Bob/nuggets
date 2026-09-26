@@ -13,6 +13,7 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/db"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
+	"github.com/Jarrod-Bob/nuggets/internal/spices"
 	"github.com/Jarrod-Bob/nuggets/internal/telegram"
 )
 
@@ -39,7 +40,8 @@ func newTestServer(t *testing.T) http.Handler {
 	})
 	settingsStore := settings.NewStore(database)
 	poller := telegram.NewPoller(idea.NewStore(database), settingsStore)
-	return NewServer(idea.NewStore(database), settingsStore, poller, stubFrontend)
+	syncer := spices.NewSyncer(idea.NewStore(database), settingsStore)
+	return NewServer(idea.NewStore(database), settingsStore, poller, syncer, stubFrontend)
 }
 
 func do(t *testing.T, srv http.Handler, method, target string, body any) *httptest.ResponseRecorder {
@@ -262,6 +264,7 @@ func TestIdeaJSONMatchesGolden(t *testing.T) {
 		Links: []idea.Link{
 			{URL: "https://github.com/example/repo", Label: "the repo"},
 		},
+		Source: ptr(idea.SourceTelegram), SourceRef: ptr("12"), Origin: ptr("Telegram"),
 	}
 	encoded, err := json.MarshalIndent(sample, "", "  ")
 	if err != nil {

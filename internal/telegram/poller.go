@@ -146,9 +146,6 @@ func (p *Poller) drain(ctx, pollCtx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if len(updates) == 0 {
-		return nil
-	}
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -158,6 +155,9 @@ func (p *Poller) drain(ctx, pollCtx context.Context) error {
 	}
 	if !ok || current != token {
 		return nil
+	}
+	if len(updates) == 0 {
+		return p.recordSync(ctx)
 	}
 
 	chatIDStr, paired, err := p.settings.Get(ctx, KeyChatID)
@@ -226,7 +226,17 @@ func (p *Poller) drain(ctx, pollCtx context.Context) error {
 		}
 	}
 
-	return p.settings.Set(ctx, KeyOffset, strconv.FormatInt(lastUpdateID+1, 10))
+	if err := p.settings.Set(ctx, KeyOffset, strconv.FormatInt(lastUpdateID+1, 10)); err != nil {
+		return err
+	}
+	return p.recordSync(ctx)
+}
+
+// recordSync notes that getUpdates just answered successfully (issue #8).
+// Callers hold p.mu and have checked the token is still the connected one,
+// so a poll answering after a disconnect can't leave a stale time behind.
+func (p *Poller) recordSync(ctx context.Context) error {
+	return p.settings.Set(ctx, KeyLastSync, time.Now().UTC().Format(time.RFC3339))
 }
 
 func (p *Poller) getOffset(ctx context.Context) (int64, error) {

@@ -93,11 +93,39 @@ type Idea struct {
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 	ArchivedAt *time.Time `json:"archived_at"`
-	// Source and SourceRef record where an imported nugget came from — nil for
-	// anything typed directly into the app. Omitted from the wire format when
-	// absent so this stays invisible until a consumer (issue #4) renders it.
-	Source    *string `json:"source,omitempty"`
-	SourceRef *string `json:"source_ref,omitempty"`
+	// Source and SourceRef record where an imported nugget came from — null
+	// for anything typed directly into the app. Origin is Source's friendly
+	// label ("Telegram", "spices") for the nugget page's "arrived via" line
+	// (issue #7); it is null exactly when Source is.
+	Source    *string `json:"source"`
+	SourceRef *string `json:"source_ref"`
+	Origin    *string `json:"origin"`
+}
+
+// The values of an imported nugget's `source` column. Telegram and spices own
+// the rows they import; nothing else writes these.
+const (
+	SourceTelegram = "telegram"
+	SourceSpices   = "spices"
+	// SourceSpicesDetached marks a nugget that came from a spices database
+	// which was later reset or restored. Re-sync moves every SourceSpices row
+	// here so the reset database's reused ids can't match it (spices pull
+	// design §5).
+	SourceSpicesDetached = "spices-detached"
+)
+
+// OriginLabel is the friendly name of a source for display. A detached spices
+// nugget still arrived via spices. An unknown source shows as itself rather
+// than as nothing.
+func OriginLabel(source string) string {
+	switch source {
+	case SourceTelegram:
+		return "Telegram"
+	case SourceSpices, SourceSpicesDetached:
+		return "spices"
+	default:
+		return source
+	}
 }
 
 // Tag is a tag name with how many active ideas carry it.
