@@ -728,3 +728,41 @@ func TestDisconnectDuringFetchDropsThePage(t *testing.T) {
 		t.Errorf("cursor = %q, want none", h.setting(t, KeyCursor))
 	}
 }
+
+func TestNonNetworkFailureIsNotReportedAsUnreachable(t *testing.T) {
+	h := newHarness(t, &fakeSpices{})
+	h.connect(t, testToken)
+	garbled := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("not json"))
+	}))
+	t.Cleanup(garbled.Close)
+	if err := h.settings.Set(context.Background(), KeyURL, garbled.URL); err != nil {
+		t.Fatal(err)
+	}
+	runLoop(t, h.syncer)
+	waitFor(t, "the decode error", func() bool { return h.setting(t, KeyLastError) != "" })
+	if msg := h.setting(t, KeyLastError); !strings.HasPrefix(msg, "Syncing with spices failed: ") {
+		t.Errorf("last error = %q, want it worded as a sync failure, not unreachable", msg)
+	}
+}
+
+func TestParkedResyncKeepsTheStoredReason(t *testing.T) {
+	h := newHarness(t, &fakeSpices{})
+	h.connect(t, testToken)
+	ctx := context.Background()
+	if err := h.settings.Set(ctx, KeyNeedsResync, "1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.settings.Set(ctx, KeyLastError, AddressChangedMessage); err != nil {
+		t.Fatal(err)
+	}
+	err := h.syncer.Drain(ctx)
+	reason, park := parkReason(err)
+	if !park {
+		t.Fatalf("Drain = %v, want a parking error", err)
+	}
+	h.syncer.recordError(ctx, reason)
+	if msg := h.setting(t, KeyLastError); msg != AddressChangedMessage {
+		t.Errorf("last error = %q, want %q kept", msg, AddressChangedMessage)
+	}
+}

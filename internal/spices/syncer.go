@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -296,7 +298,8 @@ func (s *Syncer) recordSync(ctx context.Context, cfg Config) error {
 // recordError stores message for the Spices status, logging it only when it
 // changes so a persistent failure doesn't fill the log at poll frequency. It
 // stores nothing once disconnected, so a failure racing a disconnect can't
-// leave a stale error behind.
+// leave a stale error behind, and it keeps the reason Re-sync is needed while
+// one is stored.
 func (s *Syncer) recordError(ctx context.Context, message string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -304,7 +307,7 @@ func (s *Syncer) recordError(ctx context.Context, message string) {
 	if err != nil || !cfg.Connected {
 		return
 	}
-	if cfg.LastError == message {
+	if cfg.LastError == message || (cfg.NeedsResync && cfg.LastError != "") {
 		return
 	}
 	log.Printf("spices: %s", message)
@@ -387,7 +390,9 @@ func parkReason(err error) (string, bool) {
 
 // describe turns a transient failure into a line for the Spices status. The
 // request URL may appear (it holds no secret); the token never does, since
-// it only ever travels in a header.
+// it only ever travels in a header. Only a transport failure is worded as
+// spices being unreachable; anything else (a local database error, an
+// undecodable or nonsensical answer) is not a network problem.
 func describe(err error) string {
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
@@ -396,7 +401,12 @@ func describe(err error) string {
 		}
 		return fmt.Sprintf("spices answered %d.", apiErr.StatusCode)
 	}
-	return "Couldn't reach spices: " + err.Error()
+	var urlErr *url.Error
+	var netErr net.Error
+	if errors.As(err, &urlErr) || errors.As(err, &netErr) || errors.Is(err, context.DeadlineExceeded) {
+		return "Couldn't reach spices: " + err.Error()
+	}
+	return "Syncing with spices failed: " + err.Error()
 }
 
 // park waits, without calling spices, until Sync or cancellation, reporting

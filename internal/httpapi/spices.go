@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 	"github.com/Jarrod-Bob/nuggets/internal/spices"
 )
@@ -20,6 +22,7 @@ import (
 // Syncer, which stays the only caller.
 type spicesHandlers struct {
 	settings *settings.Store
+	ideas    *idea.Store
 	syncer   *spices.Syncer
 }
 
@@ -31,8 +34,9 @@ type spicesStatus struct {
 	IntervalSeconds int     `json:"interval_seconds"`
 	LastSyncAt      *string `json:"last_sync_at,omitempty"`
 	LastError       string  `json:"last_error,omitempty"`
-	// NeedsResync is true after spices answered 409: nothing is pulled until
-	// the captain presses Re-sync.
+	// NeedsResync is true after spices answered 409, or after the address
+	// changed with something already pulled: nothing is pulled until the
+	// captain presses Re-sync.
 	NeedsResync bool `json:"needs_resync"`
 	// Detached is only set on Re-sync's answer: how many nuggets it kept aside.
 	Detached *int64 `json:"detached,omitempty"`
@@ -140,6 +144,16 @@ func (h *spicesHandlers) connect(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	write := func() error {
+		before, err := spices.LoadConfig(ctx, h.settings)
+		if err != nil {
+			return err
+		}
+		addressChanged := false
+		if baseURL != "" && baseURL != before.URL {
+			if addressChanged, err = h.hasPulled(ctx, before); err != nil {
+				return err
+			}
+		}
 		if baseURL != "" {
 			if err := h.settings.Set(ctx, spices.KeyURL, baseURL); err != nil {
 				return err
@@ -155,16 +169,20 @@ func (h *spicesHandlers) connect(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 		}
-		// A stale error would describe the old settings. The 409 message
+		// A stale error would describe the old settings. The Re-sync message
 		// stays: only Re-sync resolves that.
-		cfg, err := spices.LoadConfig(ctx, h.settings)
-		if err != nil {
-			return err
+		if before.NeedsResync {
+			return nil
 		}
-		if !cfg.NeedsResync {
-			return h.settings.Delete(ctx, spices.KeyLastError)
+		// A different address may be a different spices database reusing the
+		// old one's ids, so treat it like a 409 (spices pull design §5).
+		if addressChanged {
+			if err := h.settings.Set(ctx, spices.KeyNeedsResync, "1"); err != nil {
+				return err
+			}
+			return h.settings.Set(ctx, spices.KeyLastError, spices.AddressChangedMessage)
 		}
-		return nil
+		return h.settings.Delete(ctx, spices.KeyLastError)
 	}
 	if err := h.reset(write); err != nil {
 		log.Printf("saving spices settings: %v", err)
@@ -172,6 +190,17 @@ func (h *spicesHandlers) connect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.status(w, r)
+}
+
+// hasPulled reports whether anything came from spices at cfg's address:
+// a cursor past 0 or any spices nugget. Only then does changing the address
+// need a Re-sync.
+func (h *spicesHandlers) hasPulled(ctx context.Context, cfg spices.Config) (bool, error) {
+	if cfg.Cursor > 0 {
+		return true, nil
+	}
+	n, err := h.ideas.CountBySource(ctx, idea.SourceSpices)
+	return n > 0, err
 }
 
 // disconnect forgets the token and the sync status. The address, interval

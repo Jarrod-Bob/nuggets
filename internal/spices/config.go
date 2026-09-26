@@ -18,8 +18,9 @@ const (
 	KeyCursor    = "spices_cursor"
 	KeyLastSync  = "spices_last_sync_at" // RFC 3339
 	KeyLastError = "spices_last_error"
-	// KeyNeedsResync is "1" after spices answered 409: its database was reset
-	// or restored. Nothing is pulled until the captain presses Re-sync.
+	// KeyNeedsResync is "1" after spices answered 409 (its database was reset
+	// or restored) or the address changed after a pull. Nothing is pulled
+	// until the captain presses Re-sync.
 	KeyNeedsResync = "spices_needs_resync"
 )
 
@@ -39,6 +40,9 @@ const (
 
 	// ResetMessage is the Spices status error after a 409.
 	ResetMessage = "spices was reset or restored; press Re-sync"
+	// AddressChangedMessage is the Spices status error after the address
+	// changed with something already pulled from the old one.
+	AddressChangedMessage = "spices address changed; press Re-sync"
 )
 
 // Config is everything stored about the spices connection. Token is only

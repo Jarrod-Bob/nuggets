@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -23,8 +24,24 @@ const spicesTestToken = "spices-secret-token-4c3b2a"
 // fakeSpicesAPI serves a fixed list of ideas and answers 409 for a cursor
 // past the latest rev, the two behaviours the settings flow depends on.
 type fakeSpicesAPI struct {
-	mu    sync.Mutex
-	items []map[string]any // each has "id" and "rev"
+	mu        sync.Mutex
+	items     []map[string]any // each has "id" and "rev"
+	itemCalls int
+	sinces    []string
+}
+
+func newFakeSpicesAPI(t *testing.T) (*fakeSpicesAPI, *httptest.Server) {
+	t.Helper()
+	fake := &fakeSpicesAPI{}
+	srv := httptest.NewServer(http.HandlerFunc(fake.handler))
+	t.Cleanup(srv.Close)
+	return fake, srv
+}
+
+func (f *fakeSpicesAPI) calls() (int, []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.itemCalls, append([]string(nil), f.sinces...)
 }
 
 func (f *fakeSpicesAPI) setItems(items ...map[string]any) {
@@ -44,6 +61,8 @@ func (f *fakeSpicesAPI) handler(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{})
 		return
 	}
+	f.itemCalls++
+	f.sinces = append(f.sinces, r.URL.Query().Get("since"))
 	since, _ := strconv.ParseInt(r.URL.Query().Get("since"), 10, 64)
 	var latest int64
 	out := []map[string]any{}
@@ -83,9 +102,7 @@ type spicesEnv struct {
 
 func newSpicesEnv(t *testing.T) *spicesEnv {
 	t.Helper()
-	fake := &fakeSpicesAPI{}
-	fakeSrv := httptest.NewServer(http.HandlerFunc(fake.handler))
-	t.Cleanup(fakeSrv.Close)
+	fake, fakeSrv := newFakeSpicesAPI(t)
 
 	database, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -286,5 +303,105 @@ func TestSpicesDisconnectKeepsNuggetsAndCursor(t *testing.T) {
 	}
 	if cursor, _, _ := env.settings.Get(context.Background(), spices.KeyCursor); cursor != "7" {
 		t.Errorf("cursor = %q, want 7 kept for reconnecting", cursor)
+	}
+}
+
+func TestSpicesAddressChangeAfterPullNeedsResync(t *testing.T) {
+	env := newSpicesEnv(t)
+	ctx := context.Background()
+	env.fake.setItems(spicesIdea(1, 1, "Old one"), spicesIdea(2, 2, "Old two"))
+	do(t, env.srv, "PUT", "/api/settings/spices", map[string]any{"url": env.fakeURL, "token": spicesTestToken})
+	if err := env.syncer.Drain(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// A different spices, whose ids 1 and 2 are unrelated ideas at newer revs.
+	other, otherSrv := newFakeSpicesAPI(t)
+	other.setItems(spicesIdea(1, 5, "Unrelated one"), spicesIdea(2, 6, "Unrelated two"), spicesIdea(3, 7, "Unrelated three"))
+	rec := do(t, env.srv, "PUT", "/api/settings/spices", map[string]any{"url": otherSrv.URL})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("change address = %d %s", rec.Code, rec.Body)
+	}
+	status := decodeSpicesStatus(t, rec)
+	if !status.NeedsResync || status.LastError != spices.AddressChangedMessage || status.URL != otherSrv.URL {
+		t.Errorf("status = %+v, want the new address waiting for Re-sync", status)
+	}
+	if cursor, _, _ := env.settings.Get(ctx, spices.KeyCursor); cursor != "2" {
+		t.Errorf("cursor = %q, want 2 kept until Re-sync", cursor)
+	}
+
+	if err := env.syncer.Drain(ctx); !errors.Is(err, spices.ErrNeedsResync) {
+		t.Fatalf("Drain = %v, want ErrNeedsResync", err)
+	}
+	if calls, _ := other.calls(); calls != 0 {
+		t.Errorf("new spices called %d times before Re-sync, want 0", calls)
+	}
+	list, _ := env.ideas.List(ctx, idea.ListFilter{})
+	for _, i := range list {
+		if !strings.HasPrefix(i.Title, "Old") {
+			t.Errorf("nugget %q was overwritten before Re-sync", i.Title)
+		}
+	}
+
+	env.runLoop(t)
+	rec = do(t, env.srv, "POST", "/api/spices/resync", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("resync = %d %s", rec.Code, rec.Body)
+	}
+	status = decodeSpicesStatus(t, rec)
+	if status.Detached == nil || *status.Detached != 2 || status.NeedsResync || status.LastError != "" {
+		t.Errorf("resync status = %+v, want 2 detached and the flag cleared", status)
+	}
+	waitUntil(t, "the pull from the new address", func() bool {
+		list, _ := env.ideas.List(ctx, idea.ListFilter{})
+		return len(list) == 5
+	})
+	if _, sinces := other.calls(); len(sinces) == 0 || sinces[0] != "0" {
+		t.Errorf("new spices sinces = %v, want the pull to start from 0", sinces)
+	}
+	titles := map[string]bool{}
+	list, _ = env.ideas.List(ctx, idea.ListFilter{})
+	for _, i := range list {
+		titles[i.Title] = true
+	}
+	for _, want := range []string{"Old one", "Old two", "Unrelated one", "Unrelated two", "Unrelated three"} {
+		if !titles[want] {
+			t.Errorf("missing nugget %q; have %v", want, titles)
+		}
+	}
+}
+
+func TestSpicesSameAddressOrFirstConnectKeepsSyncing(t *testing.T) {
+	env := newSpicesEnv(t)
+	ctx := context.Background()
+
+	// First connect replaces the default address with nothing pulled yet.
+	rec := do(t, env.srv, "PUT", "/api/settings/spices", map[string]any{"url": env.fakeURL, "token": spicesTestToken})
+	if status := decodeSpicesStatus(t, rec); status.NeedsResync || status.LastError != "" {
+		t.Errorf("first connect status = %+v, want no Re-sync", status)
+	}
+	// Moving again before anything was pulled is harmless too.
+	rec = do(t, env.srv, "PUT", "/api/settings/spices", map[string]any{"url": "http://127.0.0.1:1"})
+	if status := decodeSpicesStatus(t, rec); status.NeedsResync {
+		t.Errorf("address change before any pull = %+v, want no Re-sync", status)
+	}
+	do(t, env.srv, "PUT", "/api/settings/spices", map[string]any{"url": env.fakeURL})
+
+	env.fake.setItems(spicesIdea(1, 1, "Kept"))
+	if err := env.syncer.Drain(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for _, body := range []map[string]any{
+		{"url": env.fakeURL + "/"},
+		{"url": "  " + env.fakeURL + "  "},
+		{"interval_seconds": 30},
+	} {
+		rec := do(t, env.srv, "PUT", "/api/settings/spices", body)
+		if status := decodeSpicesStatus(t, rec); rec.Code != http.StatusOK || status.NeedsResync || status.LastError != "" {
+			t.Errorf("save %v = %d %+v, want no Re-sync", body, rec.Code, status)
+		}
+	}
+	if err := env.syncer.Drain(ctx); err != nil {
+		t.Errorf("Drain after same-address saves = %v, want nil", err)
 	}
 }

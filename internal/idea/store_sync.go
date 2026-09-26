@@ -199,3 +199,12 @@ func (s *Store) DetachSource(ctx context.Context, from, to string, inTx func(ctx
 	}
 	return moved, nil
 }
+
+// CountBySource returns how many nuggets, archived or not, came from source.
+func (s *Store) CountBySource(ctx context.Context, source string) (int64, error) {
+	var n int64
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM ideas WHERE source = ?`, source).Scan(&n); err != nil {
+		return 0, fmt.Errorf("counting %s nuggets: %w", source, err)
+	}
+	return n, nil
+}

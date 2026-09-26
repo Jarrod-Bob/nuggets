@@ -18,7 +18,7 @@ import (
 func NewServer(store *idea.Store, settingsStore *settings.Store, poller *telegram.Poller, syncer *spices.Syncer, frontend http.Handler) http.Handler {
 	h := &handlers{store: store}
 	th := newTelegramHandlers(settingsStore, poller)
-	sh := &spicesHandlers{settings: settingsStore, syncer: syncer}
+	sh := &spicesHandlers{settings: settingsStore, ideas: store, syncer: syncer}
 	mux := http.NewServeMux()
 
 	// Go 1.22+ method+wildcard patterns. Unmatched methods give 405 for free.

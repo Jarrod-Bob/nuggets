@@ -30,7 +30,7 @@ Everything lives in the `settings` table, owned by `internal/spices` (`config.go
 | `spices_cursor` | The last `next_cursor` stored | 0 |
 | `spices_last_sync_at` | When the last pull succeeded, RFC 3339 | "not synced yet" |
 | `spices_last_error` | The last failure, for the status | None |
-| `spices_needs_resync` | `1` after a 409, until Re-sync | Not set |
+| `spices_needs_resync` | `1` after a 409 or an address change (§5), until Re-sync | Not set |
 
 **The token is write-only.** No response includes it, not even masked. It travels only in the `Authorization` header, never in a URL, so a transport error, which embeds the request URL, can't carry it into a log or into `spices_last_error`. A test drives every failure path and checks that the log never contains it. As with the Telegram token, this means `nuggets.db` now holds a second credential. The settings screen says so.
 
@@ -41,7 +41,7 @@ An address containing `user:password@` is rejected, so a secret can't hide in th
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/settings/spices` | `{connected, url, interval_seconds, last_sync_at?, last_error?, needs_resync}`. Never the token. |
-| `PUT` | `/api/settings/spices` | `{url?, token?, interval_seconds?}`. Every field is optional, so the address or interval can change without retyping the token. The token is required only when none is stored. The interval must be between 10 s and 24 h. Wakes the loop. |
+| `PUT` | `/api/settings/spices` | `{url?, token?, interval_seconds?}`. Every field is optional, so the address or interval can change without retyping the token. The token is required only when none is stored. The interval must be between 10 s and 24 h. If the address changes (compared after trimming whitespace and trailing slashes, against the stored address or the default) once anything has been pulled — a cursor past 0 or any `source='spices'` nugget — it also sets `spices_needs_resync` and the error "spices address changed; press Re-sync" (§5). A first connect with nothing pulled yet doesn't. Wakes the loop. |
 | `DELETE` | `/api/settings/spices` | Disconnect: forgets the token, last error and last sync. **Keeps the address, interval and cursor**, so reconnecting resumes where it left off, and a spices that was reset in the meantime is still caught by its 409. Imported nuggets stay. |
 | `POST` | `/api/spices/sync` | Wakes the loop. `202` straight away. |
 | `POST` | `/api/spices/resync` | Re-sync (§5). Answers with the status plus `detached`, the number of nuggets set aside. |
@@ -85,6 +85,8 @@ This mirrors the Telegram poller's §9, as fixed in its follow-ups: parking stop
 A `409` means nuggets' cursor is ahead of spices' database: spices was recreated or restored from an older backup. **That database hands out item ids again**, so upserting by id would write new, unrelated ideas over old nuggets. spices' contract rule 5 says to clear or archive the consumer's spices rows first. **nuggets never does that on its own. The 409 path never deletes, archives or edits a nugget.**
 
 **On 409:** the loop sets `spices_needs_resync`, records "spices was reset or restored; press Re-sync" as the status error, and parks. From then on `Drain` refuses to call spices at all, even on Sync now, until Re-sync. This matters. Once the reset spices has grown past the old cursor it stops answering 409, and a plain retry would silently resume and write reused ids over old nuggets. Only the flag prevents that.
+
+**On an address change:** a new address may be a different spices database. If its latest rev is already past nuggets' cursor it never answers 409, and pulling would match its ids against the old server's nuggets. So once anything has been pulled, `PUT` treats a changed address like a 409: in the same locked write as the new settings it sets `spices_needs_resync` and records "spices address changed; press Re-sync". It leaves the cursor and the refs alone; Re-sync does the detaching. An existing flag is never cleared by `PUT`, and while the flag is set the loop never overwrites the stored reason. Moving the same spices to a new address (localhost to a tailnet name, say) costs a Re-sync and its duplicates; that is the price of not guessing.
 
 **Re-sync** (`POST /api/spices/resync`, a confirmed button in the Spices section) runs one transaction that:
 
@@ -134,7 +136,7 @@ The settings dialog now holds one section per source: **Telegram**, then **spice
 
 - The spices section has the address, the token (a password field, always empty; leaving it empty keeps the stored token) and the interval, with **Connect**, and once connected **Change**, **Disconnect** and **Sync now**.
 - The status line shows the address, the last sync and the interval. Any error appears beneath it.
-- After a 409, the badge turns to "Needs re-sync" and **Sync now** becomes **Re-sync**. It asks for confirmation, spelling out the duplicate cost, before detaching.
+- After a 409 or an address change, the badge turns to "Needs re-sync" and **Sync now** becomes **Re-sync**. It asks for confirmation, spelling out the duplicate cost, before detaching.
 - While the dialog is open and a source is connected, its status is polled every 3 s, so the last-sync line stays current.
 
 ## 9. Testing
@@ -143,4 +145,4 @@ Everything runs against `httptest` fakes. No test reaches a real spices or Teleg
 
 - `internal/spices/syncer_test.go`, against a fake spices that implements paging, bearer auth, 409 and acks. It covers: paging, cursor persistence and resuming, idempotent re-pull, field mapping and the text fallback, tombstones, startup and interval pulls, Sync now, 401 parking until Sync, 5xx backoff and recovery, a 409 stopping without touching nuggets (and staying stopped once spices grows past the cursor), Re-sync detaching while keeping the captain's edits, best-effort acks, a page dropped on disconnect, and the token never appearing in the log.
 - `internal/idea/store_sync_test.go`: the upsert rules, tombstones, the page rolling back when its cursor write fails, and detaching twice.
-- `internal/httpapi/spices_test.go`: validation, the write-only token, the pull showing up in `last_sync_at`, the 409 → Re-sync flow over HTTP, and disconnect keeping nuggets and the cursor.
+- `internal/httpapi/spices_test.go`: validation, the write-only token, the pull showing up in `last_sync_at`, the 409 → Re-sync flow over HTTP, an address change after a pull needing Re-sync (and a same-address save or first connect not), and disconnect keeping nuggets and the cursor.

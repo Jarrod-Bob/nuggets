@@ -190,14 +190,14 @@ export function SpicesSettings({ open }: SpicesSettingsProps) {
 
           {status.needs_resync && !confirmingResync && (
             <p style={note}>
-              Its ids may now point at different ideas, so nothing is pulled until you re-sync. Your nuggets are
-              untouched.
+              The spices on the other end may hand out the same ids for different ideas, so nothing is pulled until
+              you re-sync. Your nuggets are untouched.
             </p>
           )}
           {confirmingResync && (
             <p style={note}>
               Re-sync keeps every nugget that came from spices, sets them aside as detached, and pulls everything in spices
-              in again as new nuggets. Ideas that survived the reset will show up twice.
+              in again as new nuggets. Ideas that were already here will show up twice.
             </p>
           )}
 
