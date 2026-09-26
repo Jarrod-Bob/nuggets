@@ -4,6 +4,7 @@ import { TopBar } from '../components/navigation/TopBar';
 import { Button } from '../components/core/Button';
 import { Dialog } from '../components/feedback/Dialog';
 import { TrashView } from '../components/nuggets/TrashView';
+import { SettingsButton } from '../components/settings/SettingsButton';
 import { Main } from '../components/Shell';
 import { ActionError } from '../components/feedback/ActionError';
 import { iconArrowLeft } from '../components/icons';
@@ -58,9 +59,12 @@ export function TrashRoute() {
       <TopBar
         center={<span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--text-title-3)' }}>Trash</span>}
         right={
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')} iconLeft={iconArrowLeft}>
-            Back to the bank
-          </Button>
+          <>
+            <SettingsButton />
+            <Button variant="ghost" size="sm" onClick={() => navigate('/')} iconLeft={iconArrowLeft}>
+              Back to the bank
+            </Button>
+          </>
         }
       />
 

@@ -11,7 +11,7 @@ import (
 func (s *Store) Random(ctx context.Context, tag string) (*Idea, error) {
 	// Only live ideas are drawable: being handed one you killed or parked is
 	// noise, and the draw exists to hand back something you could start.
-	query := `SELECT i.id, i.title, i.notes, i.status, i.created_at, i.updated_at, i.archived_at
+	query := `SELECT i.id, i.title, i.notes, i.status, i.created_at, i.updated_at, i.archived_at, i.source, i.source_ref
 	          FROM ideas i
 	          WHERE i.archived_at IS NULL AND i.status IN ('raw','exploring')`
 	var args []any

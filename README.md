@@ -11,6 +11,7 @@ nuggets gives them somewhere to live: enough structure to find one on purpose, a
 ## What it does
 
 - **Capture** an idea as a title plus notes, tagged however I like.
+- **Text it in from Telegram.** Connect a bot from the settings screen, pair it to your chat, and every message you send it becomes a nugget — first line the title, the rest the notes, `#hashtags` the tags. The design is in [`docs/superpowers/specs/2026-08-30-telegram-capture-design.md`](docs/superpowers/specs/2026-08-30-telegram-capture-design.md).
 - **Tag** freely — tags autocomplete from ones I've already used, so I don't end up with `#saas` and `#SaaS`.
 - **Find** by searching the text or filtering by tag.
 - **Track status** through a lifecycle — raw, exploring, building, parked, killed — and filter by it.
@@ -79,6 +80,6 @@ Two things drove most of these choices. I'm using this project to **learn Go and
 
 Desktop only for now, single user, no accounts. Deliberately.
 
-Worth being honest about the gap: the thing that started this was capture *while I'm out*, and a desktop-only v1 doesn't fix that. For now ideas still land in Telegram and get drained into nuggets later. Getting the bank and the data model right comes first, and the design keeps phone access a later addition rather than a rewrite.
+Capture *while I'm out* — the thing that started this — goes through Telegram: ideas texted to the bot land in the bank the next time the app is running, as long as that's within Telegram's roughly 24-hour hold on undelivered messages. Browsing the bank from a phone is still a later addition rather than a rewrite.
 
 Deferred on purpose: ratings, sorting, mobile, user accounts, export.

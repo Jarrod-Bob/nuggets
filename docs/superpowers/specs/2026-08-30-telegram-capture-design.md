@@ -66,7 +66,7 @@ The issue lists three ways to fetch. They must not become three implementations 
 
 | Trigger | Mechanism |
 |---|---|
-| On startup | The loop's first iteration, started in a goroutine after `Serve` begins, never blocking the listener |
+| On startup | The loop's first iteration, started in its own goroutine once the listener is bound, never blocking it |
 | While open | The loop asks Telegram to hold the request open (`timeout=25`) and answer the moment something arrives |
 | Manual | The API handler signals the loop's wake channel; it does **not** call Telegram itself (§4.5) |
 
@@ -156,6 +156,7 @@ DROP TABLE settings;
 | Key | Holds | Lost if the row is missing |
 |---|---|---|
 | `telegram_token` | The bot credential | Capture is off; the settings screen shows disconnected |
+| `telegram_username` | The bot's username, from `getMe` at connect time | The settings screen shows no username until the next connect |
 | `telegram_chat_id` | The paired chat | Connected but unpaired; a new code is offered |
 | `telegram_offset` | Next update number to request | Up to 24h of messages re-fetched — and rejected by the unique origin index, so the visible effect is nil |
 | `telegram_pair_code` | Active code and its expiry | A new one is generated on demand |
@@ -167,9 +168,9 @@ Keeping these in a table rather than a config file means one storage mechanism, 
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/settings/telegram` | Status: connected, bot username, paired, pairing code if active, last sync, last error. **Never the token.** |
+| `GET` | `/api/settings/telegram` | Status: connected, bot username, paired, pairing code if active, last error. **Never the token.** Last-sync reporting is deferred ([#8](https://github.com/Jarrod-Bob/nuggets/issues/8)). |
 | `PUT` | `/api/settings/telegram` | Store a token. Validates it with `getMe` first and returns 400 with Telegram's reason if it is rejected. |
-| `DELETE` | `/api/settings/telegram` | Disconnect: clears token, chat, offset and code. Imported nuggets stay. |
+| `DELETE` | `/api/settings/telegram` | Disconnect: clears every `telegram_*` setting. Imported nuggets stay. |
 | `POST` | `/api/settings/telegram/pair` | Generate a fresh pairing code. |
 | `POST` | `/api/telegram/sync` | Wake the loop. Returns `202` immediately; it does not wait for the fetch. |
 
@@ -201,7 +202,7 @@ getUpdates(offset, timeout=25)
 - **Notes** — everything after the first newline, trimmed.
 - **Tags** — `#hashtags` found anywhere in the message, passed through the existing `NormalizeTag`, and removed from the text they were found in.
 
-**Find hashtags with a regular expression over the message text, not with Telegram's `entities` offsets.** Telegram reports entity offsets in UTF-16 code units; Go strings are UTF-8 bytes. Any message containing an emoji or a non-BMP character silently mis-slices under a naive byte-offset read. The regex avoids the conversion entirely, and the only thing lost is Telegram's own opinion about what counts as a hashtag.
+**Find hashtags with a regular expression over the message text, not with Telegram's `entities` offsets.** Telegram reports entity offsets in UTF-16 code units; Go strings are UTF-8 bytes. Any message containing an emoji or a non-BMP character silently mis-slices under a naive byte-offset read. The regex avoids the conversion entirely. It follows Telegram's own rule for what counts as a hashtag: a `#` starts one only at the start of the text, after a non-word character, or straight after another hashtag (`#go#rust`), so a URL fragment (`docs#install`) or `issue#123` stays in the text untouched. Removing a tag drops only the whitespace it leaves dangling; every other space, tab or indent in the message is kept as sent.
 
 ### Replying
 
@@ -223,10 +224,10 @@ If contention ever becomes visible, the fix is to raise the connection limit and
 
 | Condition | Response |
 |---|---|
-| Network unreachable, DNS failure, timeout | Back off: 1s doubling to a 5-minute ceiling, reset on success. Not surfaced to the user; this is ordinary laptop life. |
-| `401 Unauthorized` | The token is wrong or revoked. Stop polling, record it, surface it on the settings screen. Retrying cannot help. |
-| `409 Conflict` | Another poller or a registered webhook. Stop, surface it — retrying makes it worse. |
-| `429 Too Many Requests` | Honour `parameters.retry_after` exactly. Never retry sooner. |
+| Network unreachable, DNS failure, timeout | Back off: 1s doubling to a 5-minute ceiling, reset on success. A sync cuts the wait short. Not surfaced to the user; this is ordinary laptop life. |
+| `401 Unauthorized` | The token is wrong or revoked. Stop polling, record it, surface it on the settings screen. Retrying cannot help. The loop parks rather than exits: reconnecting a token (or the sync button) wakes it and capture resumes without a restart. |
+| `409 Conflict` | Another poller or a registered webhook. Stop, surface it — retrying makes it worse. Parks like a 401 until the next sync. |
+| `429 Too Many Requests` | Honour `parameters.retry_after` exactly. Never retry sooner, not even on a sync. |
 | `5xx` | Treat as a network failure and back off. |
 | Malformed update | Skip the update, log it, **advance the position**. One bad message must never wedge the queue permanently. |
 
@@ -242,7 +243,7 @@ Coverage that must exist:
 - Position advances for every disposition — imported, dropped for wrong chat, skipped as non-text, and malformed.
 - Pairing: correct code pairs, wrong code does not, an expired code does not, and a second chat cannot re-pair once bound.
 - Re-importing the same message id is a no-op rather than an error to the caller.
-- Each failure row in §9 produces the stated behaviour, including that `401` stops the loop and a network error does not.
+- Each failure row in §9 produces the stated behaviour, including that `401` parks the loop until the next sync and a network error does not.
 
 ## 11. Frontend
 
@@ -251,9 +252,9 @@ One new screen and one new control:
 - **Settings** — reached from the top bar. Connect a token, show the pairing code, show status and last error, disconnect. It states where the token is stored (§4.3).
 - **Sync now** — a manual fetch. It reflects only "asked", not "found N", per §6.
 
-Imported nuggets show their origin on the individual nugget page (issue [#4](https://github.com/Jarrod-Bob/nuggets/issues/4)) — "arrived from Telegram, 3 days ago". If #4 has not landed, the origin is stored but not shown; nothing about this feature depends on it.
+Showing an imported nugget's origin on the individual nugget page — "arrived from Telegram, 3 days ago" — is deferred to a follow-up ([#7](https://github.com/Jarrod-Bob/nuggets/issues/7)). The origin (`source` + `source_ref`) is stored today but not yet displayed; nothing about this feature depends on it.
 
-Everything uses the existing design system. Status uses the `Badge` component; the screen is a `Dialog` if #4's routing has not landed, and a route if it has.
+Everything uses the existing design system. Status uses the `Badge` component; the screen is a `Dialog` opened from each route's top bar, so it overlays whichever page is showing rather than navigating away from it.
 
 ## 12. Future paths
 

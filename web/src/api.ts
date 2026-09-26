@@ -85,6 +85,19 @@ function query(filter: ListFilter): string {
   return encoded ? `?${encoded}` : '';
 }
 
+/**
+ * Mirrors internal/httpapi's telegramStatus. The token itself is never part
+ * of this shape — the server never returns it (see the design doc §4.3).
+ */
+export interface TelegramStatus {
+  connected: boolean;
+  username?: string;
+  paired: boolean;
+  pair_code?: string;
+  pair_code_expires_at?: string;
+  last_error?: string;
+}
+
 export const api = {
   list: (filter: ListFilter = {}) => request<Idea[]>(`/api/ideas${query(filter)}`),
   get: (id: number) => request<Idea>(`/api/ideas/${id}`),
@@ -105,4 +118,12 @@ export const api = {
     }
   },
   tags: () => request<Tag[]>('/api/tags'),
+  telegram: {
+    status: () => request<TelegramStatus>('/api/settings/telegram'),
+    connect: (token: string) =>
+      request<TelegramStatus>('/api/settings/telegram', { method: 'PUT', body: JSON.stringify({ token }) }),
+    disconnect: () => request<void>('/api/settings/telegram', { method: 'DELETE' }),
+    pair: () => request<TelegramStatus>('/api/settings/telegram/pair', { method: 'POST' }),
+    sync: () => request<void>('/api/telegram/sync', { method: 'POST' }),
+  },
 };

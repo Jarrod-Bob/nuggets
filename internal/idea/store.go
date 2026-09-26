@@ -95,7 +95,7 @@ func (s *Store) Create(ctx context.Context, draft Draft) (*Idea, error) {
 // Get loads one idea, archived or not, with its tags.
 func (s *Store) Get(ctx context.Context, id int64) (*Idea, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, title, notes, status, created_at, updated_at, archived_at
+		`SELECT id, title, notes, status, created_at, updated_at, archived_at, source, source_ref
 		 FROM ideas WHERE id = ?`, id)
 
 	found, err := scanIdea(row)
@@ -120,8 +120,9 @@ func scanIdea(row rowScanner) (*Idea, error) {
 	var found Idea
 	var archivedAt sql.NullTime
 	var status string
+	var source, sourceRef sql.NullString
 	err := row.Scan(&found.ID, &found.Title, &found.Notes, &status,
-		&found.CreatedAt, &found.UpdatedAt, &archivedAt)
+		&found.CreatedAt, &found.UpdatedAt, &archivedAt, &source, &sourceRef)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -130,6 +131,12 @@ func scanIdea(row rowScanner) (*Idea, error) {
 	}
 	if archivedAt.Valid {
 		found.ArchivedAt = &archivedAt.Time
+	}
+	if source.Valid {
+		found.Source = &source.String
+	}
+	if sourceRef.Valid {
+		found.SourceRef = &sourceRef.String
 	}
 	found.Status = Status(status)
 	found.Tags = []string{} // never nil: JSON must be [] not null
