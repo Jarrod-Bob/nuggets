@@ -1,5 +1,6 @@
 import React from 'react';
 import { api, ApiError, type Tag } from '../api';
+import { useLiveRefresh } from '../live/LiveUpdates';
 
 /**
  * The tag vocabulary (`GET /api/tags`) is the autocomplete + filter source, and
@@ -30,6 +31,9 @@ export function TagsProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     refresh();
   }, [refresh]);
+  // An import can bring new tags; the vocabulary only feeds autocomplete and
+  // the filter row, so refreshing it never disturbs a form.
+  useLiveRefresh('ideas-changed', refresh);
 
   const value = React.useMemo(() => ({ tags, refresh }), [tags, refresh]);
   return <TagsContext.Provider value={value}>{children}</TagsContext.Provider>;

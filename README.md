@@ -13,6 +13,7 @@ nuggets gives them somewhere to live: enough structure to find one on purpose, a
 - **Capture** an idea as a title plus notes, tagged however I like.
 - **Text it in from Telegram.** Connect a bot from the settings screen, pair it to your chat, and every message you send it becomes a nugget — first line the title, the rest the notes, `#hashtags` the tags. The design is in [`docs/superpowers/specs/2026-08-30-telegram-capture-design.md`](docs/superpowers/specs/2026-08-30-telegram-capture-design.md).
 - **Pull ideas from spices.** If you run [spices](https://github.com/Jarrod-Bob/spices), the always-on Telegram capture bot, nuggets pulls every idea it has sorted — its title, description and tags — alongside the direct Telegram capture above. See [Connecting spices](#connecting-spices).
+- **Live updates.** Nuggets that arrive in the background, from spices or Telegram, appear in an open tab on their own, with no reload needed. The list keeps its filters, an open nugget refreshes in place, and an edit you haven't saved is never overwritten: the page catches up when you save or cancel. See [Live updates](#live-updates).
 - **See where a nugget came from.** An imported nugget's page says "arrived via Telegram, 3d ago" or "arrived via spices, 2h ago"; the settings screen shows when each source last synced.
 - **Tag** freely — tags autocomplete from ones I've already used, so I don't end up with `#saas` and `#SaaS`.
 - **Find** by searching the text or filtering by tag.
@@ -76,6 +77,10 @@ open -na "Google Chrome" --args --app=http://127.0.0.1:7777
 nuggets pulls straight away, then on that interval and whenever you press **Sync now**. It only ever pulls ideas. The token is stored in `nuggets.db` next to your ideas and is never shown again — leave the field empty when changing the address or interval to keep it. **Disconnect** forgets the token but keeps the nuggets and where the pull had got to.
 
 If spices is ever recreated or restored from a backup, the section says *spices was reset or restored; press Re-sync* and stops pulling. **Re-sync** keeps every nugget that came from spices (set aside as detached, edits intact) and pulls everything in spices again; ideas that survived the reset then appear twice. Nothing is deleted either way. Changing the address once something has been pulled does the same — *spices address changed; press Re-sync* — because the new address may be a different spices whose ids mean different ideas. The reasoning is in [`docs/superpowers/specs/2026-09-26-spices-pull-design.md`](docs/superpowers/specs/2026-09-26-spices-pull-design.md).
+
+## Live updates
+
+The page keeps one server-sent event stream open, `GET /api/events`. After a background import commits, the server sends `ideas-changed`, once per sync pass and never once per nugget. When the spices status changes (the last sync time, an error, needs-resync), it sends `spices-status`. An event carries no data: the page just refetches whatever it is showing. The page also refetches when the tab becomes visible again or the stream reconnects, in case it missed an event while the laptop slept or the server restarted. A hidden tab closes its stream and reopens it when shown, because the server speaks plain HTTP/1.1 and browsers allow only about six connections per host: with six or more nuggets tabs visible at once, the streams can still use up every connection and stall API requests until one closes. The server side is `internal/events` and `internal/httpapi/events.go`; the page side is `web/src/live/LiveUpdates.tsx`.
 
 ## Stack
 

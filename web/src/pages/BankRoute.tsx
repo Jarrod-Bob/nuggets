@@ -16,6 +16,7 @@ import { formatRelative } from '../lib/formatRelative';
 import { filterFromParams } from '../routing/listFilter';
 import { nuggetPath } from '../routing/nuggetPath';
 import { useTags } from '../tags/TagsProvider';
+import { useLiveRefresh } from '../live/LiveUpdates';
 
 const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
@@ -133,6 +134,14 @@ export function BankRoute() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNextRandom(activeTag);
   }, [activeTag, fetchNextRandom]);
+  // Nuggets imported in the background show up without a reload, under the
+  // same URL filters. The create dialog keeps its own state, so refetching the
+  // list behind it never resets what's being typed.
+  useLiveRefresh('ideas-changed', () => {
+    refreshList();
+    fetchNextRandom(activeTag);
+  });
+
   const randomLoading = nextRandom === undefined;
   const handleDraw = (tag: string | null): RandomIdea | null => {
     const result = nextRandom ?? null;

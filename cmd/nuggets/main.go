@@ -7,11 +7,15 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/Jarrod-Bob/nuggets/internal/db"
+	"github.com/Jarrod-Bob/nuggets/internal/events"
 	"github.com/Jarrod-Bob/nuggets/internal/httpapi"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
@@ -64,30 +68,52 @@ func main() {
 		}()
 	}
 
+	// Ctrl+C (or a termination signal) stops the server cleanly: open event
+	// streams are ended, in-flight requests finish, and the import loops stop.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	ideaStore := idea.NewStore(database)
 	settingsStore := settings.NewStore(database)
-	poller := telegram.NewPoller(ideaStore, settingsStore)
+	// Both importers announce what they changed here, and GET /api/events
+	// passes it on to open pages so they refetch without a reload.
+	broker := events.NewBroker()
+	poller := telegram.NewPoller(ideaStore, settingsStore, telegram.WithEvents(broker))
 
 	// Started in a goroutine before Serve begins, so a slow or unreachable
 	// Telegram never delays the listener coming up (design §4.2). Loop runs
-	// for the life of the process; there is no shutdown path to cancel it
-	// today, matching how the HTTP server itself is stopped (killing the
-	// process, not a graceful Shutdown call).
-	go poller.Loop(context.Background())
+	// until shutdown.
+	go poller.Loop(ctx)
 
 	// The spices pull loop, likewise: its first pull runs at startup when a
 	// token is stored, then every interval and on Sync now. It runs alongside
 	// Telegram capture; both import into the same bank under their own
 	// source (docs/superpowers/specs/2026-09-26-spices-pull-design.md).
-	syncer := spices.NewSyncer(ideaStore, settingsStore)
-	go syncer.Loop(context.Background())
+	syncer := spices.NewSyncer(ideaStore, settingsStore, spices.WithEvents(broker))
+	go syncer.Loop(ctx)
 
 	server := &http.Server{
-		Handler:           httpapi.NewServer(ideaStore, settingsStore, poller, syncer, frontend),
+		Handler:           httpapi.NewServer(ideaStore, settingsStore, poller, syncer, broker, frontend),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	if err := server.Serve(listener); err != nil {
+	// Shutdown waits for handlers to return, and an event stream only
+	// returns once its subscription ends.
+	server.RegisterOnShutdown(broker.Close)
+
+	served := make(chan error, 1)
+	go func() { served <- server.Serve(listener) }()
+	select {
+	case err := <-served:
 		log.Fatalf("serving: %v", err)
+	case <-ctx.Done():
+	}
+	stop() // a second Ctrl+C now kills the process outright
+
+	log.Printf("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutting down: %v", err)
 	}
 }
 

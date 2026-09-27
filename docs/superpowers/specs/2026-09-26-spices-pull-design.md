@@ -137,7 +137,9 @@ The settings dialog now holds one section per source: **Telegram**, then **spice
 - The spices section has the address, the token (a password field, always empty; leaving it empty keeps the stored token) and the interval, with **Connect**, and once connected **Change**, **Disconnect** and **Sync now**.
 - The status line shows the address, the last sync and the interval. Any error appears beneath it.
 - After a 409 or an address change, the badge turns to "Needs re-sync" and **Sync now** becomes **Re-sync**. It asks for confirmation, spelling out the duplicate cost, before detaching.
-- While the dialog is open and a source is connected, its status is polled every 3 s, so the last-sync line stays current.
+- While the dialog is open, the Telegram section polls its status every 3 s. The spices section instead refreshes on the `spices-status` live event (below).
+
+**Live updates.** The Syncer publishes to `internal/events` (a `WithEvents` option; `cmd/nuggets` passes the app's broker), and `GET /api/events` streams that to the page as server-sent events. A Drain that created, refreshed or archived any nugget publishes `ideas-changed` once, after its last page commits, even if a later page failed. A pass that changed nothing publishes no `ideas-changed`. Re-sync publishes it too if it detached anything. `spices-status` goes out whenever the status in settings moves: a recorded sync, a new error, a 409, Re-sync, and any settings change through `Reset`. The Telegram poller publishes `ideas-changed` once per batch that saved a nugget. The page refetches its current view on `ideas-changed` (the list under its URL filters, the open nugget, the trash, the tag list). It holds a reload that would reset an edit form with unsaved changes until the form closes, and says so in the form.
 
 ## 9. Testing
 
@@ -145,4 +147,5 @@ Everything runs against `httptest` fakes. No test reaches a real spices or Teleg
 
 - `internal/spices/syncer_test.go`, against a fake spices that implements paging, bearer auth, 409 and acks. It covers: paging, cursor persistence and resuming, idempotent re-pull, field mapping and the text fallback, tombstones, startup and interval pulls, Sync now, 401 parking until Sync, 5xx backoff and recovery, a 409 stopping without touching nuggets (and staying stopped once spices grows past the cursor), Re-sync detaching while keeping the captain's edits, best-effort acks, a page dropped on disconnect, and the token never appearing in the log.
 - `internal/idea/store_sync_test.go`: the upsert rules, tombstones, the page rolling back when its cursor write fails, and detaching twice.
+- `internal/spices/events_test.go`: one `ideas-changed` per pass that imports (across pages), none for a pass or replay that changes nothing, and `spices-status` on sync, 409, a new error and Reset. `internal/events` covers the broker's fan-out and slow-subscriber drop; `internal/httpapi/events_test.go` covers the stream's headers, events, heartbeat and close.
 - `internal/httpapi/spices_test.go`: validation, the write-only token, the pull showing up in `last_sync_at`, the 409 → Re-sync flow over HTTP, an address change after a pull needing Re-sync (and a same-address save or first connect not), and disconnect keeping nuggets and the cursor.

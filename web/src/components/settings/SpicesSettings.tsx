@@ -5,6 +5,7 @@ import { Input } from '../forms/Input';
 import { api, ApiError, type SpicesStatus, type SpicesSettingsUpdate } from '../../api';
 import { describeLastSync } from '../../lib/origin';
 import { SettingsSection } from './SettingsSection';
+import { useLiveRefresh } from '../../live/LiveUpdates';
 
 export interface SpicesSettingsProps {
   /** Whether the settings dialog is showing: status is fetched each time it opens. */
@@ -55,14 +56,11 @@ export function SpicesSettings({ open }: SpicesSettingsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // While connected, keep the last-sync line and any error current: pulls
-  // happen in the background, so the dialog would otherwise go stale.
-  const connected = !!status?.connected;
-  React.useEffect(() => {
-    if (!open || !connected) return;
-    const id = window.setInterval(() => refresh(false), 3000);
-    return () => window.clearInterval(id);
-  }, [open, connected, refresh]);
+  // Keep the last-sync line and any error current while the dialog is open:
+  // pulls happen in the background, and the server says when the status moves.
+  useLiveRefresh('spices-status', () => {
+    if (open) refresh(false);
+  });
 
   const startEditing = () => {
     if (!status) return;

@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Jarrod-Bob/nuggets/internal/events"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 )
@@ -49,6 +50,9 @@ var (
 type Syncer struct {
 	ideas    *idea.Store
 	settings *settings.Store
+	// events hears about changes open pages should refetch: nuggets after a
+	// pass that changed any, and the sync status whenever it changes.
+	events events.Publisher
 
 	httpClient     *http.Client
 	baseBackoff    time.Duration
@@ -72,8 +76,11 @@ type Syncer struct {
 }
 
 // Option configures a Syncer away from its production defaults. Only tests
-// need these.
+// need these, apart from WithEvents.
 type Option func(*Syncer)
+
+// WithEvents publishes changes to p (by default they go nowhere).
+func WithEvents(p events.Publisher) Option { return func(s *Syncer) { s.events = p } }
 
 func WithHTTPClient(c *http.Client) Option { return func(s *Syncer) { s.httpClient = c } }
 func WithBackoff(base, max time.Duration) Option {
@@ -87,6 +94,7 @@ func NewSyncer(ideas *idea.Store, settingsStore *settings.Store, opts ...Option)
 	s := &Syncer{
 		ideas:          ideas,
 		settings:       settingsStore,
+		events:         events.Nop{},
 		httpClient:     http.DefaultClient,
 		baseBackoff:    time.Second,
 		maxBackoff:     5 * time.Minute,
@@ -116,6 +124,9 @@ func (s *Syncer) Reset(clear func() error) error {
 	s.mu.Lock()
 	err := clear()
 	s.mu.Unlock()
+	if err == nil {
+		s.events.Publish(events.SpicesStatus)
+	}
 	s.Sync()
 	return err
 }
@@ -146,6 +157,10 @@ func (s *Syncer) Resync(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	log.Printf("spices: re-sync detached %d nuggets and reset the cursor to 0", moved)
+	if moved > 0 {
+		s.events.Publish(events.IdeasChanged)
+	}
+	s.events.Publish(events.SpicesStatus)
 	s.Sync()
 	return moved, nil
 }
@@ -154,7 +169,9 @@ func (s *Syncer) Resync(ctx context.Context) (int64, error) {
 // spices reports has_more, saving each page and its new cursor in one
 // transaction. Then it acknowledges the cursor (best effort) and records the
 // sync time. It returns ErrNotConfigured with no token, ErrNeedsResync after
-// a 409, and otherwise whatever spices or the network said.
+// a 409, and otherwise whatever spices or the network said. However many
+// pages it saved, a pass that changed any nugget publishes IdeasChanged once,
+// even if a later page failed.
 func (s *Syncer) Drain(ctx context.Context) error {
 	cfg, err := LoadConfig(ctx, s.settings)
 	if err != nil {
@@ -166,6 +183,13 @@ func (s *Syncer) Drain(ctx context.Context) error {
 	if cfg.NeedsResync {
 		return ErrNeedsResync
 	}
+
+	changed := false
+	defer func() {
+		if changed {
+			s.events.Publish(events.IdeasChanged)
+		}
+	}()
 
 	client := NewClient(cfg.URL, cfg.token, s.httpClient)
 	cursor := cfg.Cursor
@@ -188,7 +212,9 @@ func (s *Syncer) Drain(ctx context.Context) error {
 			return fmt.Errorf("spices: next_cursor %d does not advance past %d", page.NextCursor, cursor)
 		}
 
-		if err := s.apply(ctx, cfg, cursor, page); err != nil {
+		pageChanged, err := s.apply(ctx, cfg, cursor, page)
+		changed = changed || pageChanged
+		if err != nil {
 			return err
 		}
 		cursor = page.NextCursor
@@ -203,20 +229,20 @@ func (s *Syncer) Drain(ctx context.Context) error {
 
 // apply saves one page and its cursor, unless the settings changed since the
 // page was requested, in which case the page is dropped unsaved and Drain
-// returns errSuperseded.
-func (s *Syncer) apply(ctx context.Context, cfg Config, since int64, page Page) error {
+// returns errSuperseded. It reports whether any nugget changed.
+func (s *Syncer) apply(ctx context.Context, cfg Config, since int64, page Page) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	current, err := LoadConfig(ctx, s.settings)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !current.sameSource(cfg) || current.NeedsResync || current.Cursor != since {
-		return errSuperseded
+		return false, errSuperseded
 	}
 	if len(page.Items) == 0 && page.NextCursor == since {
-		return nil // caught up: nothing to write
+		return false, nil // caught up: nothing to write
 	}
 
 	items := make([]idea.SyncedItem, 0, len(page.Items))
@@ -230,12 +256,13 @@ func (s *Syncer) apply(ctx context.Context, cfg Config, since int64, page Page) 
 		return s.settings.SetTx(ctx, tx, KeyCursor, strconv.FormatInt(page.NextCursor, 10))
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
-	if result.Created+result.Updated+result.Archived > 0 {
+	changed := result.Created+result.Updated+result.Archived > 0
+	if changed {
 		log.Printf("spices: pulled up to %d: %d new, %d refreshed, %d archived", page.NextCursor, result.Created, result.Updated, result.Archived)
 	}
-	return nil
+	return changed, nil
 }
 
 // markNeedsResync records a 409 and stops the loop from pulling until
@@ -257,6 +284,7 @@ func (s *Syncer) markNeedsResync(ctx context.Context, cfg Config, since int64) e
 	if err := s.settings.Set(ctx, KeyLastError, ResetMessage); err != nil {
 		return err
 	}
+	s.events.Publish(events.SpicesStatus)
 	log.Printf("spices: cursor %d is ahead of spices (409); pulling stops until Re-sync", since)
 	return ErrNeedsResync
 }
@@ -292,7 +320,11 @@ func (s *Syncer) recordSync(ctx context.Context, cfg Config) error {
 	if err := s.settings.Set(ctx, KeyLastSync, time.Now().UTC().Format(time.RFC3339)); err != nil {
 		return err
 	}
-	return s.settings.Delete(ctx, KeyLastError)
+	if err := s.settings.Delete(ctx, KeyLastError); err != nil {
+		return err
+	}
+	s.events.Publish(events.SpicesStatus)
+	return nil
 }
 
 // recordError stores message for the Spices status, logging it only when it
@@ -313,7 +345,9 @@ func (s *Syncer) recordError(ctx context.Context, message string) {
 	log.Printf("spices: %s", message)
 	if err := s.settings.Set(ctx, KeyLastError, message); err != nil {
 		log.Printf("spices: recording last error: %v", err)
+		return
 	}
+	s.events.Publish(events.SpicesStatus)
 }
 
 // Loop runs Drain until ctx is cancelled (design §4): immediately on start,

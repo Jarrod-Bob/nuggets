@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Jarrod-Bob/nuggets/internal/db"
+	"github.com/Jarrod-Bob/nuggets/internal/events"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 	"github.com/Jarrod-Bob/nuggets/internal/spices"
@@ -41,7 +42,7 @@ func newTestServer(t *testing.T) http.Handler {
 	settingsStore := settings.NewStore(database)
 	poller := telegram.NewPoller(idea.NewStore(database), settingsStore)
 	syncer := spices.NewSyncer(idea.NewStore(database), settingsStore)
-	return NewServer(idea.NewStore(database), settingsStore, poller, syncer, stubFrontend)
+	return NewServer(idea.NewStore(database), settingsStore, poller, syncer, events.NewBroker(), stubFrontend)
 }
 
 func do(t *testing.T, srv http.Handler, method, target string, body any) *httptest.ResponseRecorder {

@@ -11,6 +11,7 @@ import { iconArrowLeft } from '../components/icons';
 import { api, ApiError, type Idea } from '../api';
 import { formatRelative } from '../lib/formatRelative';
 import { useTags } from '../tags/TagsProvider';
+import { useLiveRefresh } from '../live/LiveUpdates';
 
 const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
@@ -30,6 +31,8 @@ export function TrashRoute() {
   React.useEffect(() => {
     refreshList();
   }, [refreshList]);
+  // A spices tombstone archives a nugget in the background: it lands here.
+  useLiveRefresh('ideas-changed', refreshList);
 
   const restoreIdea = (id: number) => {
     api
