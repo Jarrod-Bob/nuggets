@@ -15,6 +15,7 @@ import { describeOrigin } from '../lib/origin';
 import { parseNuggetId } from '../routing/nuggetPath';
 import { paramsFromFilter } from '../routing/listFilter';
 import { useTags } from '../tags/TagsProvider';
+import { useLiveRefresh } from '../live/LiveUpdates';
 
 const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
@@ -58,6 +59,18 @@ export function NuggetPage() {
   const [searchParams] = useSearchParams();
   const [editing, setEditing] = React.useState(searchParams.get('edit') === '1');
   const [formError, setFormError] = React.useState<string | undefined>(undefined);
+  const [formDirty, setFormDirty] = React.useState(false);
+
+  // A background import may have refreshed this nugget. Reloading it resets the
+  // edit form to the new version, so while the form holds unsaved edits the
+  // reload waits until it closes, and the form says why.
+  const { pending: changedWhileEditing } = useLiveRefresh(
+    'ideas-changed',
+    () => {
+      reload();
+    },
+    { hold: editing && formDirty },
+  );
 
   const [purging, setPurging] = React.useState(false);
 
@@ -232,6 +245,8 @@ export function NuggetPage() {
             setEditing(false);
             setFormError(undefined);
           }}
+          onDirtyChange={setFormDirty}
+          notice={changedWhileEditing ? 'New nuggets arrived while you were editing. This page catches up once you save or cancel.' : undefined}
           error={formError}
         />
       )}

@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Jarrod-Bob/nuggets/internal/events"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 )
@@ -32,6 +33,9 @@ const DefaultRequestTimeout = 10 * time.Second
 type Poller struct {
 	ideas    *idea.Store
 	settings *settings.Store
+	// events hears once per batch that saved any nugget, so open pages
+	// refetch.
+	events events.Publisher
 
 	// baseURL and httpClient are overridden in tests to point at an
 	// httptest.NewServer fake instead of the real Telegram API.
@@ -55,8 +59,11 @@ type Poller struct {
 }
 
 // Option configures a Poller away from its production defaults. Only tests
-// need these.
+// need these, apart from WithEvents.
 type Option func(*Poller)
+
+// WithEvents publishes changes to p (by default they go nowhere).
+func WithEvents(p events.Publisher) Option { return func(pl *Poller) { pl.events = p } }
 
 func WithBaseURL(f func(token string) string) Option { return func(p *Poller) { p.baseURL = f } }
 func WithHTTPClient(c *http.Client) Option           { return func(p *Poller) { p.httpClient = c } }
@@ -71,6 +78,7 @@ func NewPoller(ideas *idea.Store, settingsStore *settings.Store, opts ...Option)
 	p := &Poller{
 		ideas:          ideas,
 		settings:       settingsStore,
+		events:         events.Nop{},
 		baseURL:        DefaultBaseURL,
 		httpClient:     http.DefaultClient,
 		baseBackoff:    time.Second,
@@ -172,6 +180,15 @@ func (p *Poller) drain(ctx, pollCtx context.Context) error {
 		}
 	}
 
+	// Each nugget commits on its own, so announce the batch once it is done
+	// even if a later step fails.
+	saved := 0
+	defer func() {
+		if saved > 0 {
+			p.events.Publish(events.IdeasChanged)
+		}
+	}()
+
 	var lastUpdateID int64
 	for _, u := range updates {
 		lastUpdateID = u.UpdateID
@@ -216,6 +233,7 @@ func (p *Poller) drain(ctx, pollCtx context.Context) error {
 			SourceTelegram, strconv.FormatInt(msg.MessageID, 10))
 		switch {
 		case err == nil:
+			saved++
 			p.reply(ctx, client, chatID, fmt.Sprintf("saved ✓ %s", created.Title))
 		case errors.Is(err, idea.ErrAlreadyImported):
 			// Already imported under this message id: a no-op, not a failure

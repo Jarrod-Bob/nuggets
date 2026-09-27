@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Jarrod-Bob/nuggets/internal/events"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 	"github.com/Jarrod-Bob/nuggets/internal/spices"
@@ -12,13 +13,15 @@ import (
 )
 
 // NewServer builds the full handler: API routes plus the embedded frontend.
-// settingsStore, poller and syncer may be nil only in tests that don't
-// exercise the Telegram or spices routes; cmd/nuggets/main.go always wires
-// all three.
-func NewServer(store *idea.Store, settingsStore *settings.Store, poller *telegram.Poller, syncer *spices.Syncer, frontend http.Handler) http.Handler {
+// settingsStore, poller, syncer and broker may be nil only in tests that
+// don't exercise the Telegram, spices or live-update routes;
+// cmd/nuggets/main.go always wires all four. broker is what the importers
+// publish to, and GET /api/events streams it to the page.
+func NewServer(store *idea.Store, settingsStore *settings.Store, poller *telegram.Poller, syncer *spices.Syncer, broker *events.Broker, frontend http.Handler) http.Handler {
 	h := &handlers{store: store}
 	th := newTelegramHandlers(settingsStore, poller)
 	sh := &spicesHandlers{settings: settingsStore, ideas: store, syncer: syncer}
+	eh := &eventsHandler{broker: broker, heartbeat: defaultHeartbeat}
 	mux := http.NewServeMux()
 
 	// Go 1.22+ method+wildcard patterns. Unmatched methods give 405 for free.
@@ -43,6 +46,8 @@ func NewServer(store *idea.Store, settingsStore *settings.Store, poller *telegra
 	mux.HandleFunc("DELETE /api/settings/spices", sh.disconnect)
 	mux.HandleFunc("POST /api/spices/sync", sh.sync)
 	mux.HandleFunc("POST /api/spices/resync", sh.resync)
+
+	mux.HandleFunc("GET /api/events", eh.stream)
 
 	// Catch-all for anything under /api/ that didn't match a more specific
 	// route above (wrong method on a path Go's mux can't already 405 for,

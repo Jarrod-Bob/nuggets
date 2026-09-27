@@ -26,6 +26,10 @@ export interface IdeaFormProps {
   onClose?: () => void;
   /** Server-side error message, rendered under the title field. */
   error?: string;
+  /** Told whether the open form holds edits that differ from what it opened with. */
+  onDirtyChange?: (dirty: boolean) => void;
+  /** A quiet line above the fields, e.g. that new nuggets arrived meanwhile. */
+  notice?: string;
 }
 
 function statusChipStyle(active: boolean): React.CSSProperties {
@@ -50,7 +54,11 @@ const fieldLabelStyle: React.CSSProperties = {
   color: 'var(--nug-ink-700)',
 };
 
-export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [], onSubmit, onClose, error }: IdeaFormProps) {
+const sameLinks = (a: Link[], b: Link[]) =>
+  a.length === b.length && a.every((l, i) => l.url === b[i].url && l.label === b[i].label);
+const sameTags = (a: string[], b: string[]) => a.length === b.length && a.every((t, i) => t === b[i]);
+
+export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [], onSubmit, onClose, error, onDirtyChange, notice }: IdeaFormProps) {
   const [title, setTitle] = React.useState('');
   const [notes, setNotes] = React.useState('');
   const [tags, setTags] = React.useState<string[]>([]);
@@ -71,6 +79,17 @@ export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [],
     setLinks((idea && idea.links) ? idea.links.map((l) => ({ ...l })) : []);
     setLocal(null);
   }, [open, idea]);
+
+  const dirty =
+    open &&
+    (title !== ((idea && idea.title) || '') ||
+      notes !== ((idea && idea.notes) || '') ||
+      !sameTags(tags, (idea && idea.tags) || []) ||
+      status !== ((idea && idea.status) || 'raw') ||
+      !sameLinks(links, (idea && idea.links) || []));
+  React.useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const setLinkAt = (i: number, patch: Partial<Link>) =>
     setLinks((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -95,6 +114,9 @@ export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [],
         <Button onClick={submit}>{mode === 'create' ? 'Drop it in' : 'Save'}</Button>
       </>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {notice && (
+          <p role="status" style={{ margin: 0, fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)', textWrap: 'pretty' }}>{notice}</p>
+        )}
         <Input label="Title" placeholder="What's the idea?" value={title} onChange={e => { setTitle(e.target.value); setLocal(null); }} error={msg || undefined} />
         <Textarea label="Notes" rows={4} placeholder="Anything else worth remembering." value={notes} onChange={e => setNotes(e.target.value)} />
 
