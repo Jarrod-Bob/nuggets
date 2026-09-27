@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 )
 
@@ -21,9 +22,12 @@ const (
 	KeyOffset    = "telegram_offset"
 	KeyPairCode  = "telegram_pair_code"
 	KeyLastError = "telegram_last_error"
+	// KeyLastSync is when getUpdates last answered successfully, as RFC 3339
+	// (issue #8).
+	KeyLastSync = "telegram_last_sync_at"
 
 	// SourceTelegram tags an imported idea's `source` column (design §5).
-	SourceTelegram = "telegram"
+	SourceTelegram = idea.SourceTelegram
 
 	pairCodeCharset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // no 0/O/1/I: read aloud or typed on a phone
 	pairCodeLength  = 6

@@ -11,6 +11,7 @@ import { ActionError } from '../components/feedback/ActionError';
 import { iconArrowLeft, iconPencil } from '../components/icons';
 import { api, ApiError, type Idea } from '../api';
 import { formatRelative } from '../lib/formatRelative';
+import { describeOrigin } from '../lib/origin';
 import { parseNuggetId } from '../routing/nuggetPath';
 import { paramsFromFilter } from '../routing/listFilter';
 import { useTags } from '../tags/TagsProvider';
@@ -204,16 +205,15 @@ export function NuggetPage() {
             )}
 
             {/*
-              Seams for adjacent issues, deliberately left open here:
-              - Status and links (issue #3) are already part of the model and are
-                edited through the form on this page; a dedicated read-only
-                display of them on the detail body is the remaining seam.
-              - Origin — "arrived from Telegram, 3 days ago" (issue #2).
-              The page composes cleanly without those read sections.
+              Seam for an adjacent issue, deliberately left open here: status and
+              links (issue #3) are already part of the model and are edited
+              through the form on this page; a dedicated read-only display of
+              them on the detail body is the remaining seam.
             */}
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--nug-ink-500)' }}>
-              <span>captured {formatRelative(idea.created_at)}</span>
+              {/* An imported nugget's origin line replaces "captured": both would name the same moment. */}
+              <span>{describeOrigin(idea) ?? `captured ${formatRelative(idea.created_at)}`}</span>
               {idea.updated_at !== idea.created_at && <span>· last changed {formatRelative(idea.updated_at)}</span>}
               {idea.archived_at && <span>· binned {formatRelative(idea.archived_at)}</span>}
             </div>

@@ -714,3 +714,36 @@ func TestSyncRacingFailedFetchRetriesInsteadOfBackingOff(t *testing.T) {
 
 	waitFor(t, "a retry after the Sync", func() bool { return transport.count() >= 2 })
 }
+
+func TestDrainRecordsLastSyncEvenWhenNothingArrived(t *testing.T) {
+	ctx := context.Background()
+	fake := &fakeTelegram{} // every getUpdates answers with an empty batch
+	poller, settingsStore, _ := newTestPoller(t, fake)
+	mustSetToken(t, ctx, settingsStore)
+
+	if err := poller.Drain(ctx); err != nil {
+		t.Fatalf("Drain: %v", err)
+	}
+	raw, ok, err := settingsStore.Get(ctx, KeyLastSync)
+	if err != nil || !ok {
+		t.Fatalf("last sync = %q, %v, %v; want it recorded", raw, ok, err)
+	}
+	at, err := time.Parse(time.RFC3339, raw)
+	if err != nil || time.Since(at) > time.Minute {
+		t.Errorf("last sync = %q, want a current RFC 3339 time", raw)
+	}
+}
+
+func TestDrainFailureDoesNotRecordLastSync(t *testing.T) {
+	ctx := context.Background()
+	fake := &fakeTelegram{failStatus: http.StatusBadGateway}
+	poller, settingsStore, _ := newTestPoller(t, fake)
+	mustSetToken(t, ctx, settingsStore)
+
+	if err := poller.Drain(ctx); err == nil {
+		t.Fatal("Drain succeeded against a failing Telegram")
+	}
+	if raw, ok, _ := settingsStore.Get(ctx, KeyLastSync); ok {
+		t.Errorf("last sync = %q after a failed poll, want none", raw)
+	}
+}

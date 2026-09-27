@@ -134,6 +134,8 @@ func scanIdea(row rowScanner) (*Idea, error) {
 	}
 	if source.Valid {
 		found.Source = &source.String
+		origin := OriginLabel(source.String)
+		found.Origin = &origin
 	}
 	if sourceRef.Valid {
 		found.SourceRef = &sourceRef.String

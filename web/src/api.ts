@@ -24,6 +24,11 @@ export interface Idea {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  /** Where an imported nugget came from ('telegram', 'spices', 'spices-detached'); null if typed in the app. */
+  source: string | null;
+  source_ref: string | null;
+  /** Friendly label for source ("Telegram", "spices"); null exactly when source is. */
+  origin: string | null;
 }
 
 /** Mirrors internal/idea.Tag. */
@@ -96,6 +101,32 @@ export interface TelegramStatus {
   pair_code?: string;
   pair_code_expires_at?: string;
   last_error?: string;
+  /** RFC3339; when getUpdates last answered successfully. */
+  last_sync_at?: string;
+}
+
+/**
+ * Mirrors internal/httpapi's spicesStatus. The API token is write-only: the
+ * server never returns it.
+ */
+export interface SpicesStatus {
+  connected: boolean;
+  url: string;
+  interval_seconds: number;
+  /** RFC3339; when the last pull from spices succeeded. */
+  last_sync_at?: string;
+  last_error?: string;
+  /** spices answered 409 (it was reset or restored); nothing is pulled until Re-sync. */
+  needs_resync: boolean;
+  /** Only on Re-sync's answer: how many nuggets were kept aside as detached. */
+  detached?: number;
+}
+
+/** PUT /api/settings/spices. Every field is optional; the token is only required on first connect. */
+export interface SpicesSettingsUpdate {
+  url?: string;
+  token?: string;
+  interval_seconds?: number;
 }
 
 export const api = {
@@ -125,5 +156,13 @@ export const api = {
     disconnect: () => request<void>('/api/settings/telegram', { method: 'DELETE' }),
     pair: () => request<TelegramStatus>('/api/settings/telegram/pair', { method: 'POST' }),
     sync: () => request<void>('/api/telegram/sync', { method: 'POST' }),
+  },
+  spices: {
+    status: () => request<SpicesStatus>('/api/settings/spices'),
+    save: (update: SpicesSettingsUpdate) =>
+      request<SpicesStatus>('/api/settings/spices', { method: 'PUT', body: JSON.stringify(update) }),
+    disconnect: () => request<void>('/api/settings/spices', { method: 'DELETE' }),
+    sync: () => request<void>('/api/spices/sync', { method: 'POST' }),
+    resync: () => request<SpicesStatus>('/api/spices/resync', { method: 'POST' }),
   },
 };

@@ -1,5 +1,5 @@
-// Package settings stores small app-level key/value preferences — currently
-// only the Telegram integration's state — in the settings table added by
+// Package settings stores small app-level key/value preferences — the
+// Telegram and spices integrations' state — in the settings table added by
 // migration 00003. It is deliberately dumb: no validation, no defaults beyond
 // "missing", so every caller decides for itself what an absent key means.
 package settings
@@ -37,7 +37,27 @@ func (s *Store) Get(ctx context.Context, key string) (string, bool, error) {
 
 // Set writes key, replacing any existing value.
 func (s *Store) Set(ctx context.Context, key, value string) error {
-	_, err := s.db.ExecContext(ctx,
+	return set(ctx, s.db, key, value)
+}
+
+// SetTx is Set inside a caller's transaction, so a setting can commit
+// atomically with other writes — the spices cursor with the page of nuggets
+// it covers.
+func (s *Store) SetTx(ctx context.Context, tx *sql.Tx, key, value string) error {
+	return set(ctx, tx, key, value)
+}
+
+// DeleteTx is Delete inside a caller's transaction.
+func (s *Store) DeleteTx(ctx context.Context, tx *sql.Tx, key string) error {
+	return del(ctx, tx, key)
+}
+
+type execer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+func set(ctx context.Context, q execer, key, value string) error {
+	_, err := q.ExecContext(ctx,
 		`INSERT INTO settings (key, value) VALUES (?, ?)
 		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
 		key, value,
@@ -50,7 +70,11 @@ func (s *Store) Set(ctx context.Context, key, value string) error {
 
 // Delete removes key. Deleting a key that does not exist is not an error.
 func (s *Store) Delete(ctx context.Context, key string) error {
-	if _, err := s.db.ExecContext(ctx, `DELETE FROM settings WHERE key = ?`, key); err != nil {
+	return del(ctx, s.db, key)
+}
+
+func del(ctx context.Context, q execer, key string) error {
+	if _, err := q.ExecContext(ctx, `DELETE FROM settings WHERE key = ?`, key); err != nil {
 		return fmt.Errorf("deleting setting %q: %w", key, err)
 	}
 	return nil

@@ -12,6 +12,8 @@ nuggets gives them somewhere to live: enough structure to find one on purpose, a
 
 - **Capture** an idea as a title plus notes, tagged however I like.
 - **Text it in from Telegram.** Connect a bot from the settings screen, pair it to your chat, and every message you send it becomes a nugget — first line the title, the rest the notes, `#hashtags` the tags. The design is in [`docs/superpowers/specs/2026-08-30-telegram-capture-design.md`](docs/superpowers/specs/2026-08-30-telegram-capture-design.md).
+- **Pull ideas from spices.** If you run [spices](https://github.com/Jarrod-Bob/spices), the always-on Telegram capture bot, nuggets pulls every idea it has sorted — its title, description and tags — alongside the direct Telegram capture above. See [Connecting spices](#connecting-spices).
+- **See where a nugget came from.** An imported nugget's page says "arrived via Telegram, 3d ago" or "arrived via spices, 2h ago"; the settings screen shows when each source last synced.
 - **Tag** freely — tags autocomplete from ones I've already used, so I don't end up with `#saas` and `#SaaS`.
 - **Find** by searching the text or filtering by tag.
 - **Track status** through a lifecycle — raw, exploring, building, parked, killed — and filter by it.
@@ -64,6 +66,16 @@ msedge --app=http://127.0.0.1:7777
 # macOS
 open -na "Google Chrome" --args --app=http://127.0.0.1:7777
 ```
+
+## Connecting spices
+
+1. Run spices somewhere nuggets can reach it — on the same machine it listens on `http://127.0.0.1:7788`; for another machine, use its tailnet address rather than a public port.
+2. In nuggets, open **Settings** (top bar) and find the **spices** section.
+3. Enter the spices address, the API token (spices' `SPICES_API_TOKEN`), and how often to pull (every 60 seconds by default), then **Connect**.
+
+nuggets pulls straight away, then on that interval and whenever you press **Sync now**. It only ever pulls ideas. The token is stored in `nuggets.db` next to your ideas and is never shown again — leave the field empty when changing the address or interval to keep it. **Disconnect** forgets the token but keeps the nuggets and where the pull had got to.
+
+If spices is ever recreated or restored from a backup, the section says *spices was reset or restored; press Re-sync* and stops pulling. **Re-sync** keeps every nugget that came from spices (set aside as detached, edits intact) and pulls everything in spices again; ideas that survived the reset then appear twice. Nothing is deleted either way. Changing the address once something has been pulled does the same — *spices address changed; press Re-sync* — because the new address may be a different spices whose ids mean different ideas. The reasoning is in [`docs/superpowers/specs/2026-09-26-spices-pull-design.md`](docs/superpowers/specs/2026-09-26-spices-pull-design.md).
 
 ## Stack
 
