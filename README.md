@@ -80,7 +80,7 @@ If spices is ever recreated or restored from a backup, the section says *spices 
 
 ## Live updates
 
-The page keeps one server-sent event stream open, `GET /api/events`. After a background import commits, the server sends `ideas-changed`, once per sync pass and never once per nugget. When the spices status changes (the last sync time, an error, needs-resync), it sends `spices-status`. An event carries no data: the page just refetches whatever it is showing. The page also refetches when the tab becomes visible again or the stream reconnects, in case it missed an event while the laptop slept or the server restarted. The server side is `internal/events` and `internal/httpapi/events.go`; the page side is `web/src/live/LiveUpdates.tsx`.
+The page keeps one server-sent event stream open, `GET /api/events`. After a background import commits, the server sends `ideas-changed`, once per sync pass and never once per nugget. When the spices status changes (the last sync time, an error, needs-resync), it sends `spices-status`. An event carries no data: the page just refetches whatever it is showing. The page also refetches when the tab becomes visible again or the stream reconnects, in case it missed an event while the laptop slept or the server restarted. A hidden tab closes its stream and reopens it when shown, because the server speaks plain HTTP/1.1 and browsers allow only about six connections per host: with six or more nuggets tabs visible at once, the streams can still use up every connection and stall API requests until one closes. The server side is `internal/events` and `internal/httpapi/events.go`; the page side is `web/src/live/LiveUpdates.tsx`.
 
 ## Stack
 

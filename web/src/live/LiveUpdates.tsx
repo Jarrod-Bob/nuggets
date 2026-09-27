@@ -11,6 +11,8 @@ import React from 'react';
  * `useLiveRefresh` in the tree. Because an event can be missed (a laptop asleep,
  * the stream dropped, the server restarted), every listener is also fired when
  * the tab becomes visible again and when the stream reconnects after a break.
+ * A hidden tab holds no stream (each open one takes one of the browser's ~6
+ * connections per host), so it's closed while hidden and reopened on showing.
  */
 
 /** Mirrors internal/events.Event. */
@@ -78,17 +80,28 @@ export function LiveUpdatesProvider({ children }: { children: React.ReactNode })
       };
       for (const event of LIVE_EVENTS) es.addEventListener(event, () => fire(event));
     };
-    open(false);
+    const close = () => {
+      clearTimeout(reopenTimer);
+      reopenTimer = undefined;
+      source?.close();
+      source = null;
+    };
+
+    if (document.visibilityState !== 'hidden') open(false);
 
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') fireAll();
+      if (document.visibilityState === 'hidden') {
+        close();
+        return;
+      }
+      fireAll();
+      if (!source) open(false);
     };
     document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
       stopped = true;
-      clearTimeout(reopenTimer);
-      source?.close();
+      close();
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);

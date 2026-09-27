@@ -45,7 +45,11 @@ export function NuggetPage() {
         if (live) setLoad({ status: 'ready', idea });
       })
       .catch((err) => {
-        if (live) setLoad({ status: 'notfound', message: describeError(err) });
+        if (!live) return;
+        const gone = err instanceof ApiError && err.status === 404;
+        setLoad((prev) =>
+          !gone && prev.status === 'ready' && prev.idea.id === id ? prev : { status: 'notfound', message: describeError(err) },
+        );
       });
     return () => {
       live = false;

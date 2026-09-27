@@ -58,7 +58,14 @@ export interface ListFilter {
 }
 
 /** The API's single error shape: { "error": { "message": "..." } } */
-export class ApiError extends Error {}
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -75,7 +82,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const message = payload?.error?.message ?? `Request failed (${response.status})`;
-    throw new ApiError(message);
+    throw new ApiError(message, response.status);
   }
   return payload as T;
 }

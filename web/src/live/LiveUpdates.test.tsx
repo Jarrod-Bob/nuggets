@@ -36,6 +36,13 @@ class FakeEventSource {
       this.onopen?.();
     });
   }
+  /** An error status: the browser gives up on this stream for good. */
+  fail() {
+    act(() => {
+      this.readyState = FakeEventSource.CLOSED;
+      this.onerror?.();
+    });
+  }
   /** A dropped connection the browser will retry by itself. */
   drop() {
     act(() => {
@@ -72,6 +79,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
+  Reflect.deleteProperty(document, 'visibilityState');
 });
 
 describe('useLiveRefresh', () => {
@@ -143,6 +152,61 @@ describe('useLiveRefresh', () => {
     expect(refetch).not.toHaveBeenCalled();
     setVisibility('visible');
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes the stream while the tab is hidden and reopens one on showing', () => {
+    const refetch = vi.fn();
+    renderHook(() => useLiveRefresh('ideas-changed', refetch), { wrapper });
+    const first = stream();
+    first.open();
+
+    setVisibility('hidden');
+    expect(first.readyState).toBe(FakeEventSource.CLOSED);
+    expect(FakeEventSource.instances.filter((s) => s.readyState !== FakeEventSource.CLOSED)).toHaveLength(0);
+
+    setVisibility('visible');
+    expect(refetch).toHaveBeenCalledTimes(1);
+    const second = stream();
+    expect(second).not.toBe(first);
+    second.open();
+    expect(refetch).toHaveBeenCalledTimes(1);
+    second.emit('ideas-changed');
+    expect(refetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('opens no stream in a tab that starts hidden until it shows', () => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    const refetch = vi.fn();
+    renderHook(() => useLiveRefresh('ideas-changed', refetch), { wrapper });
+    expect(FakeEventSource.instances).toHaveLength(0);
+
+    setVisibility('visible');
+    expect(FakeEventSource.instances).toHaveLength(1);
+    stream().open();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('reopens a stream the browser gave up on, but not while the tab is hidden', () => {
+    vi.useFakeTimers();
+    const refetch = vi.fn();
+    renderHook(() => useLiveRefresh('ideas-changed', refetch), { wrapper });
+    stream().fail();
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    stream().open();
+    expect(refetch).toHaveBeenCalledTimes(1);
+
+    stream().fail();
+    setVisibility('hidden');
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(FakeEventSource.instances).toHaveLength(2);
+
+    setVisibility('visible');
+    expect(FakeEventSource.instances).toHaveLength(3);
+    expect(refetch).toHaveBeenCalledTimes(2);
   });
 
   it('catches up when the stream reconnects after a break, not on its first open', () => {
