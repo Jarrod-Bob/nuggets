@@ -1,6 +1,5 @@
-// Package settings stores small app-level key/value preferences — the
-// Telegram and spices integrations' state — in the settings table added by
-// migration 00003. It is deliberately dumb: no validation, no defaults beyond
+// Package settings stores small app-level key/value preferences — the spices
+// integration's state — in the settings table added by migration 00003. It is deliberately dumb: no validation, no defaults beyond
 // "missing", so every caller decides for itself what an absent key means.
 package settings
 

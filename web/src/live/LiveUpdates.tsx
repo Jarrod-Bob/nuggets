@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Live updates: nuggets arrive in the background (the spices pull, Telegram),
+ * Live updates: nuggets arrive in the background (the spices pull),
  * and an open tab should show them without a reload. The server announces
  * changes on one server-sent event stream, `GET /api/events`
  * (internal/httpapi/events.go); an event carries no data — each view just

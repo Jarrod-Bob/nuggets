@@ -20,7 +20,6 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 	"github.com/Jarrod-Bob/nuggets/internal/spices"
-	"github.com/Jarrod-Bob/nuggets/internal/telegram"
 	"github.com/Jarrod-Bob/nuggets/internal/web"
 )
 
@@ -69,31 +68,27 @@ func main() {
 	}
 
 	// Ctrl+C (or a termination signal) stops the server cleanly: open event
-	// streams are ended, in-flight requests finish, and the import loops stop.
+	// streams are ended, in-flight requests finish, and the spices loop stops.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	ideaStore := idea.NewStore(database)
 	settingsStore := settings.NewStore(database)
-	// Both importers announce what they changed here, and GET /api/events
+	// The spices pull loop announces what it changed here, and GET /api/events
 	// passes it on to open pages so they refetch without a reload.
 	broker := events.NewBroker()
-	poller := telegram.NewPoller(ideaStore, settingsStore, telegram.WithEvents(broker))
 
-	// Started in a goroutine before Serve begins, so a slow or unreachable
-	// Telegram never delays the listener coming up (design §4.2). Loop runs
-	// until shutdown.
-	go poller.Loop(ctx)
-
-	// The spices pull loop, likewise: its first pull runs at startup when a
-	// token is stored, then every interval and on Sync now. It runs alongside
-	// Telegram capture; both import into the same bank under their own
-	// source (docs/superpowers/specs/2026-09-26-spices-pull-design.md).
+	// The spices pull loop, the only way ideas arrive from outside the app
+	// (docs/superpowers/specs/2026-09-26-spices-pull-design.md). Started in a
+	// goroutine before Serve begins, so a slow or unreachable spices never
+	// delays the listener coming up; its first pull runs at startup when a
+	// token is stored, then every interval and on Sync now. Loop runs until
+	// shutdown.
 	syncer := spices.NewSyncer(ideaStore, settingsStore, spices.WithEvents(broker))
 	go syncer.Loop(ctx)
 
 	server := &http.Server{
-		Handler:           httpapi.NewServer(ideaStore, settingsStore, poller, syncer, broker, frontend),
+		Handler:           httpapi.NewServer(ideaStore, settingsStore, syncer, broker, frontend),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	// Shutdown waits for handlers to return, and an event stream only

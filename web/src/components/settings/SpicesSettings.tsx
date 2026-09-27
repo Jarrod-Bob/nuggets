@@ -149,7 +149,7 @@ export function SpicesSettings({ open }: SpicesSettingsProps) {
   );
 
   return (
-    <SettingsSection title="spices" description="Pull ideas from your spices capture bot, alongside Telegram.">
+    <SettingsSection title="spices" description="Pull ideas from your spices capture bot.">
       {error && (
         <div style={{ marginBottom: 14, padding: '8px 12px', borderRadius: 'var(--radius-md)', background: 'var(--nug-ketchup-100)', color: 'var(--nug-ketchup-600)', fontSize: 'var(--text-body-sm)' }}>
           {error}

@@ -5,6 +5,7 @@
 **Issues:** closes [#7](https://github.com/Jarrod-Bob/nuggets/issues/7) (show a nugget's origin) and [#8](https://github.com/Jarrod-Bob/nuggets/issues/8) (show the last sync time), which ship with it.
 **Builds on:** [`2026-08-30-telegram-capture-design.md`](2026-08-30-telegram-capture-design.md), whose patterns this reuses: the settings table, one loop with three triggers, `source` + `source_ref` with a unique index, the single error envelope, never echoing a secret, and never holding the DB connection across a network call.
 **Contract:** spices' pull API, contract v1 (spices design §7).
+**Update (2026-09-27):** nuggets' own Telegram capture has since been retired; spices is now the only source. References below to running alongside it are historical.
 
 ## 1. Problem
 
@@ -139,7 +140,7 @@ The settings dialog now holds one section per source: **Telegram**, then **spice
 - After a 409 or an address change, the badge turns to "Needs re-sync" and **Sync now** becomes **Re-sync**. It asks for confirmation, spelling out the duplicate cost, before detaching.
 - While the dialog is open, the Telegram section polls its status every 3 s. The spices section instead refreshes on the `spices-status` live event (below).
 
-**Live updates.** The Syncer publishes to `internal/events` (a `WithEvents` option; `cmd/nuggets` passes the app's broker), and `GET /api/events` streams that to the page as server-sent events. A Drain that created, refreshed or archived any nugget publishes `ideas-changed` once, after its last page commits, even if a later page failed. A pass that changed nothing publishes no `ideas-changed`. Re-sync publishes it too if it detached anything. `spices-status` goes out whenever the status in settings moves: a recorded sync, a new error, a 409, Re-sync, and any settings change through `Reset`. The Telegram poller publishes `ideas-changed` once per batch that saved a nugget. The page refetches its current view on `ideas-changed` (the list under its URL filters, the open nugget, the trash, the tag list). It holds a reload that would reset an edit form with unsaved changes until the form closes, and says so in the form.
+**Live updates.** The Syncer publishes to `internal/events` (a `WithEvents` option; `cmd/nuggets` passes the app's broker), and `GET /api/events` streams that to the page as server-sent events. A Drain that created, refreshed or archived any nugget publishes `ideas-changed` once, after its last page commits, even if a later page failed. A pass that changed nothing publishes no `ideas-changed`. Re-sync publishes it too if it detached anything. `spices-status` goes out whenever the status in settings moves: a recorded sync, a new error, a 409, Re-sync, and any settings change through `Reset`. The page refetches its current view on `ideas-changed` (the list under its URL filters, the open nugget, the trash, the tag list). It holds a reload that would reset an edit form with unsaved changes until the form closes, and says so in the form.
 
 ## 9. Testing
 

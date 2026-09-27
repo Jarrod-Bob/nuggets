@@ -1,5 +1,7 @@
 # nuggets — Telegram Capture Design
 
+> **Superseded by spices (2026-09-27).** spices owns the single Telegram bot token and nuggets pulls ideas from it ([`2026-09-26-spices-pull-design.md`](2026-09-26-spices-pull-design.md)), so nuggets' own bot, poller and pairing described here were removed. Migration `00005_retire_telegram.sql` deletes any leftover `telegram_*` settings. Kept for the record.
+
 **Date:** 2026-08-30
 **Status:** Approved design, pending implementation plan
 **Issue:** [#2](https://github.com/Jarrod-Bob/nuggets/issues/2)
