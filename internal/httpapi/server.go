@@ -9,17 +9,15 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 	"github.com/Jarrod-Bob/nuggets/internal/spices"
-	"github.com/Jarrod-Bob/nuggets/internal/telegram"
 )
 
 // NewServer builds the full handler: API routes plus the embedded frontend.
-// settingsStore, poller, syncer and broker may be nil only in tests that
-// don't exercise the Telegram, spices or live-update routes;
-// cmd/nuggets/main.go always wires all four. broker is what the importers
-// publish to, and GET /api/events streams it to the page.
-func NewServer(store *idea.Store, settingsStore *settings.Store, poller *telegram.Poller, syncer *spices.Syncer, broker *events.Broker, frontend http.Handler) http.Handler {
+// settingsStore, syncer and broker may be nil only in tests that don't
+// exercise the spices or live-update routes; cmd/nuggets/main.go always wires
+// all three. broker is what the spices syncer publishes to, and GET
+// /api/events streams it to the page.
+func NewServer(store *idea.Store, settingsStore *settings.Store, syncer *spices.Syncer, broker *events.Broker, frontend http.Handler) http.Handler {
 	h := &handlers{store: store}
-	th := newTelegramHandlers(settingsStore, poller)
 	sh := &spicesHandlers{settings: settingsStore, ideas: store, syncer: syncer}
 	eh := &eventsHandler{broker: broker, heartbeat: defaultHeartbeat}
 	mux := http.NewServeMux()
@@ -34,12 +32,6 @@ func NewServer(store *idea.Store, settingsStore *settings.Store, poller *telegra
 	mux.HandleFunc("POST /api/ideas/{id}/archive", h.archive)
 	mux.HandleFunc("POST /api/ideas/{id}/restore", h.restore)
 	mux.HandleFunc("GET /api/tags", h.tags)
-
-	mux.HandleFunc("GET /api/settings/telegram", th.status)
-	mux.HandleFunc("PUT /api/settings/telegram", th.connect)
-	mux.HandleFunc("DELETE /api/settings/telegram", th.disconnect)
-	mux.HandleFunc("POST /api/settings/telegram/pair", th.pair)
-	mux.HandleFunc("POST /api/telegram/sync", th.sync)
 
 	mux.HandleFunc("GET /api/settings/spices", sh.status)
 	mux.HandleFunc("PUT /api/settings/spices", sh.connect)

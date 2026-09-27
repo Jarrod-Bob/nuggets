@@ -6,7 +6,7 @@ export interface SettingsSectionProps {
   children?: React.ReactNode;
 }
 
-/** One titled block of the settings dialog — Telegram, spices — divided from the next by a hairline. */
+/** One titled block of the settings dialog (spices, today), divided from the next by a hairline. */
 export function SettingsSection({ title, description, children }: SettingsSectionProps) {
   return (
     <section style={{ padding: '18px 0', borderTop: 'var(--border-hairline, 1px) solid var(--nug-ink-200)' }}>

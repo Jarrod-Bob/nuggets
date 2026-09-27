@@ -24,10 +24,10 @@ export interface Idea {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
-  /** Where an imported nugget came from ('telegram', 'spices', 'spices-detached'); null if typed in the app. */
+  /** Where an imported nugget came from ('spices', 'spices-detached', or a historical 'telegram'); null if typed in the app. */
   source: string | null;
   source_ref: string | null;
-  /** Friendly label for source ("Telegram", "spices"); null exactly when source is. */
+  /** Friendly label for source ("spices", "Telegram"); null exactly when source is. */
   origin: string | null;
 }
 
@@ -98,21 +98,6 @@ function query(filter: ListFilter): string {
 }
 
 /**
- * Mirrors internal/httpapi's telegramStatus. The token itself is never part
- * of this shape — the server never returns it (see the design doc §4.3).
- */
-export interface TelegramStatus {
-  connected: boolean;
-  username?: string;
-  paired: boolean;
-  pair_code?: string;
-  pair_code_expires_at?: string;
-  last_error?: string;
-  /** RFC3339; when getUpdates last answered successfully. */
-  last_sync_at?: string;
-}
-
-/**
  * Mirrors internal/httpapi's spicesStatus. The API token is write-only: the
  * server never returns it.
  */
@@ -156,14 +141,6 @@ export const api = {
     }
   },
   tags: () => request<Tag[]>('/api/tags'),
-  telegram: {
-    status: () => request<TelegramStatus>('/api/settings/telegram'),
-    connect: (token: string) =>
-      request<TelegramStatus>('/api/settings/telegram', { method: 'PUT', body: JSON.stringify({ token }) }),
-    disconnect: () => request<void>('/api/settings/telegram', { method: 'DELETE' }),
-    pair: () => request<TelegramStatus>('/api/settings/telegram/pair', { method: 'POST' }),
-    sync: () => request<void>('/api/telegram/sync', { method: 'POST' }),
-  },
   spices: {
     status: () => request<SpicesStatus>('/api/settings/spices'),
     save: (update: SpicesSettingsUpdate) =>

@@ -9,11 +9,10 @@ import (
 )
 
 var (
-	ErrNotFound        = errors.New("nugget not found")
-	ErrEmptyTitle      = errors.New("A nugget needs a title.")
-	ErrInvalidStatus   = errors.New("That isn't a status a nugget can have.")
-	ErrInvalidLink     = errors.New("A link needs to be a http or https web address.")
-	ErrAlreadyImported = errors.New("nugget already imported")
+	ErrNotFound      = errors.New("nugget not found")
+	ErrEmptyTitle    = errors.New("A nugget needs a title.")
+	ErrInvalidStatus = errors.New("That isn't a status a nugget can have.")
+	ErrInvalidLink   = errors.New("A link needs to be a http or https web address.")
 )
 
 // Status is a nugget's place in its lifecycle. It is a real type with a parser
@@ -95,16 +94,19 @@ type Idea struct {
 	ArchivedAt *time.Time `json:"archived_at"`
 	// Source and SourceRef record where an imported nugget came from — null
 	// for anything typed directly into the app. Origin is Source's friendly
-	// label ("Telegram", "spices") for the nugget page's "arrived via" line
+	// label ("spices") for the nugget page's "arrived via" line
 	// (issue #7); it is null exactly when Source is.
 	Source    *string `json:"source"`
 	SourceRef *string `json:"source_ref"`
 	Origin    *string `json:"origin"`
 }
 
-// The values of an imported nugget's `source` column. Telegram and spices own
-// the rows they import; nothing else writes these.
+// The values of an imported nugget's `source` column. spices owns the rows it
+// imports; nothing else writes these.
 const (
+	// SourceTelegram marks a nugget captured by nuggets' own Telegram bot,
+	// retired on 2026-09-27 in favour of spices. Nothing writes it any more;
+	// it stays so any historical row still gets a friendly origin label.
 	SourceTelegram = "telegram"
 	SourceSpices   = "spices"
 	// SourceSpicesDetached marks a nugget that came from a spices database

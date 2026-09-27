@@ -11,10 +11,9 @@ nuggets gives them somewhere to live: enough structure to find one on purpose, a
 ## What it does
 
 - **Capture** an idea as a title plus notes, tagged however I like.
-- **Text it in from Telegram.** Connect a bot from the settings screen, pair it to your chat, and every message you send it becomes a nugget — first line the title, the rest the notes, `#hashtags` the tags. The design is in [`docs/superpowers/specs/2026-08-30-telegram-capture-design.md`](docs/superpowers/specs/2026-08-30-telegram-capture-design.md).
-- **Pull ideas from spices.** If you run [spices](https://github.com/Jarrod-Bob/spices), the always-on Telegram capture bot, nuggets pulls every idea it has sorted — its title, description and tags — alongside the direct Telegram capture above. See [Connecting spices](#connecting-spices).
-- **Live updates.** Nuggets that arrive in the background, from spices or Telegram, appear in an open tab on their own, with no reload needed. The list keeps its filters, an open nugget refreshes in place, and an edit you haven't saved is never overwritten: the page catches up when you save or cancel. See [Live updates](#live-updates).
-- **See where a nugget came from.** An imported nugget's page says "arrived via Telegram, 3d ago" or "arrived via spices, 2h ago"; the settings screen shows when each source last synced.
+- **Capture from your phone through spices.** Text ideas to [spices](https://github.com/Jarrod-Bob/spices), the always-on Telegram capture bot, and nuggets pulls every idea it has sorted — its title, description and tags. See [Connecting spices](#connecting-spices).
+- **Live updates.** Nuggets that arrive in the background from spices appear in an open tab on their own, with no reload needed. The list keeps its filters, an open nugget refreshes in place, and an edit you haven't saved is never overwritten: the page catches up when you save or cancel. See [Live updates](#live-updates).
+- **See where a nugget came from.** An imported nugget's page says "arrived via spices, 2h ago"; the settings screen shows when spices last synced.
 - **Tag** freely — tags autocomplete from ones I've already used, so I don't end up with `#saas` and `#SaaS`.
 - **Find** by searching the text or filtering by tag.
 - **Track status** through a lifecycle — raw, exploring, building, parked, killed — and filter by it.
@@ -97,6 +96,6 @@ Two things drove most of these choices. I'm using this project to **learn Go and
 
 Desktop only for now, single user, no accounts. Deliberately.
 
-Capture *while I'm out* — the thing that started this — goes through Telegram: ideas texted to the bot land in the bank the next time the app is running, as long as that's within Telegram's roughly 24-hour hold on undelivered messages. Browsing the bank from a phone is still a later addition rather than a rewrite.
+Capture *while I'm out* — the thing that started this — goes through spices: ideas texted to its Telegram bot wait there, and land in the bank the next time the app is running and pulls. nuggets used to run its own Telegram bot too; that was retired in favour of spices, which owns the single bot token (the old design is kept, marked superseded, in [`docs/superpowers/specs/2026-08-30-telegram-capture-design.md`](docs/superpowers/specs/2026-08-30-telegram-capture-design.md)). Browsing the bank from a phone is still a later addition rather than a rewrite.
 
 Deferred on purpose: ratings, sorting, mobile, user accounts, export.
