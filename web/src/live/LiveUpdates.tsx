@@ -1,8 +1,9 @@
 import React from 'react';
 
 /**
- * Live updates: nuggets arrive in the background (the spices pull),
- * and an open tab should show them without a reload. The server announces
+ * Live updates: nuggets arrive in the background (the spices pull), feature
+ * requests land on GitHub in the background (the GitHub sender), and an open
+ * tab should show both without a reload. The server announces
  * changes on one server-sent event stream, `GET /api/events`
  * (internal/httpapi/events.go); an event carries no data — each view just
  * refetches what it shows through the regular API.
@@ -16,8 +17,8 @@ import React from 'react';
  */
 
 /** Mirrors internal/events.Event. */
-export type LiveEvent = 'ideas-changed' | 'spices-status';
-const LIVE_EVENTS: readonly LiveEvent[] = ['ideas-changed', 'spices-status'];
+export type LiveEvent = 'ideas-changed' | 'spices-status' | 'github-changed';
+const LIVE_EVENTS: readonly LiveEvent[] = ['ideas-changed', 'spices-status', 'github-changed'];
 
 const EVENTS_URL = '/api/events';
 
