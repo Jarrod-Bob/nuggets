@@ -326,17 +326,25 @@ func (o *Outbox) earliestDue(ctx context.Context) (*time.Time, error) {
 
 // markSending records, before the POST, that one is starting: the state
 // that makes a restart look for the issue before posting again. The first
-// one also records the marker the POST embeds.
-func (o *Outbox) markSending(ctx context.Context, id int64, marker string) error {
+// one also records the marker the POST embeds. It reports false, changing
+// nothing, when row is no longer as the pass read it (deleted, handed over,
+// linked, or no longer queued): the caller must not POST.
+func (o *Outbox) markSending(ctx context.Context, row Issue, marker string) (bool, error) {
 	now := time.Now().UTC()
-	_, err := o.db.ExecContext(ctx,
+	res, err := o.db.ExecContext(ctx,
 		`UPDATE github_issues SET state = ?, attempts = attempts + 1, sent_at = COALESCE(sent_at, ?),
 		   marker = COALESCE(marker, ?), updated_at = ?
-		 WHERE id = ?`, string(StateSending), now, marker, now, id)
+		 WHERE id = ? AND linked_to IS NULL AND state IN (?, ?) AND attempts = ? AND COALESCE(marker, '') = ?`,
+		string(StateSending), now, marker, now,
+		row.ID, string(StatePending), string(StateSending), row.Attempts, row.marker)
 	if err != nil {
-		return fmt.Errorf("marking feature request sending: %w", err)
+		return false, fmt.Errorf("marking feature request sending: %w", err)
 	}
-	return nil
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("marking feature request sending: %w", err)
+	}
+	return n > 0, nil
 }
 
 func (o *Outbox) markCreated(ctx context.Context, id int64, number int, url string) error {

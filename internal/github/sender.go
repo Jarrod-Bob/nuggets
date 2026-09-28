@@ -237,7 +237,7 @@ func (s *Sender) send(ctx context.Context, client *Client, cfg Config, row Issue
 		}
 	}
 
-	if err := s.outbox.markSending(ctx, row.ID, marker); err != nil {
+	if ok, err := s.outbox.markSending(ctx, row, marker); err != nil || !ok {
 		return err
 	}
 	row.Attempts++

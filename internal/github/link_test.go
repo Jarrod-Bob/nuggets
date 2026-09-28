@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 )
@@ -205,5 +206,43 @@ func TestAHandedOverRowFindsTheIssueItsOriginalPosted(t *testing.T) {
 	}
 	if row := e.onlyRow(t, copy.ID); row.State != StateCreated || row.Number == nil || *row.Number != 1 {
 		t.Errorf("copy shows %+v, want created #1 found by the original's marker", row)
+	}
+}
+
+func TestARowChangedAfterThePassReadItIsNotPosted(t *testing.T) {
+	e := newTestEnv(t)
+	e.setToken(t, testToken)
+	ctx := context.Background()
+	original := e.createIdea(t, "Tray icon", "", "nuggets")
+	copy := e.createIdea(t, "Tray icon", "", "nuggets")
+	stale, ok, err := e.outbox.nextDue(ctx, time.Now().UTC())
+	if err != nil || !ok || stale.IdeaID != original.ID {
+		t.Fatalf("nextDue = %+v, %v, %v; want the original's row", stale, ok, err)
+	}
+
+	// The original's row goes away (and is handed to the copy) between the
+	// pass reading it and marking it sending.
+	if _, err := e.db.Exec(`DELETE FROM github_issues WHERE id = ?`, stale.ID); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadConfig(ctx, e.settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.sender.send(ctx, NewClient(e.srv.URL, cfg.token, e.srv.Client()), cfg, stale); err != nil {
+		t.Fatal(err)
+	}
+	if n := e.fake.countRequests(http.MethodPost); n != 0 {
+		t.Fatalf("POSTs for the stale row = %d, want 0", n)
+	}
+
+	if err := e.sender.Pass(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := e.fake.countRequests(http.MethodPost); n != 1 {
+		t.Errorf("POSTs = %d, want 1", n)
+	}
+	if row := e.onlyRow(t, copy.ID); row.State != StateCreated || row.Number == nil || *row.Number != 1 {
+		t.Errorf("copy shows %+v, want created #1", row)
 	}
 }
