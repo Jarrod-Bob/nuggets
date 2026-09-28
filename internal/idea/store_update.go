@@ -80,11 +80,19 @@ func (s *Store) Update(ctx context.Context, id int64, draft Draft) (*Idea, error
 	// Tags and links replace the whole set — clear then re-insert, the same rule
 	// the request follows for tags. Only touched when the field is present.
 	if draft.Tags != nil {
+		before, err := loadTags(ctx, tx, id)
+		if err != nil {
+			return nil, err
+		}
 		if _, err := tx.ExecContext(ctx,
 			`DELETE FROM idea_tags WHERE idea_id = ?`, id); err != nil {
 			return nil, fmt.Errorf("clearing tags: %w", err)
 		}
-		if err := upsertTags(ctx, tx, id, normalizeTagSet(*draft.Tags)); err != nil {
+		after := normalizeTagSet(*draft.Tags)
+		if err := upsertTags(ctx, tx, id, after); err != nil {
+			return nil, err
+		}
+		if err := s.notifyTagsAdded(ctx, tx, id, before, after); err != nil {
 			return nil, err
 		}
 	}

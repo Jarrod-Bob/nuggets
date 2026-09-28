@@ -13,6 +13,7 @@ nuggets gives them somewhere to live: enough structure to find one on purpose, a
 - **Capture** an idea as a title plus notes, tagged however I like.
 - **Capture from your phone through spices.** Text ideas to [spices](https://github.com/Jarrod-Bob/spices), the always-on Telegram capture bot, and nuggets pulls every idea it has sorted — its title, description and tags. See [Connecting spices](#connecting-spices).
 - **Live updates.** Nuggets that arrive in the background from spices appear in an open tab on their own, with no reload needed. The list keeps its filters, an open nugget refreshes in place, and an edit you haven't saved is never overwritten: the page catches up when you save or cancel. See [Live updates](#live-updates).
+- **Turn tagged nuggets into GitHub feature requests.** Tag a nugget `nuggets` (in the app, or `#nuggets` when texting spices) and it becomes a feature-request issue on this repository, once. Other tags can point at other repositories. See [Feature requests on GitHub](#feature-requests-on-github).
 - **See where a nugget came from.** An imported nugget's page says "arrived via spices, 2h ago"; the settings screen shows when spices last synced.
 - **Tag** freely — tags autocomplete from ones I've already used, so I don't end up with `#saas` and `#SaaS`.
 - **Find** by searching the text or filtering by tag.
@@ -77,9 +78,22 @@ nuggets pulls straight away, then on that interval and whenever you press **Sync
 
 If spices is ever recreated or restored from a backup, the section says *spices was reset or restored; press Re-sync* and stops pulling. **Re-sync** keeps every nugget that came from spices (set aside as detached, edits intact) and pulls everything in spices again; ideas that survived the reset then appear twice. Nothing is deleted either way. Changing the address once something has been pulled does the same — *spices address changed; press Re-sync* — because the new address may be a different spices whose ids mean different ideas. The reasoning is in [`docs/superpowers/specs/2026-09-26-spices-pull-design.md`](docs/superpowers/specs/2026-09-26-spices-pull-design.md).
 
+## Feature requests on GitHub
+
+A nugget that gets the tag `nuggets`, when it's created or imported from spices or when an edit adds the tag, becomes a feature-request issue on [Jarrod-Bob/nuggets](https://github.com/Jarrod-Bob/nuggets). The issue follows the repository's feature-request template: the nugget's title, its notes as the proposed solution, and its tags, origin and captured date. Each nugget gets one issue per repository, ever. A nugget with the same title and notes as one that already has a request (say, after a spices Re-sync imports your ideas again) shares that issue instead of opening another. Removing the tag or binning the nugget later leaves the issue alone, and an edit that doesn't add the tag sends nothing.
+
+To set it up:
+
+1. On GitHub, go to **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+2. Under **Repository access**, choose **Only select repositories** and pick the repositories you map tags to (`Jarrod-Bob/nuggets` by default).
+3. Under **Permissions → Repository permissions**, set **Issues** to **Read and write**. Leave everything else as it is: no other permission is needed. (GitHub adds read-only Metadata by itself.) Read access is used to check for an issue that was already created before sending again.
+4. In nuggets, open **Settings** (top bar), find the **GitHub** section, paste the token and **Connect**.
+
+Ideas tagged before a token is saved wait in a queue and go out once one is saved. Each nugget's page shows **Feature request #N**, linked to the issue, once it exists. While it waits, the page says it's queued. If GitHub refused it (a missing repository, or a token that can't reach it), the page shows the error and a **Retry** button. A rejected token stops all sending until you save a new one, and rate limits and outages are retried by themselves. **Change** edits which tag goes to which repository (for example `spices` → `Jarrod-Bob/spices`). Like the spices token, the GitHub token is stored in `nuggets.db` and never shown again. The reasoning is in [`docs/superpowers/specs/2026-09-28-tag-to-github-issue-design.md`](docs/superpowers/specs/2026-09-28-tag-to-github-issue-design.md).
+
 ## Live updates
 
-The page keeps one server-sent event stream open, `GET /api/events`. After a background import commits, the server sends `ideas-changed`, once per sync pass and never once per nugget. When the spices status changes (the last sync time, an error, needs-resync), it sends `spices-status`. An event carries no data: the page just refetches whatever it is showing. The page also refetches when the tab becomes visible again or the stream reconnects, in case it missed an event while the laptop slept or the server restarted. A hidden tab closes its stream and reopens it when shown, because the server speaks plain HTTP/1.1 and browsers allow only about six connections per host: with six or more nuggets tabs visible at once, the streams can still use up every connection and stall API requests until one closes. The server side is `internal/events` and `internal/httpapi/events.go`; the page side is `web/src/live/LiveUpdates.tsx`.
+The page keeps one server-sent event stream open, `GET /api/events`. After a background import commits, the server sends `ideas-changed`, once per sync pass and never once per nugget. When the spices status changes (the last sync time, an error, needs-resync), it sends `spices-status`. When a GitHub feature request is created, fails or waits to retry, or the GitHub status changes, it sends `github-changed`. An event carries no data: the page just refetches whatever it is showing. The page also refetches when the tab becomes visible again or the stream reconnects, in case it missed an event while the laptop slept or the server restarted. A hidden tab closes its stream and reopens it when shown, because the server speaks plain HTTP/1.1 and browsers allow only about six connections per host: with six or more nuggets tabs visible at once, the streams can still use up every connection and stall API requests until one closes. The server side is `internal/events` and `internal/httpapi/events.go`; the page side is `web/src/live/LiveUpdates.tsx`.
 
 ## Stack
 

@@ -9,7 +9,8 @@ import { IdeaForm, type IdeaDraft } from '../components/nuggets/IdeaForm';
 import { Main } from '../components/Shell';
 import { ActionError } from '../components/feedback/ActionError';
 import { iconArrowLeft, iconPencil } from '../components/icons';
-import { api, ApiError, type Idea } from '../api';
+import { FeatureRequests } from '../components/nuggets/FeatureRequests';
+import { api, ApiError, type FeatureRequest, type Idea } from '../api';
 import { formatRelative } from '../lib/formatRelative';
 import { describeOrigin } from '../lib/origin';
 import { parseNuggetId } from '../routing/nuggetPath';
@@ -57,6 +58,29 @@ export function NuggetPage() {
   }, [id]);
   React.useEffect(() => reload(), [reload]);
 
+  // The nugget's GitHub feature requests, fetched alongside it. A failed fetch
+  // keeps whatever was showing: this line is secondary to the nugget itself.
+  const [requests, setRequests] = React.useState<FeatureRequest[]>([]);
+  const [retrying, setRetrying] = React.useState<number | null>(null);
+  const reloadRequests = React.useCallback(() => {
+    if (id === null) return;
+    let live = true;
+    api.github
+      .issues(id)
+      .then((list) => {
+        if (live && Array.isArray(list)) setRequests(list);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [id]);
+  React.useEffect(() => reloadRequests(), [reloadRequests]);
+  // The sender says when a request was created, failed or is waiting to retry.
+  useLiveRefresh('github-changed', () => {
+    reloadRequests();
+  });
+
   // The pencil in the list navigates here with ?edit=1 to open editing straight
   // away; a plain open starts in view mode. Read once — the toggle is local from
   // then on.
@@ -72,6 +96,8 @@ export function NuggetPage() {
     'ideas-changed',
     () => {
       reload();
+      // A spices import that tagged this nugget may have queued a request.
+      reloadRequests();
     },
     { hold: editing && formDirty },
   );
@@ -90,8 +116,22 @@ export function NuggetPage() {
         setActionError(undefined);
         refreshTags();
         reload();
+        // Adding a mapped tag queues a feature request.
+        reloadRequests();
       })
       .catch((err) => setFormError(describeError(err)));
+  };
+
+  const retryRequest = (requestId: number) => {
+    setRetrying(requestId);
+    api.github
+      .retry(requestId)
+      .then(() => {
+        setActionError(undefined);
+        reloadRequests();
+      })
+      .catch((err) => setActionError(describeError(err)))
+      .finally(() => setRetrying(null));
   };
 
   const archiveIdea = () => {
@@ -220,6 +260,8 @@ export function NuggetPage() {
                 {idea.notes}
               </p>
             )}
+
+            <FeatureRequests requests={requests} onRetry={retryRequest} retrying={retrying} />
 
             {/*
               Seam for an adjacent issue, deliberately left open here: status and

@@ -121,6 +121,47 @@ export interface SpicesSettingsUpdate {
   interval_seconds?: number;
 }
 
+/** Mirrors internal/github.Mapping: nuggets that gain `tag` become feature requests on `repo` ("owner/repo"). */
+export interface GitHubMapping {
+  tag: string;
+  repo: string;
+}
+
+/** Mirrors internal/httpapi's githubStatus. The token is write-only: the server never returns it. */
+export interface GitHubStatus {
+  connected: boolean;
+  mappings: GitHubMapping[];
+  last_error?: string;
+  /** Feature requests waiting to be sent (including while no token is saved). */
+  pending: number;
+  /** Feature requests GitHub refused; each waits for a Retry on its nugget's page. */
+  failed: number;
+}
+
+/** PUT /api/settings/github. Both optional; a present mappings list replaces the whole mapping. */
+export interface GitHubSettingsUpdate {
+  token?: string;
+  mappings?: GitHubMapping[];
+}
+
+/** Mirrors internal/github.State. 'sending' is a POST in flight; the page treats it as pending. */
+export type FeatureRequestState = 'pending' | 'sending' | 'created' | 'failed';
+
+/** Mirrors internal/github.Issue: one nugget's feature request on one repository. */
+export interface FeatureRequest {
+  id: number;
+  idea_id: number;
+  repo: string;
+  tag: string;
+  state: FeatureRequestState;
+  attempts: number;
+  last_error?: string;
+  /** The issue number, once created. */
+  number?: number;
+  /** The issue's page on GitHub, once created. */
+  url?: string;
+}
+
 export const api = {
   list: (filter: ListFilter = {}) => request<Idea[]>(`/api/ideas${query(filter)}`),
   get: (id: number) => request<Idea>(`/api/ideas/${id}`),
@@ -148,5 +189,14 @@ export const api = {
     disconnect: () => request<void>('/api/settings/spices', { method: 'DELETE' }),
     sync: () => request<void>('/api/spices/sync', { method: 'POST' }),
     resync: () => request<SpicesStatus>('/api/spices/resync', { method: 'POST' }),
+  },
+  github: {
+    status: () => request<GitHubStatus>('/api/settings/github'),
+    save: (update: GitHubSettingsUpdate) =>
+      request<GitHubStatus>('/api/settings/github', { method: 'PUT', body: JSON.stringify(update) }),
+    disconnect: () => request<void>('/api/settings/github', { method: 'DELETE' }),
+    /** A nugget's feature requests; [] when it has none. */
+    issues: (ideaId: number) => request<FeatureRequest[]>(`/api/ideas/${ideaId}/github-issues`),
+    retry: (id: number) => request<FeatureRequest>(`/api/github-issues/${id}/retry`, { method: 'POST' }),
   },
 };

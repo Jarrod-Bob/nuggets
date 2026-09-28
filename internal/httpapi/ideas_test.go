@@ -12,6 +12,7 @@ import (
 
 	"github.com/Jarrod-Bob/nuggets/internal/db"
 	"github.com/Jarrod-Bob/nuggets/internal/events"
+	"github.com/Jarrod-Bob/nuggets/internal/github"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 	"github.com/Jarrod-Bob/nuggets/internal/spices"
@@ -39,8 +40,11 @@ func newTestServer(t *testing.T) http.Handler {
 		w.Write([]byte("<html><body>stub spa</body></html>"))
 	})
 	settingsStore := settings.NewStore(database)
-	syncer := spices.NewSyncer(idea.NewStore(database), settingsStore)
-	return NewServer(idea.NewStore(database), settingsStore, syncer, events.NewBroker(), stubFrontend)
+	outbox := github.NewOutbox(database, settingsStore)
+	ideaStore := idea.NewStore(database, idea.WithTagsAdded(outbox.TagsAdded))
+	syncer := spices.NewSyncer(ideaStore, settingsStore)
+	sender := github.NewSender(outbox, ideaStore, settingsStore)
+	return NewServer(ideaStore, settingsStore, syncer, sender, events.NewBroker(), stubFrontend)
 }
 
 func do(t *testing.T, srv http.Handler, method, target string, body any) *httptest.ResponseRecorder {

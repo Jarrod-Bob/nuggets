@@ -55,7 +55,7 @@ func (s *Store) ApplySynced(ctx context.Context, source string, items []SyncedIt
 	defer tx.Rollback()
 
 	for _, item := range items {
-		if err := applySyncedItem(ctx, tx, source, item, &result); err != nil {
+		if err := s.applySyncedItem(ctx, tx, source, item, &result); err != nil {
 			return SyncResult{}, fmt.Errorf("applying %s item %s: %w", source, item.Ref, err)
 		}
 	}
@@ -70,7 +70,7 @@ func (s *Store) ApplySynced(ctx context.Context, source string, items []SyncedIt
 	return result, nil
 }
 
-func applySyncedItem(ctx context.Context, tx *sql.Tx, source string, item SyncedItem, result *SyncResult) error {
+func (s *Store) applySyncedItem(ctx context.Context, tx *sql.Tx, source string, item SyncedItem, result *SyncResult) error {
 	title := strings.TrimSpace(item.Title)
 
 	var (
@@ -102,7 +102,11 @@ func applySyncedItem(ctx context.Context, tx *sql.Tx, source string, item Synced
 		if err != nil {
 			return fmt.Errorf("reading new id: %w", err)
 		}
-		if err := upsertTags(ctx, tx, newID, normalizeTagSet(item.Tags)); err != nil {
+		tags := normalizeTagSet(item.Tags)
+		if err := upsertTags(ctx, tx, newID, tags); err != nil {
+			return err
+		}
+		if err := s.notifyTagsAdded(ctx, tx, newID, nil, tags); err != nil {
 			return err
 		}
 		result.Created++
@@ -151,10 +155,18 @@ func applySyncedItem(ctx context.Context, tx *sql.Tx, source string, item Synced
 	); err != nil {
 		return fmt.Errorf("refreshing: %w", err)
 	}
+	before, err := loadTags(ctx, tx, id)
+	if err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM idea_tags WHERE idea_id = ?`, id); err != nil {
 		return fmt.Errorf("clearing tags: %w", err)
 	}
-	if err := upsertTags(ctx, tx, id, normalizeTagSet(item.Tags)); err != nil {
+	after := normalizeTagSet(item.Tags)
+	if err := upsertTags(ctx, tx, id, after); err != nil {
+		return err
+	}
+	if err := s.notifyTagsAdded(ctx, tx, id, before, after); err != nil {
 		return err
 	}
 	result.Updated++
