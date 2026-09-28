@@ -61,7 +61,7 @@ Migration `00006_github_issues.sql` adds `github_issues`: `idea_id`, `repo` (`CO
 For each due `pending` or `sending` row, in order:
 
 1. If `attempts > 0`, an earlier POST may have landed (a crash between the POST and recording it, or a timeout after GitHub processed it). List the repository's issues updated since the first attempt (`GET /repos/{o}/{r}/issues?state=all&since=…`, up to five pages) and look for the row's marker, `<!-- nuggets:nugget-id=123 key=… -->`. A match is recorded as created without posting.
-2. Mark the row `sending` and increment `attempts` (committed before the POST).
+2. Mark the row `sending` and increment `attempts` (committed before the POST). The update only applies if the row is still as the pass read it (same state, attempts and marker, not linked). If the row was purged or handed over in the meantime, nothing is posted and the next pass reads it again.
 3. `POST /repos/{owner}/{repo}/issues` with `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28` and the token as a bearer header. The base URL defaults to `https://api.github.com` and is an option only tests change.
 
 Outcomes:
