@@ -16,6 +16,7 @@ import (
 
 	"github.com/Jarrod-Bob/nuggets/internal/db"
 	"github.com/Jarrod-Bob/nuggets/internal/events"
+	"github.com/Jarrod-Bob/nuggets/internal/github"
 	"github.com/Jarrod-Bob/nuggets/internal/httpapi"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
@@ -72,10 +73,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	ideaStore := idea.NewStore(database)
 	settingsStore := settings.NewStore(database)
-	// The spices pull loop announces what it changed here, and GET /api/events
-	// passes it on to open pages so they refetch without a reload.
+	// A nugget that gains a mapped tag queues a GitHub feature request in the
+	// same transaction as the write that added it
+	// (docs/superpowers/specs/2026-09-28-tag-to-github-issue-design.md).
+	outbox := github.NewOutbox(database, settingsStore)
+	ideaStore := idea.NewStore(database, idea.WithTagsAdded(outbox.TagsAdded))
+	// The spices pull loop and the GitHub sender announce what they changed
+	// here, and GET /api/events passes it on to open pages so they refetch
+	// without a reload.
 	broker := events.NewBroker()
 
 	// The spices pull loop, the only way ideas arrive from outside the app
@@ -87,8 +93,14 @@ func main() {
 	syncer := spices.NewSyncer(ideaStore, settingsStore, spices.WithEvents(broker))
 	go syncer.Loop(ctx)
 
+	// The only caller of GitHub: sends queued feature requests at startup,
+	// whenever one is queued or retried, and when a backoff runs out. With no
+	// token it parks and the queue waits.
+	sender := github.NewSender(outbox, ideaStore, settingsStore, github.WithEvents(broker))
+	go sender.Loop(ctx)
+
 	server := &http.Server{
-		Handler:           httpapi.NewServer(ideaStore, settingsStore, syncer, broker, frontend),
+		Handler:           httpapi.NewServer(ideaStore, settingsStore, syncer, sender, broker, frontend),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	// Shutdown waits for handlers to return, and an event stream only

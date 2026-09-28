@@ -1,7 +1,8 @@
 // Package events tells open browser tabs that something changed in the
 // background, so they refetch instead of waiting for a reload. Importers
 // publish a small named Event after their writes commit; the Broker fans it
-// out to every GET /api/events stream (internal/httpapi/events.go). An event
+// out to every GET /api/events stream (internal/httpapi/events.go). The
+// GitHub sender publishes the same way when a feature request lands. An event
 // carries no data: the page refetches what it shows through the regular API.
 package events
 
@@ -18,6 +19,9 @@ const (
 	// SpicesStatus means the spices status shown in settings changed: the
 	// last sync time, the last error, or needs-resync.
 	SpicesStatus Event = "spices-status"
+	// GitHubChanged means a nugget's feature request was created, failed or
+	// is waiting to retry, or the GitHub status shown in settings changed.
+	GitHubChanged Event = "github-changed"
 )
 
 // Publisher is what an importer needs to announce a change. Publish must

@@ -1,5 +1,5 @@
 // Package settings stores small app-level key/value preferences — the spices
-// integration's state — in the settings table added by migration 00003. It is
+// and GitHub integrations' state — in the settings table added by migration 00003. It is
 // deliberately dumb: no validation, no defaults beyond "missing", so every
 // caller decides for itself what an absent key means.
 package settings
@@ -24,8 +24,23 @@ func NewStore(database *sql.DB) *Store {
 // Get returns the value for key and true, or "" and false if the row is
 // missing.
 func (s *Store) Get(ctx context.Context, key string) (string, bool, error) {
+	return get(ctx, s.db, key)
+}
+
+// GetTx is Get inside a caller's transaction. Code already holding a
+// transaction must read through it: the database has one connection, so a
+// plain Get would wait for the transaction forever.
+func (s *Store) GetTx(ctx context.Context, tx *sql.Tx, key string) (string, bool, error) {
+	return get(ctx, tx, key)
+}
+
+type rowQuerier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+func get(ctx context.Context, q rowQuerier, key string) (string, bool, error) {
 	var value string
-	err := s.db.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = ?`, key).Scan(&value)
+	err := q.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = ?`, key).Scan(&value)
 	if err == sql.ErrNoRows {
 		return "", false, nil
 	}

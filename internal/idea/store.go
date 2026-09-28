@@ -13,10 +13,57 @@ import (
 // adding user accounts later is a WHERE clause in one file (spec §9.2).
 type Store struct {
 	db *sql.DB
+	// tagsAdded, when set, runs inside every transaction that adds tags to a
+	// nugget. See WithTagsAdded.
+	tagsAdded TagsAddedFunc
 }
 
-func NewStore(database *sql.DB) *Store {
-	return &Store{db: database}
+// TagsAddedFunc is told, inside the transaction of the write, which tags a
+// write added to a nugget: every tag on create or import, and only the new
+// ones on an edit or a sync refresh. It is never called with an empty set.
+// Returning an error rolls the whole write back. It must do its reads and
+// writes through tx: the database has one connection, so anything else waits
+// for the transaction forever.
+type TagsAddedFunc func(ctx context.Context, tx *sql.Tx, ideaID int64, added []string) error
+
+// StoreOption configures a Store.
+type StoreOption func(*Store)
+
+// WithTagsAdded runs fn whenever a write adds tags to a nugget, in the same
+// transaction — how internal/github queues a feature request without a save
+// ever waiting on GitHub.
+func WithTagsAdded(fn TagsAddedFunc) StoreOption {
+	return func(s *Store) { s.tagsAdded = fn }
+}
+
+func NewStore(database *sql.DB, opts ...StoreOption) *Store {
+	s := &Store{db: database}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+// notifyTagsAdded runs the TagsAddedFunc for the tags in after that were not
+// in before. Both sets are normalized.
+func (s *Store) notifyTagsAdded(ctx context.Context, tx *sql.Tx, ideaID int64, before, after []string) error {
+	if s.tagsAdded == nil {
+		return nil
+	}
+	had := make(map[string]bool, len(before))
+	for _, t := range before {
+		had[t] = true
+	}
+	var added []string
+	for _, t := range after {
+		if !had[t] {
+			added = append(added, t)
+		}
+	}
+	if len(added) == 0 {
+		return nil
+	}
+	return s.tagsAdded(ctx, tx, ideaID, added)
 }
 
 // Create inserts an idea and its tags in one transaction. Unlike Update, Create
@@ -77,6 +124,9 @@ func (s *Store) Create(ctx context.Context, draft Draft) (*Idea, error) {
 	}
 
 	if err := upsertTags(ctx, tx, id, tags); err != nil {
+		return nil, err
+	}
+	if err := s.notifyTagsAdded(ctx, tx, id, nil, tags); err != nil {
 		return nil, err
 	}
 	if err := insertLinks(ctx, tx, id, links); err != nil {
