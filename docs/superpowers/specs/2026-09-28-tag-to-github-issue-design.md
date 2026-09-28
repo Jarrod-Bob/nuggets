@@ -15,6 +15,7 @@ Ideas about nuggets itself turn up the same way as every other idea: texted to s
 - Each (nugget, repository) pair gets **at most one issue, ever**. A unique index on the outbox enforces it, across restarts and retries.
 - Removing the tag, archiving or purging the nugget later does nothing to an issue that already exists. Purging a nugget whose issue hasn't been sent yet drops the queued row (`ON DELETE CASCADE`).
 - An edit that doesn't add a mapped tag triggers nothing, including an edit of a nugget that had the tag before this feature (or before the mapping) existed. There is no backfill.
+- **The same idea is never filed twice.** A spices Re-sync detaches the old nuggets and imports every idea again as new nuggets, so a `#nuggets` idea would otherwise get a second issue. Before queueing, if *another* nugget with the same title **and** the same notes already has a request on that repository in state `pending`, `sending` or `created`, the new nugget links to that request instead: its page shows the same "Feature request #N" (or the queued state until it exists), and Retry on it retries the original. Titles and notes are compared after trimming, case-folding and collapsing runs of whitespace to one space. Title alone never matches, so two different ideas that share a title each get an issue. A `failed` original doesn't count as a match: the new nugget gets its own request, since the original may never be retried.
 - The default mapping is `nuggets` → `Jarrod-Bob/nuggets`. More tags can point at other repositories later (say `spices` → `Jarrod-Bob/spices`).
 
 ## 3. Configuration
@@ -45,9 +46,11 @@ With no token, matches still queue and are sent once a token is added.
 
 ## 4. The outbox
 
-Migration `00006_github_issues.sql` adds `github_issues`: `idea_id`, `repo` (`COLLATE NOCASE`, unique with `idea_id`), `tag`, `state`, `attempts`, `last_error`, `next_attempt_at`, `sent_at`, `idempotency_key` (random, set on insert), `issue_number`, `issue_url`.
+Migration `00006_github_issues.sql` adds `github_issues`: `idea_id`, `repo` (`COLLATE NOCASE`, unique with `idea_id`), `tag`, `state`, `attempts`, `last_error`, `next_attempt_at`, `sent_at`, `idempotency_key` (random, set on insert), `issue_number`, `issue_url`, `linked_to`.
 
-**Enqueue.** `idea.Store` takes a `WithTagsAdded` hook that runs inside the same transaction as the nugget write (`Create`, `Update` with tags, `ApplySynced` insert or refresh) and receives only the newly added tags. `github.Outbox.TagsAdded` reads the mapping through that transaction and inserts `ON CONFLICT DO NOTHING`. No network call happens in a save or a spices page. The hook reads through the transaction because the database has a single connection: a read outside it would deadlock.
+**Links.** `linked_to` points a nugget's row at the original row it shares a request with (§2); it always points at a row that isn't itself linked. A linked row is never sent and isn't counted in `pending`/`failed`; the nugget's feature-request list reports the original's state, attempts, error, number and URL for it. The per-(nugget, repo) unique index still holds. If the original row is deleted (its nugget purged), a trigger hands its state, number and URL to the oldest linked row and re-points the rest at it, so the survivors keep the issue and nothing is sent again.
+
+**Enqueue.** `idea.Store` takes a `WithTagsAdded` hook that runs inside the same transaction as the nugget write (`Create`, `Update` with tags, `ApplySynced` insert or refresh) and receives only the newly added tags. `github.Outbox.TagsAdded` reads the mapping, and the nugget's title and notes for the same-idea match, through that transaction and inserts `ON CONFLICT DO NOTHING`. No network call happens in a save or a spices page. The hook reads through the transaction because the database has a single connection: a read outside it would deadlock.
 
 **States.** `pending` → `sending` → `created`, or `failed`.
 
@@ -95,4 +98,4 @@ No local URL (the nugget page lives on `127.0.0.1`), no link list, and no secret
 
 ## 8. Tests
 
-All against an `httptest` fake GitHub; nothing calls the real API. They cover the request shape, the crash-between-POST-and-record case, the triggers (create, import, edit adding the tag, and no trigger on unrelated edits), backoff, the 401 park, the 422 label fallback, the token never reaching a response or the log, and mapping validation. Vitest covers the settings section and the nugget page's link and states.
+All against an `httptest` fake GitHub; nothing calls the real API. They cover the request shape, the crash-between-POST-and-record case, a spices Re-sync opening no second issue (and same title with different notes still getting one), the triggers (create, import, edit adding the tag, and no trigger on unrelated edits), backoff, the 401 park, the 422 label fallback, the token never reaching a response or the log, and mapping validation. Vitest covers the settings section and the nugget page's link and states.

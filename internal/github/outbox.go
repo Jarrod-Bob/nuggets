@@ -12,6 +12,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
@@ -42,7 +43,8 @@ var (
 )
 
 // Issue is one row of the outbox: one nugget's feature request on one
-// repository.
+// repository. A row linked to another nugget's request (see TagsAdded)
+// reports that request's state, attempts, error, number and URL.
 type Issue struct {
 	ID        int64   `json:"id"`
 	IdeaID    int64   `json:"idea_id"`
@@ -84,6 +86,11 @@ func (o *Outbox) Wake() {
 // one for the repository — then nothing, ever (the unique index). It runs
 // inside the nugget write's transaction and never calls GitHub.
 //
+// When another nugget with the same title and notes (see sameIdea) already
+// has a pending, sending or created request on the repository — typically
+// the copy a spices Re-sync left behind — the new row links to that request
+// instead of opening a second issue.
+//
 // It wakes the Sender before the transaction commits. That is harmless: the
 // database has a single connection, so the Sender's pass can only read once
 // the write has committed or rolled back.
@@ -103,15 +110,19 @@ func (o *Outbox) TagsAdded(ctx context.Context, tx *sql.Tx, ideaID int64, added 
 		if !ok {
 			continue
 		}
+		original, err := findSameIdea(ctx, tx, ideaID, repo)
+		if err != nil {
+			return err
+		}
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO github_issues (idea_id, repo, tag, state, idempotency_key, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, lower(hex(randomblob(16))), ?, ?)
+			`INSERT INTO github_issues (idea_id, repo, tag, state, idempotency_key, linked_to, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, lower(hex(randomblob(16))), ?, ?, ?)
 			 ON CONFLICT(idea_id, repo) DO NOTHING`,
-			ideaID, repo, tag, string(StatePending), now, now)
+			ideaID, repo, tag, string(StatePending), original, now, now)
 		if err != nil {
 			return fmt.Errorf("queueing feature request for %s: %w", repo, err)
 		}
-		if n, _ := res.RowsAffected(); n > 0 {
+		if n, _ := res.RowsAffected(); n > 0 && original == nil {
 			queued = true
 		}
 	}
@@ -121,7 +132,52 @@ func (o *Outbox) TagsAdded(ctx context.Context, tx *sql.Tx, ideaID int64, added 
 	return nil
 }
 
-const issueColumns = `id, idea_id, repo, tag, state, attempts, last_error, next_attempt_at, sent_at, idempotency_key, issue_number, issue_url`
+// findSameIdea returns the id of another nugget's pending, sending or
+// created request on repo whose nugget has the same title and notes as
+// ideaID, or nil when there is none. A failed request doesn't count: the
+// new nugget gets its own chance.
+func findSameIdea(ctx context.Context, tx *sql.Tx, ideaID int64, repo string) (*int64, error) {
+	var title, notes string
+	if err := tx.QueryRowContext(ctx, `SELECT title, notes FROM ideas WHERE id = ?`, ideaID).Scan(&title, &notes); err != nil {
+		return nil, fmt.Errorf("loading nugget %d: %w", ideaID, err)
+	}
+	rows, err := tx.QueryContext(ctx,
+		`SELECT g.id, i.title, i.notes FROM github_issues g JOIN ideas i ON i.id = g.idea_id
+		 WHERE g.repo = ? AND g.idea_id <> ? AND g.linked_to IS NULL AND g.state IN (?, ?, ?)
+		 ORDER BY g.id`,
+		repo, ideaID, string(StatePending), string(StateSending), string(StateCreated))
+	if err != nil {
+		return nil, fmt.Errorf("looking for the same idea on %s: %w", repo, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			id                     int64
+			otherTitle, otherNotes string
+		)
+		if err := rows.Scan(&id, &otherTitle, &otherNotes); err != nil {
+			return nil, fmt.Errorf("scanning feature request: %w", err)
+		}
+		if sameIdea(title, otherTitle) && sameIdea(notes, otherNotes) {
+			return &id, nil
+		}
+	}
+	return nil, rows.Err()
+}
+
+// sameIdea compares two titles or two notes ignoring case, leading and
+// trailing space, and how long each run of whitespace is.
+func sameIdea(a, b string) bool {
+	return strings.EqualFold(strings.Join(strings.Fields(a), " "), strings.Join(strings.Fields(b), " "))
+}
+
+// issueColumns reads a row as it is shown: a linked row's own id, nugget,
+// repository and tag, with its original's request state.
+const issueColumns = `g.id, g.idea_id, g.repo, g.tag, e.state, e.attempts, e.last_error, e.next_attempt_at, e.sent_at, e.idempotency_key, e.issue_number, e.issue_url`
+
+// issueFrom joins each row (g) to the row whose request it shows (e): itself,
+// or the original it links to.
+const issueFrom = ` FROM github_issues g JOIN github_issues e ON e.id = COALESCE(g.linked_to, g.id)`
 
 type rowScanner interface {
 	Scan(dest ...any) error
@@ -161,7 +217,7 @@ func scanIssue(row rowScanner) (Issue, error) {
 // ForIdea returns a nugget's feature requests, oldest first. Never nil.
 func (o *Outbox) ForIdea(ctx context.Context, ideaID int64) ([]Issue, error) {
 	rows, err := o.db.QueryContext(ctx,
-		`SELECT `+issueColumns+` FROM github_issues WHERE idea_id = ? ORDER BY id`, ideaID)
+		`SELECT `+issueColumns+issueFrom+` WHERE g.idea_id = ? ORDER BY g.id`, ideaID)
 	if err != nil {
 		return nil, fmt.Errorf("loading feature requests: %w", err)
 	}
@@ -180,7 +236,7 @@ func (o *Outbox) ForIdea(ctx context.Context, ideaID int64) ([]Issue, error) {
 // Get loads one row.
 func (o *Outbox) Get(ctx context.Context, id int64) (Issue, error) {
 	is, err := scanIssue(o.db.QueryRowContext(ctx,
-		`SELECT `+issueColumns+` FROM github_issues WHERE id = ?`, id))
+		`SELECT `+issueColumns+issueFrom+` WHERE g.id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return Issue{}, ErrIssueNotFound
 	}
@@ -192,11 +248,11 @@ func (o *Outbox) Get(ctx context.Context, id int64) (Issue, error) {
 
 // Retry puts a failed row back in the queue and wakes the Sender. attempts
 // is kept, so if any earlier POST might have landed the Sender still looks
-// for it first.
+// for it first. Retrying a linked row retries the original it links to.
 func (o *Outbox) Retry(ctx context.Context, id int64) (Issue, error) {
 	res, err := o.db.ExecContext(ctx,
 		`UPDATE github_issues SET state = ?, last_error = '', next_attempt_at = NULL, updated_at = ?
-		 WHERE id = ? AND state = ?`,
+		 WHERE id = (SELECT COALESCE(linked_to, id) FROM github_issues WHERE id = ?) AND state = ?`,
 		string(StatePending), time.Now().UTC(), id, string(StateFailed))
 	if err != nil {
 		return Issue{}, fmt.Errorf("retrying feature request: %w", err)
@@ -211,13 +267,15 @@ func (o *Outbox) Retry(ctx context.Context, id int64) (Issue, error) {
 	return o.Get(ctx, id)
 }
 
-// Counts reports how many rows are waiting to be sent and how many failed.
+// Counts reports how many requests are waiting to be sent and how many
+// failed. Linked rows share their original's request, so they aren't
+// counted again.
 func (o *Outbox) Counts(ctx context.Context) (pending, failed int, err error) {
 	err = o.db.QueryRowContext(ctx,
 		`SELECT
 		   COALESCE(SUM(CASE WHEN state IN (?, ?) THEN 1 ELSE 0 END), 0),
 		   COALESCE(SUM(CASE WHEN state = ? THEN 1 ELSE 0 END), 0)
-		 FROM github_issues`,
+		 FROM github_issues WHERE linked_to IS NULL`,
 		string(StatePending), string(StateSending), string(StateFailed),
 	).Scan(&pending, &failed)
 	if err != nil {
@@ -227,12 +285,12 @@ func (o *Outbox) Counts(ctx context.Context) (pending, failed int, err error) {
 }
 
 // nextDue returns the queued row to send next — the one due longest — or
-// false when none is due at now.
+// false when none is due at now. Linked rows are never sent.
 func (o *Outbox) nextDue(ctx context.Context, now time.Time) (Issue, bool, error) {
 	is, err := scanIssue(o.db.QueryRowContext(ctx,
-		`SELECT `+issueColumns+` FROM github_issues
-		 WHERE state IN (?, ?) AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
-		 ORDER BY COALESCE(next_attempt_at, created_at), id
+		`SELECT `+issueColumns+issueFrom+`
+		 WHERE g.linked_to IS NULL AND g.state IN (?, ?) AND (g.next_attempt_at IS NULL OR g.next_attempt_at <= ?)
+		 ORDER BY COALESCE(g.next_attempt_at, g.created_at), g.id
 		 LIMIT 1`,
 		string(StatePending), string(StateSending), now))
 	if errors.Is(err, sql.ErrNoRows) {
@@ -250,7 +308,7 @@ func (o *Outbox) earliestDue(ctx context.Context) (*time.Time, error) {
 	var at sql.NullTime
 	err := o.db.QueryRowContext(ctx,
 		`SELECT next_attempt_at FROM github_issues
-		 WHERE state IN (?, ?) AND next_attempt_at IS NOT NULL
+		 WHERE linked_to IS NULL AND state IN (?, ?) AND next_attempt_at IS NOT NULL
 		 ORDER BY next_attempt_at LIMIT 1`,
 		string(StatePending), string(StateSending)).Scan(&at)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && !at.Valid) {

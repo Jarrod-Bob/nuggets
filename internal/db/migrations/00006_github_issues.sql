@@ -26,6 +26,11 @@ CREATE TABLE github_issues (
     idempotency_key TEXT NOT NULL,
     issue_number    INTEGER,
     issue_url       TEXT,
+    -- Set when another nugget with the same title and notes already had a
+    -- request on this repository (a spices Re-sync importing an idea again):
+    -- this row is never sent and shows the original row's state instead.
+    -- Always points at a row whose own linked_to is NULL.
+    linked_to       INTEGER REFERENCES github_issues(id),
     created_at      TIMESTAMP NOT NULL,
     updated_at      TIMESTAMP NOT NULL
 );
@@ -34,6 +39,27 @@ CREATE TABLE github_issues (
 -- idempotency. Enqueueing is INSERT ... ON CONFLICT DO NOTHING against it.
 CREATE UNIQUE INDEX idx_github_issues_idea_repo ON github_issues(idea_id, repo);
 CREATE INDEX idx_github_issues_due ON github_issues(state, next_attempt_at);
+CREATE INDEX idx_github_issues_linked_to ON github_issues(linked_to);
+
+-- Deleting a row others link to (purging its nugget) hands its request to
+-- the oldest linked row, which the rest then link to, so the surviving
+-- nuggets keep the issue and it is never opened a second time.
+-- +goose StatementBegin
+CREATE TRIGGER github_issues_hand_over BEFORE DELETE ON github_issues
+WHEN EXISTS (SELECT 1 FROM github_issues WHERE linked_to = OLD.id)
+BEGIN
+    UPDATE github_issues
+    SET linked_to = (SELECT MIN(id) FROM github_issues WHERE linked_to = OLD.id)
+    WHERE linked_to = OLD.id
+      AND id <> (SELECT MIN(id) FROM github_issues WHERE linked_to = OLD.id);
+    UPDATE github_issues
+    SET state = OLD.state, attempts = OLD.attempts, last_error = OLD.last_error,
+        next_attempt_at = OLD.next_attempt_at, sent_at = OLD.sent_at,
+        idempotency_key = OLD.idempotency_key, issue_number = OLD.issue_number,
+        issue_url = OLD.issue_url, linked_to = NULL, updated_at = OLD.updated_at
+    WHERE linked_to = OLD.id;
+END;
+-- +goose StatementEnd
 
 -- +goose Down
 DROP TABLE github_issues;

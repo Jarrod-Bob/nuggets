@@ -80,7 +80,7 @@ If spices is ever recreated or restored from a backup, the section says *spices 
 
 ## Feature requests on GitHub
 
-A nugget that gets the tag `nuggets`, when it's created or imported from spices or when an edit adds the tag, becomes a feature-request issue on [Jarrod-Bob/nuggets](https://github.com/Jarrod-Bob/nuggets). The issue follows the repository's feature-request template: the nugget's title, its notes as the proposed solution, and its tags, origin and captured date. Each nugget gets one issue per repository, ever. Removing the tag or binning the nugget later leaves the issue alone, and an edit that doesn't add the tag sends nothing.
+A nugget that gets the tag `nuggets`, when it's created or imported from spices or when an edit adds the tag, becomes a feature-request issue on [Jarrod-Bob/nuggets](https://github.com/Jarrod-Bob/nuggets). The issue follows the repository's feature-request template: the nugget's title, its notes as the proposed solution, and its tags, origin and captured date. Each nugget gets one issue per repository, ever. A nugget with the same title and notes as one that already has a request (say, after a spices Re-sync imports your ideas again) shares that issue instead of opening another. Removing the tag or binning the nugget later leaves the issue alone, and an edit that doesn't add the tag sends nothing.
 
 To set it up:
 
