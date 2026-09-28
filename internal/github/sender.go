@@ -216,7 +216,10 @@ func (s *Sender) send(ctx context.Context, client *Client, cfg Config, row Issue
 	if err != nil {
 		return err
 	}
-	marker := Marker(row.IdeaID, row.key)
+	marker := row.marker
+	if marker == "" {
+		marker = Marker(row.IdeaID, row.key)
+	}
 
 	if row.Attempts > 0 {
 		since := time.Now()
@@ -234,7 +237,7 @@ func (s *Sender) send(ctx context.Context, client *Client, cfg Config, row Issue
 		}
 	}
 
-	if err := s.outbox.markSending(ctx, row.ID); err != nil {
+	if err := s.outbox.markSending(ctx, row.ID, marker); err != nil {
 		return err
 	}
 	row.Attempts++

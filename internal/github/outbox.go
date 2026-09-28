@@ -59,6 +59,8 @@ type Issue struct {
 	nextAttemptAt *time.Time
 	sentAt        *time.Time
 	key           string
+	// marker is the one the first POST embedded, "" before any.
+	marker string
 }
 
 // Outbox reads and writes the github_issues table (migration 00006).
@@ -173,7 +175,7 @@ func sameIdea(a, b string) bool {
 
 // issueColumns reads a row as it is shown: a linked row's own id, nugget,
 // repository and tag, with its original's request state.
-const issueColumns = `g.id, g.idea_id, g.repo, g.tag, e.state, e.attempts, e.last_error, e.next_attempt_at, e.sent_at, e.idempotency_key, e.issue_number, e.issue_url`
+const issueColumns = `g.id, g.idea_id, g.repo, g.tag, e.state, e.attempts, e.last_error, e.next_attempt_at, e.sent_at, e.idempotency_key, e.marker, e.issue_number, e.issue_url`
 
 // issueFrom joins each row (g) to the row whose request it shows (e): itself,
 // or the original it links to.
@@ -189,15 +191,17 @@ func scanIssue(row rowScanner) (Issue, error) {
 		state       string
 		nextAttempt sql.NullTime
 		sentAt      sql.NullTime
+		marker      sql.NullString
 		number      sql.NullInt64
 		url         sql.NullString
 	)
 	err := row.Scan(&is.ID, &is.IdeaID, &is.Repo, &is.Tag, &state, &is.Attempts, &is.LastError,
-		&nextAttempt, &sentAt, &is.key, &number, &url)
+		&nextAttempt, &sentAt, &is.key, &marker, &number, &url)
 	if err != nil {
 		return Issue{}, err
 	}
 	is.State = State(state)
+	is.marker = marker.String
 	if nextAttempt.Valid {
 		is.nextAttemptAt = &nextAttempt.Time
 	}
@@ -321,12 +325,14 @@ func (o *Outbox) earliestDue(ctx context.Context) (*time.Time, error) {
 }
 
 // markSending records, before the POST, that one is starting: the state
-// that makes a restart look for the issue before posting again.
-func (o *Outbox) markSending(ctx context.Context, id int64) error {
+// that makes a restart look for the issue before posting again. The first
+// one also records the marker the POST embeds.
+func (o *Outbox) markSending(ctx context.Context, id int64, marker string) error {
 	now := time.Now().UTC()
 	_, err := o.db.ExecContext(ctx,
-		`UPDATE github_issues SET state = ?, attempts = attempts + 1, sent_at = COALESCE(sent_at, ?), updated_at = ?
-		 WHERE id = ?`, string(StateSending), now, now, id)
+		`UPDATE github_issues SET state = ?, attempts = attempts + 1, sent_at = COALESCE(sent_at, ?),
+		   marker = COALESCE(marker, ?), updated_at = ?
+		 WHERE id = ?`, string(StateSending), now, marker, now, id)
 	if err != nil {
 		return fmt.Errorf("marking feature request sending: %w", err)
 	}

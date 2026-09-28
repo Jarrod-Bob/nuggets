@@ -24,6 +24,10 @@ CREATE TABLE github_issues (
     -- Random, embedded in the issue body's marker comment, so a found issue
     -- is certainly this row's and not one from another database.
     idempotency_key TEXT NOT NULL,
+    -- The marker comment the first POST embedded, which later attempts
+    -- search for and reuse. It names the nugget the row belonged to then,
+    -- which differs from idea_id after a hand-over (below).
+    marker          TEXT,
     issue_number    INTEGER,
     issue_url       TEXT,
     -- Set when another nugget with the same title and notes already had a
@@ -55,7 +59,7 @@ BEGIN
     UPDATE github_issues
     SET state = OLD.state, attempts = OLD.attempts, last_error = OLD.last_error,
         next_attempt_at = OLD.next_attempt_at, sent_at = OLD.sent_at,
-        idempotency_key = OLD.idempotency_key, issue_number = OLD.issue_number,
+        idempotency_key = OLD.idempotency_key, marker = OLD.marker, issue_number = OLD.issue_number,
         issue_url = OLD.issue_url, linked_to = NULL, updated_at = OLD.updated_at
     WHERE linked_to = OLD.id;
 END;

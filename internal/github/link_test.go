@@ -171,3 +171,39 @@ func TestAFailedOriginalDoesNotCountAsAMatch(t *testing.T) {
 		t.Errorf("later nugget shows %+v, want its own created issue", row)
 	}
 }
+
+func TestAHandedOverRowFindsTheIssueItsOriginalPosted(t *testing.T) {
+	e := newTestEnv(t)
+	e.setToken(t, testToken)
+	ctx := context.Background()
+	lossy := &http.Client{Transport: &droppingTransport{base: e.srv.Client().Transport, drops: 1}}
+	e.sender = e.newSender(WithHTTPClient(lossy))
+	original := e.createIdea(t, "Keyboard shortcuts", "", "nuggets")
+	copy := e.createIdea(t, "Keyboard shortcuts", "", "nuggets")
+
+	// The original's POST lands on GitHub but its answer is lost.
+	if err := e.sender.Pass(ctx); err == nil {
+		t.Fatal("Pass succeeded, want a pause after the lost answer")
+	}
+	if issues, _ := e.fake.snapshot(); len(issues) != 1 {
+		t.Fatalf("GitHub has %d issues after the lost answer, want 1", len(issues))
+	}
+
+	// Purging the original hands its request over to the copy, which must
+	// find that issue rather than post another.
+	if err := e.ideas.Purge(ctx, original.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.Exec(`UPDATE github_issues SET next_attempt_at = NULL`); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.newSender().Pass(ctx); err != nil {
+		t.Fatalf("Pass after the hand-over: %v", err)
+	}
+	if n := e.fake.countRequests(http.MethodPost); n != 1 {
+		t.Errorf("POSTs = %d, want 1", n)
+	}
+	if row := e.onlyRow(t, copy.ID); row.State != StateCreated || row.Number == nil || *row.Number != 1 {
+		t.Errorf("copy shows %+v, want created #1 found by the original's marker", row)
+	}
+}
