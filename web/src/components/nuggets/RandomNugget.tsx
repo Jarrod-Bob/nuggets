@@ -2,6 +2,8 @@ import React from 'react';
 import { Dialog } from '../feedback/Dialog';
 import { Button } from '../core/Button';
 import { Tag } from '../core/Tag';
+import { drawConstraint, drawTimebox, type Constraint, type Rng } from '../../lib/challenge';
+import { CATALOG_SOURCE, TRACK_LABELS, type TimeboxPreset } from '../../lib/challengeCatalog';
 
 export interface RandomIdea { title: string; notes?: string; tags?: string[] }
 
@@ -10,6 +12,11 @@ export interface RandomIdea { title: string; notes?: string; tags?: string[] }
  * Backed by `GET /api/ideas/random?tag=`, which is stateless — nothing is
  * recorded and archived ideas are always excluded. Optionally narrowed to the
  * currently-filtered tag.
+ *
+ * Each draw also deals a timebox and a language + framework constraint from
+ * the static catalog in `lib/challengeCatalog.ts`. The nugget, the timebox and
+ * the constraint each reroll on their own. Like the draw, the challenge is
+ * never saved.
  */
 export interface RandomNuggetProps {
   /** Narrow the draw to this tag; `null` draws from everything active. */
@@ -26,15 +33,21 @@ export interface RandomNuggetProps {
   buttonLabel?: string;
   buttonVariant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   style?: React.CSSProperties;
+  /** Randomness for the challenge; tests inject a fixed one. */
+  rng?: Rng;
 }
 
-export function RandomNugget({ tag = null, onDraw, loading = false, buttonLabel = 'Draw a nugget', buttonVariant = 'secondary', style }: RandomNuggetProps) {
+export function RandomNugget({ tag = null, onDraw, loading = false, buttonLabel = 'Draw a nugget', buttonVariant = 'secondary', style, rng = Math.random }: RandomNuggetProps) {
   const [open, setOpen] = React.useState(false);
   const [idea, setIdea] = React.useState<RandomIdea | null>(null);
+  const [timebox, setTimebox] = React.useState<TimeboxPreset | null>(null);
+  const [constraint, setConstraint] = React.useState<Constraint | null>(null);
   const draw = () => { const next = onDraw ? onDraw(tag) : null; setIdea(next); setOpen(true); };
+  // Opening deals a whole new challenge. Rerolling the nugget keeps it.
+  const openFresh = () => { setTimebox(drawTimebox(rng)); setConstraint(drawConstraint(rng)); draw(); };
   return (
     <>
-      <Button variant={buttonVariant} onClick={draw} disabled={loading} style={style}
+      <Button variant={buttonVariant} onClick={openFresh} disabled={loading} style={style}
         iconLeft={<span style={{ width: 15, height: 12, borderRadius: 'var(--radius-nugget)', background: 'var(--nug-golden-400)', border: '1.5px solid var(--nug-golden-700)', display: 'block' }} />}>
         {buttonLabel}
       </Button>
@@ -42,7 +55,7 @@ export function RandomNugget({ tag = null, onDraw, loading = false, buttonLabel 
         title={loading ? 'Drawing…' : idea ? 'Your challenge' : 'Nothing to draw'}
         footer={<>
           <Button variant="ghost" onClick={() => setOpen(false)}>Close</Button>
-          <Button variant="secondary" onClick={draw} disabled={loading}>Reroll</Button>
+          <Button variant="secondary" onClick={draw} disabled={loading}>Reroll nugget</Button>
         </>}>
         {loading ? (
           <p style={{ margin: 0, color: 'var(--nug-ink-500)' }}>Drawing a nugget…</p>
@@ -54,11 +67,57 @@ export function RandomNugget({ tag = null, onDraw, loading = false, buttonLabel 
             {idea.tags && idea.tags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>{idea.tags.map(t => <Tag key={t} name={t} />)}</div>
             )}
+            {timebox && constraint && (
+              <Challenge timebox={timebox} constraint={constraint}
+                onRerollTimebox={() => setTimebox(drawTimebox(rng))}
+                onRerollConstraint={() => setConstraint(drawConstraint(rng))} />
+            )}
           </div>
         ) : (
           <p style={{ margin: 0, color: 'var(--nug-ink-500)' }}>No active nuggets match that tag. Drop one in first.</p>
         )}
       </Dialog>
     </>
+  );
+}
+
+const labelStyle: React.CSSProperties = { fontSize: 'var(--text-micro)', fontWeight: 'var(--weight-bold)', letterSpacing: 'var(--tracking-label)', textTransform: 'uppercase', color: 'var(--nug-ink-500)' };
+
+interface ChallengeProps {
+  timebox: TimeboxPreset;
+  constraint: Constraint;
+  onRerollTimebox: () => void;
+  onRerollConstraint: () => void;
+}
+
+/** The dealt timebox and stack, each with its own reroll, plus the data stamp. */
+function Challenge({ timebox, constraint, onRerollTimebox, onRerollConstraint }: ChallengeProps) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 6, padding: '12px 14px', background: 'var(--nug-cream-200)', borderRadius: 'var(--radius-md)' }}>
+      <ChallengeRow label="Timebox" onReroll={onRerollTimebox} rerollLabel="Reroll timebox">
+        <span data-testid="challenge-timebox">{timebox.label}</span>
+      </ChallengeRow>
+      <ChallengeRow label="Build it with" onReroll={onRerollConstraint} rerollLabel="Reroll stack">
+        <span data-testid="challenge-stack">{constraint.language} + {constraint.framework}</span>
+        <span style={{ marginLeft: 8, color: 'var(--nug-ink-500)', fontWeight: 'var(--weight-regular)' }}>{TRACK_LABELS[constraint.track]}</span>
+      </ChallengeRow>
+      <a href={CATALOG_SOURCE.url} target="_blank" rel="noreferrer"
+        title={`Popularity weights copied ${CATALOG_SOURCE.retrieved}`}
+        style={{ alignSelf: 'flex-end', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--nug-ink-500)' }}>
+        data: {CATALOG_SOURCE.label}
+      </a>
+    </div>
+  );
+}
+
+function ChallengeRow({ label, onReroll, rerollLabel, children }: { label: string; onReroll: () => void; rerollLabel: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <span style={labelStyle}>{label}</span>
+        <span style={{ fontSize: 'var(--text-body-md)', fontWeight: 'var(--weight-bold)', color: 'var(--nug-ink-900)' }}>{children}</span>
+      </div>
+      <Button variant="ghost" size="sm" onClick={onReroll}>{rerollLabel}</Button>
+    </div>
   );
 }
