@@ -27,8 +27,13 @@ export function weightedPick<T>(items: readonly T[], weight: (item: T) => number
   return [...items].reverse().find((item) => weight(item) > 0)!;
 }
 
-export function drawTimebox(rng: Rng = Math.random, presets: readonly TimeboxPreset[] = TIMEBOXES): TimeboxPreset {
-  return weightedPick(presets, (p) => p.weight, rng);
+/**
+ * Deals a timebox. A reroll passes the one showing as `current`, which is left
+ * out unless it is the only preset that can come up.
+ */
+export function drawTimebox(rng: Rng = Math.random, current: TimeboxPreset | null = null, presets: readonly TimeboxPreset[] = TIMEBOXES): TimeboxPreset {
+  const others = presets.filter((p) => p.label !== current?.label);
+  return weightedPick(others.some((p) => p.weight > 0) ? others : presets, (p) => p.weight, rng);
 }
 
 /**
@@ -37,15 +42,34 @@ export function drawTimebox(rng: Rng = Math.random, presets: readonly TimeboxPre
  * so the result is always a pairing that exists in the catalog. Languages are
  * weighted by survey share and tracks are equally likely. Frameworks follow
  * their survey share, or are equally likely when the track has no shares.
+ *
+ * A reroll passes the pairing showing as `current`. It is dropped from the
+ * catalog for that draw, unless it is the only pairing there is.
  */
-export function drawConstraint(rng: Rng = Math.random, catalog: Record<string, LanguageEntry> = CATALOG): Constraint {
-  const languages = Object.entries(catalog).filter(([, entry]) => trackNames(entry).length > 0);
+export function drawConstraint(rng: Rng = Math.random, current: Constraint | null = null, catalog: Record<string, LanguageEntry> = CATALOG): Constraint {
+  const others = current ? withoutPairing(catalog, current) : catalog;
+  return deal(drawableLanguages(others).length > 0 ? others : catalog, rng);
+}
+
+function deal(catalog: Record<string, LanguageEntry>, rng: Rng): Constraint {
+  const languages = drawableLanguages(catalog);
   const [language, entry] = weightedPick(languages, ([, e]) => e.share, rng);
   const track = weightedPick(trackNames(entry), () => 1, rng);
   const frameworks = entry.tracks[track]!;
   const surveyed = frameworks.every((f) => f.share !== undefined);
   const framework = weightedPick(frameworks, (f) => (surveyed ? f.share! : 1), rng);
   return { language, track, framework: framework.name };
+}
+
+function withoutPairing(catalog: Record<string, LanguageEntry>, { language, track, framework }: Constraint): Record<string, LanguageEntry> {
+  const entry = catalog[language];
+  const frameworks = entry?.tracks[track];
+  if (!frameworks) return catalog;
+  return { ...catalog, [language]: { ...entry, tracks: { ...entry.tracks, [track]: frameworks.filter((f) => f.name !== framework) } } };
+}
+
+function drawableLanguages(catalog: Record<string, LanguageEntry>): [string, LanguageEntry][] {
+  return Object.entries(catalog).filter(([, entry]) => trackNames(entry).length > 0);
 }
 
 function trackNames(entry: LanguageEntry): Track[] {

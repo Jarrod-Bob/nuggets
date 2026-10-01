@@ -98,7 +98,7 @@ Ideas tagged before a token is saved wait in a queue and go out once one is save
 - **A timebox**: 90 minutes, one evening, a day or a weekend. The short ones come up more often, so a draw feels like something you could start today.
 - **A stack**: a language plus a framework that fits it, for one track (web backend, frontend or full-stack, CLI, or mobile). For example, "Go + Cobra · CLI".
 
-The nugget, the timebox and the stack each have their own reroll, so you can keep the nugget and change only the stack. Nothing is saved: the challenge only lives in the dialog, and taking it on doesn't change the nugget's status.
+The nugget, the timebox and the stack each have their own reroll, so you can keep the nugget and change only the stack. A reroll never deals what's already showing unless it's the only option (the nugget's reroll passes `exclude=<id>` to the draw). Nothing is saved: the challenge only lives in the dialog, and taking it on doesn't change the nugget's status.
 
 The stacks come from a static catalog that ships in the frontend, `web/src/lib/challengeCatalog.ts`. It maps language → track → frameworks. The picker in `web/src/lib/challenge.ts` chooses a language, then one of that language's tracks, then a framework listed under that track, so it can only deal a pairing that exists in the catalog. Languages, and frameworks the survey measures, are weighted by the [Stack Overflow Developer Survey 2025](https://survey.stackoverflow.co/2025/technology). The dialog shows a "data: Stack Overflow 2025" stamp, so you can tell when the figures are out of date. No network call is made at draw time.
 

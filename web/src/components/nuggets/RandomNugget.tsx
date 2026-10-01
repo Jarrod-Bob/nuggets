@@ -5,7 +5,7 @@ import { Tag } from '../core/Tag';
 import { drawConstraint, drawTimebox, type Constraint, type Rng } from '../../lib/challenge';
 import { CATALOG_SOURCE, TRACK_LABELS, type TimeboxPreset } from '../../lib/challengeCatalog';
 
-export interface RandomIdea { title: string; notes?: string; tags?: string[] }
+export interface RandomIdea { id?: number; title: string; notes?: string; tags?: string[] }
 
 /**
  * The mini-challenge: one button, one result dialog, reroll freely.
@@ -15,7 +15,8 @@ export interface RandomIdea { title: string; notes?: string; tags?: string[] }
  *
  * Each draw also deals a timebox and a language + framework constraint from
  * the static catalog in `lib/challengeCatalog.ts`. The nugget, the timebox and
- * the constraint each reroll on their own. Like the draw, the challenge is
+ * the constraint each reroll on their own, and a reroll never deals the value
+ * already showing unless it is the only one. Like the draw, the challenge is
  * never saved.
  */
 export interface RandomNuggetProps {
@@ -69,8 +70,8 @@ export function RandomNugget({ tag = null, onDraw, loading = false, buttonLabel 
             )}
             {timebox && constraint && (
               <Challenge timebox={timebox} constraint={constraint}
-                onRerollTimebox={() => setTimebox(drawTimebox(rng))}
-                onRerollConstraint={() => setConstraint(drawConstraint(rng))} />
+                onRerollTimebox={() => setTimebox(drawTimebox(rng, timebox))}
+                onRerollConstraint={() => setConstraint(drawConstraint(rng, constraint))} />
             )}
           </div>
         ) : (

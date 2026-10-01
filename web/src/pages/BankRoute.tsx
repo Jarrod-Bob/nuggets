@@ -113,14 +113,16 @@ export function BankRoute() {
   // buttons are disabled while loading, so a click can never surface a false
   // "nothing to draw" for a fetch that just hasn't resolved yet. A monotonic
   // request id guards against a stale response from a superseded tag landing
-  // after a newer request has already started.
+  // after a newer request has already started. Each fetch excludes the nugget
+  // last handed out, so a reroll doesn't repeat it unless it's the only one.
   const [nextRandom, setNextRandom] = React.useState<Idea | null | undefined>(undefined);
   const randomReqIdRef = React.useRef(0);
+  const shownRandomIdRef = React.useRef<number | null>(null);
   const fetchNextRandom = React.useCallback((tag: string | null) => {
     const reqId = ++randomReqIdRef.current;
     setNextRandom(undefined);
     api
-      .random(tag)
+      .random(tag, shownRandomIdRef.current)
       .then((result) => {
         if (randomReqIdRef.current === reqId) setNextRandom(result);
       })
@@ -145,6 +147,7 @@ export function BankRoute() {
   const randomLoading = nextRandom === undefined;
   const handleDraw = (tag: string | null): RandomIdea | null => {
     const result = nextRandom ?? null;
+    shownRandomIdRef.current = result?.id ?? null;
     fetchNextRandom(tag);
     return result;
   };

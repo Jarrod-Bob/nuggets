@@ -11,7 +11,7 @@ func TestRandomReturnsAStoredIdea(t *testing.T) {
 	ctx := context.Background()
 	seedIdeas(t, store)
 
-	got, err := store.Random(ctx, "")
+	got, err := store.Random(ctx, "", 0)
 	if err != nil {
 		t.Fatalf("Random() error = %v", err)
 	}
@@ -28,7 +28,7 @@ func TestRandomEventuallyVaries(t *testing.T) {
 
 	seen := map[string]bool{}
 	for i := 0; i < 40; i++ {
-		got, err := store.Random(ctx, "")
+		got, err := store.Random(ctx, "", 0)
 		if err != nil {
 			t.Fatalf("Random() error = %v", err)
 		}
@@ -45,13 +45,77 @@ func TestRandomRespectsTagFilter(t *testing.T) {
 	seedIdeas(t, store)
 
 	for i := 0; i < 10; i++ {
-		got, err := store.Random(ctx, "weekend")
+		got, err := store.Random(ctx, "weekend", 0)
 		if err != nil {
 			t.Fatalf("Random() error = %v", err)
 		}
 		if got.Title != "Recipe sorter" {
 			t.Fatalf("Title = %q, want the only #weekend idea", got.Title)
 		}
+	}
+}
+
+func TestRandomNeverRepeatsTheExcludedIdeaWhenAnotherExists(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	shown, err := store.Create(ctx, Draft{Title: ptr("Showing")})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := store.Create(ctx, Draft{Title: ptr("Other")}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	for i := 0; i < 25; i++ {
+		got, err := store.Random(ctx, "", shown.ID)
+		if err != nil {
+			t.Fatalf("Random() error = %v", err)
+		}
+		if got.ID == shown.ID {
+			t.Fatalf("drew the excluded idea %q although another was drawable", got.Title)
+		}
+	}
+}
+
+func TestRandomExcludeOnlyAppliesWithinTheTag(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	seedIdeas(t, store)
+
+	only, err := store.Random(ctx, "weekend", 0)
+	if err != nil {
+		t.Fatalf("Random() error = %v", err)
+	}
+	for i := 0; i < 10; i++ {
+		got, err := store.Random(ctx, "weekend", only.ID)
+		if err != nil {
+			t.Fatalf("Random() error = %v", err)
+		}
+		if got.ID != only.ID {
+			t.Fatalf("drew %q, want the sole #weekend idea even though it is excluded", got.Title)
+		}
+	}
+}
+
+func TestRandomReturnsTheExcludedIdeaWhenItIsTheOnlyOne(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	only, err := store.Create(ctx, Draft{Title: ptr("Lonely")})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := store.Create(ctx, Draft{Title: ptr("Parked"), Status: ptr(StatusParked)}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	got, err := store.Random(ctx, "", only.ID)
+	if err != nil {
+		t.Fatalf("Random() error = %v", err)
+	}
+	if got.ID != only.ID {
+		t.Errorf("drew %q, want the sole drawable idea even though it is excluded", got.Title)
 	}
 }
 
@@ -64,7 +128,7 @@ func TestRandomExcludesArchived(t *testing.T) {
 		t.Fatalf("archiving: %v", err)
 	}
 
-	_, err := store.Random(ctx, "")
+	_, err := store.Random(ctx, "", 0)
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Random() error = %v, want ErrNotFound — archived must not be drawn", err)
 	}
@@ -72,7 +136,7 @@ func TestRandomExcludesArchived(t *testing.T) {
 
 func TestRandomOnEmptyBankReturnsErrNotFound(t *testing.T) {
 	store := newTestStore(t)
-	_, err := store.Random(context.Background(), "")
+	_, err := store.Random(context.Background(), "", 0)
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Random() error = %v, want ErrNotFound", err)
 	}
@@ -94,7 +158,7 @@ func TestRandomOnlyDrawsLiveStatuses(t *testing.T) {
 	}
 
 	for i := 0; i < 25; i++ {
-		got, err := store.Random(ctx, "")
+		got, err := store.Random(ctx, "", 0)
 		if err != nil {
 			t.Fatalf("Random() error = %v", err)
 		}
@@ -117,7 +181,7 @@ func TestRandomOnBankOfOnlyDeadIdeasReturnsEmptyState(t *testing.T) {
 
 	// The empty case is ErrNotFound, which the API turns into the "nothing to
 	// draw" empty state — not an error.
-	_, err := store.Random(ctx, "")
+	_, err := store.Random(ctx, "", 0)
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Random() error = %v, want ErrNotFound for a bank of only dead ideas", err)
 	}

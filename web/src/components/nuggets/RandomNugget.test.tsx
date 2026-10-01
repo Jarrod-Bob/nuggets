@@ -50,6 +50,17 @@ describe('RandomNugget challenge', () => {
     expect(screen.getByText('First idea')).toBeTruthy();
   });
 
+  it('never rerolls the timebox or the stack onto what is already showing', () => {
+    renderDraw();
+    for (let n = 0; n < 4; n++) {
+      const [shownTimebox, shownStack] = [timebox(), stack()];
+      fireEvent.click(screen.getByText('Reroll timebox'));
+      fireEvent.click(screen.getByText('Reroll stack'));
+      expect(timebox()).not.toBe(shownTimebox);
+      expect(stack()).not.toBe(shownStack);
+    }
+  });
+
   it('rerolls the nugget without touching the challenge', () => {
     renderDraw();
     roll.value = 0.999;
