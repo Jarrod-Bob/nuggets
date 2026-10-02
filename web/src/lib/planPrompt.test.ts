@@ -67,6 +67,16 @@ describe('buildDeepLinkPrompt', () => {
     expect(buildPlanPrompt(idea)).toContain('THE-END');
   });
 
+  it('keeps everything after the notes intact when trimming', () => {
+    const idea = { ...full, notes: 'x'.repeat(20_000) };
+    const { prompt, trimmed } = buildDeepLinkPrompt(idea);
+    const afterNotes = buildPlanPrompt(idea).slice(buildPlanPrompt(idea).lastIndexOf('\n\nLinks:\n'));
+    expect(trimmed).toBe(true);
+    expect(prompt.length).toBeLessThanOrEqual(DEEP_LINK_PROMPT_LIMIT);
+    expect(prompt.endsWith(NOTES_TRIMMED_MARKER + afterNotes)).toBe(true);
+    expect(prompt.endsWith('so I can paste your answer back into my notes.')).toBe(true);
+  });
+
   it('honours a custom limit exactly', () => {
     const idea = { ...full, notes: 'x'.repeat(3_000) };
     const base = buildPlanPrompt({ ...full, notes: '' }).length;

@@ -100,7 +100,8 @@ export function buildDeepLinkPrompt(idea: PromptIdea, limit: number = DEEP_LINK_
 
   const notes = idea.notes.trim();
   // Everything but the kept part of the notes: the template, the other fields, the marker.
-  const overhead = render(idea, NOTES_TRIMMED_MARKER).length;
+  // Measured behind a placeholder note so render's trim keeps the marker's leading newlines.
+  const overhead = render(idea, `.${NOTES_TRIMMED_MARKER}`).length - 1;
   const kept = cut(notes, limit - overhead).trimEnd();
   const prompt = render(idea, kept + NOTES_TRIMMED_MARKER);
   // Only an enormous title or link list still overflows; cut the tail rather than send nothing.
