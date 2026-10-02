@@ -19,6 +19,7 @@ nuggets gives them somewhere to live: enough structure to find one on purpose, a
 - **Find** by searching the text or filtering by tag.
 - **Track status** through a lifecycle — raw, exploring, building, parked, killed — and filter by it.
 - **Link out** to wherever the work actually lives, so a nugget points at its own progress.
+- **Plan a nugget with Claude.** A nugget's page builds a planning prompt from it and opens Claude with that prompt filled in, or copies it. Claude's answer can be pasted back into the notes. nuggets itself calls no AI and needs no key.
 - **Draw a random nugget** as a mini-challenge, optionally narrowed to one tag. Parked and killed nuggets stay out of the draw. Each draw also deals a timebox and a language + framework to build it with, and each of the three rerolls on its own. See [Draw a nugget](#draw-a-nugget).
 - **Archive** rather than delete, with a trash view to restore from. Losing an idea should take deliberate effort.
 - **Report a bug** from any page. The floating **Report a bug** button in the bottom-right corner opens this repository's bug-report form on GitHub in a new tab, with the page you were on, the nuggets build (the git commit it was built from) and your browser already filled in. You describe the rest, and can paste or drag screenshots in, on GitHub. nuggets sends nothing itself and never puts your nuggets, settings or tokens in the link.
@@ -109,6 +110,18 @@ The stacks come from a static catalog that ships in the frontend, `web/src/lib/c
 2. Update `CATALOG_SOURCE` (label, URL, retrieved date).
 3. To add a framework, put it under its language and track, and add a matching row to `FRAMEWORK_FACTS` in `challengeCatalog.test.ts`. That table is a second, independent record of what each framework is for.
 4. Run `npx vitest run src/lib/challenge` in `web/`. The tests reject a framework filed under the wrong language or track, an empty track, and malformed weights.
+
+## Plan with Claude
+
+On a nugget's page, **Plan with Claude** builds a prompt from the nugget's title, status, tags, notes and links. The prompt asks Claude to restate the problem, propose an MVP scope and a stack, list first steps, and flag risks. To change the wording, edit `PLAN_PROMPT_TEMPLATE` in [`web/src/lib/planPrompt.ts`](web/src/lib/planPrompt.ts).
+
+There are three ways to send it:
+
+- **Open in Claude Desktop** uses Claude Desktop's documented link, `claude://claude.ai/new?q=…` ([Claude Help](https://support.claude.com/en/articles/14729294-open-claude-desktop-with-a-link)). Desktop opens a new chat with the prompt filled in but not sent. This needs the desktop app installed. Desktop cuts a prompt at roughly 14,000 characters, so when a nugget's notes are long, nuggets trims the notes in the link to keep the prompt under 12,000 characters and says so.
+- **Copy & open claude.ai** copies the prompt and opens a new chat on claude.ai in the browser; paste it there. claude.ai in the browser has no documented way to fill in a prompt from a link.
+- **Copy prompt** copies the complete prompt, never trimmed.
+
+To keep Claude's answer, paste it into **Claude's answer** and press **Save to notes**. The answer goes at the end of the nugget's notes under a dated `Plan with Claude (YYYY-MM-DD):` line. nuggets reads the notes fresh from the server first, so nothing already in them is replaced. This costs nothing and stores nothing new: the conversation itself stays in Claude.
 
 ## Live updates
 

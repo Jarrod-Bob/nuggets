@@ -10,9 +10,11 @@ import { Main } from '../components/Shell';
 import { ActionError } from '../components/feedback/ActionError';
 import { iconArrowLeft, iconPencil } from '../components/icons';
 import { FeatureRequests } from '../components/nuggets/FeatureRequests';
+import { PlanWithClaude } from '../components/nuggets/PlanWithClaude';
 import { api, ApiError, type FeatureRequest, type Idea } from '../api';
 import { formatRelative } from '../lib/formatRelative';
 import { describeOrigin } from '../lib/origin';
+import { appendToNotes } from '../lib/planPrompt';
 import { parseNuggetId } from '../routing/nuggetPath';
 import { paramsFromFilter } from '../routing/listFilter';
 import { useTags } from '../tags/TagsProvider';
@@ -103,6 +105,7 @@ export function NuggetPage() {
   );
 
   const [purging, setPurging] = React.useState(false);
+  const [planning, setPlanning] = React.useState(false);
 
   const idea = load.status === 'ready' ? load.idea : null;
 
@@ -120,6 +123,20 @@ export function NuggetPage() {
         reloadRequests();
       })
       .catch((err) => setFormError(describeError(err)));
+  };
+
+  // Appends to the notes as they are on the server right now, not as this page
+  // last saw them, so an edit made since the page loaded isn't overwritten.
+  const savePlan = async (answer: string) => {
+    if (!idea) return;
+    try {
+      const current = await api.get(idea.id);
+      await api.update(idea.id, { notes: appendToNotes(current.notes, answer) });
+    } catch (err) {
+      throw new Error(describeError(err), { cause: err });
+    }
+    setActionError(undefined);
+    reload();
   };
 
   const retryRequest = (requestId: number) => {
@@ -188,6 +205,9 @@ export function NuggetPage() {
                 </Button>
               ) : (
                 <>
+                  <Button variant="secondary" size="sm" onClick={() => setPlanning(true)}>
+                    Plan with Claude
+                  </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(true)} iconLeft={iconPencil}>
                     Edit
                   </Button>
@@ -296,6 +316,8 @@ export function NuggetPage() {
           error={formError}
         />
       )}
+
+      {idea && <PlanWithClaude open={planning} idea={idea} onClose={() => setPlanning(false)} onSave={savePlan} />}
 
       <Dialog
         open={purging}
