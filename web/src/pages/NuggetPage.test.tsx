@@ -191,6 +191,38 @@ describe('NuggetPage plan with Claude', () => {
     expect(screen.queryByText(/carries a trimmed copy/)).toBeNull();
   });
 
+  it('opens claude.ai only once the copy has settled', async () => {
+    let finishCopy!: () => void;
+    const writeText = vi.fn(() => new Promise<void>((resolve) => (finishCopy = resolve)));
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const open = vi.fn();
+    vi.stubGlobal('open', open);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan with Claude' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy & open claude.ai' }));
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(open).not.toHaveBeenCalled();
+
+    await act(async () => finishCopy());
+    expect(open).toHaveBeenCalledWith('https://claude.ai/new', '_blank', 'noopener');
+    expect(screen.getByText('Copied the full prompt.')).toBeTruthy();
+  });
+
+  it('still opens claude.ai when the copy fails', async () => {
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: vi.fn(() => Promise.reject(new Error('Document is not focused'))) } });
+    const open = vi.fn();
+    vi.stubGlobal('open', open);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan with Claude' }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy & open claude.ai' }));
+    });
+    expect(open).toHaveBeenCalledWith('https://claude.ai/new', '_blank', 'noopener');
+    expect(screen.getByText(/Couldn't copy/)).toBeTruthy();
+  });
+
   it('says the copied prompt is complete when the link trims the notes', async () => {
     answer = async () => json({ ...idea, notes: 'long '.repeat(4_000) });
     renderPage();

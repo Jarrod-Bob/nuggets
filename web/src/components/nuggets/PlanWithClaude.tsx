@@ -54,8 +54,7 @@ export function PlanWithClaude({ open, idea, onClose, onSave }: PlanWithClaudePr
   };
 
   const copyAndOpenWeb = () => {
-    void copy();
-    window.open(CLAUDE_WEB_NEW_CHAT_URL, '_blank', 'noopener');
+    void copy().then(() => window.open(CLAUDE_WEB_NEW_CHAT_URL, '_blank', 'noopener'));
   };
 
   const save = () => {
