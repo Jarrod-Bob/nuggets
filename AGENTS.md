@@ -13,6 +13,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - Web: `npm run typecheck` is a no-op (the root tsconfig has `files: []`); run `npx tsc --noEmit -p tsconfig.app.json` to actually typecheck. DOM tests opt in per file with `// @vitest-environment jsdom`.
 - spices pull design (409 → explicit Re-sync, never deleting nuggets; tombstones archive): `docs/superpowers/specs/2026-09-26-spices-pull-design.md`. Tests use `httptest` fakes only; there is no live spices.
 - No env-var config exists in this repo by design — all runtime config is either CLI flags in `cmd/nuggets/main.go` or rows in the `settings` DB table (the spices API token deliberately lives there, not in an env var — the reasoning is in the superseded `docs/superpowers/specs/2026-08-30-telegram-capture-design.md` §4.3).
+- There is no app version: the web build's identifier is the git short SHA injected as `__NUGGETS_BUILD__` by `web/vite.config.ts` (`define`), used by the "Report a bug" link (`web/src/lib/bugReport.ts`, whose field ids must match `.github/ISSUE_TEMPLATE/bug_report.yml`).
 - The `-race` build flag doesn't work in this sandboxed dev environment (no C toolchain for cgo); run plain `go test ./...` here.
 
 ## Maintaining this file
