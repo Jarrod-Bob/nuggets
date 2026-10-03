@@ -5,3 +5,11 @@
 @import "./tokens/shape.css";
 @import "./tokens/motion.css";
 @import "./tokens/base.css";
+
+/* The floating "Report a bug" link (components/feedback/BugReportButton.tsx)
+   drops its text on narrow screens, leaving a round icon button. */
+.nug-bug-report{padding:0 14px}
+@media (max-width: 640px){
+  .nug-bug-report{padding:0;width:40px}
+  .nug-bug-report__label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+}

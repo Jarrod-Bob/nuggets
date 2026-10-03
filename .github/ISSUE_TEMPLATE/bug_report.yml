@@ -1,0 +1,63 @@
+name: Bug Report
+description: Something in nuggets is broken or behaving unexpectedly
+title: "[Bug]: "
+labels: ["bug"]
+# The in-app "Report a bug" button pre-fills fields through URL query
+# parameters keyed by these ids (web/src/lib/bugReport.ts). Renaming an id
+# breaks that pre-fill, so change both together.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. If you came from the **Report a bug** button, the environment fields below are already filled in.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug. What did you see?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: false
+  - type: input
+    id: page
+    attributes:
+      label: Page / route
+      description: Where in the app it happened, e.g. `/nuggets/42` or `/trash`.
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: nuggets version
+      description: The build identifier (git commit) of the nuggets build you were running.
+    validations:
+      required: false
+  - type: input
+    id: browser
+    attributes:
+      label: Browser / OS
+      description: Your browser and operating system, or its user agent string.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context and screenshots
+      description: Anything else that helps. You can paste or drag screenshots straight into this box.
+    validations:
+      required: false

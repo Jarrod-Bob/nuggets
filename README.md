@@ -21,6 +21,7 @@ nuggets gives them somewhere to live: enough structure to find one on purpose, a
 - **Link out** to wherever the work actually lives, so a nugget points at its own progress.
 - **Draw a random nugget** as a mini-challenge, optionally narrowed to one tag. Parked and killed nuggets stay out of the draw.
 - **Archive** rather than delete, with a trash view to restore from. Losing an idea should take deliberate effort.
+- **Report a bug** from any page. The floating **Report a bug** button in the bottom-right corner opens this repository's bug-report form on GitHub in a new tab, with the page you were on, the nuggets build (the git commit it was built from) and your browser already filled in. You describe the rest, and can paste or drag screenshots in, on GitHub. nuggets sends nothing itself and never puts your nuggets, settings or tokens in the link.
 
 ## Status
 
