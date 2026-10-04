@@ -8,7 +8,10 @@ import (
 // Random draws one active idea, optionally from a single tag. Stateless:
 // nothing is recorded, so rerolling is free. ORDER BY RANDOM() is O(n), which
 // is instant at this scale — do not optimise it.
-func (s *Store) Random(ctx context.Context, tag string) (*Idea, error) {
+//
+// exclude is the id of the idea already showing (0 for none). It sorts last,
+// so a reroll only hands it back when it is the sole drawable idea.
+func (s *Store) Random(ctx context.Context, tag string, exclude int64) (*Idea, error) {
 	// Only live ideas are drawable: being handed one you killed or parked is
 	// noise, and the draw exists to hand back something you could start.
 	query := `SELECT i.id, i.title, i.notes, i.status, i.created_at, i.updated_at, i.archived_at, i.source, i.source_ref
@@ -23,7 +26,8 @@ func (s *Store) Random(ctx context.Context, tag string) (*Idea, error) {
 			WHERE t.name = ?)`
 		args = append(args, name)
 	}
-	query += ` ORDER BY RANDOM() LIMIT 1`
+	query += ` ORDER BY i.id = ?, RANDOM() LIMIT 1`
+	args = append(args, exclude)
 
 	found, err := scanIdea(s.db.QueryRowContext(ctx, query, args...))
 	if err != nil {

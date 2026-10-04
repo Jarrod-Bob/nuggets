@@ -116,7 +116,16 @@ func (h *handlers) mutate(w http.ResponseWriter, r *http.Request, action func(co
 }
 
 func (h *handlers) random(w http.ResponseWriter, r *http.Request) {
-	drawn, err := h.store.Random(r.Context(), r.URL.Query().Get("tag"))
+	q := r.URL.Query()
+	var exclude int64
+	if raw := q.Get("exclude"); raw != "" {
+		var err error
+		if exclude, err = strconv.ParseInt(raw, 10, 64); err != nil {
+			writeError(w, http.StatusBadRequest, "That nugget id isn't a number.")
+			return
+		}
+	}
+	drawn, err := h.store.Random(r.Context(), q.Get("tag"), exclude)
 	if err != nil {
 		writeStoreError(w, err)
 		return

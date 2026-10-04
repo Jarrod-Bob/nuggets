@@ -172,10 +172,17 @@ export const api = {
   archive: (id: number) => request<void>(`/api/ideas/${id}/archive`, { method: 'POST' }),
   restore: (id: number) => request<void>(`/api/ideas/${id}/restore`, { method: 'POST' }),
   purge: (id: number) => request<void>(`/api/ideas/${id}`, { method: 'DELETE' }),
-  /** Returns null when the bank (or the filtered tag) has nothing active. */
-  random: async (tag: string | null = null): Promise<Idea | null> => {
+  /**
+   * Returns null when the bank (or the filtered tag) has nothing active.
+   * `exclude` is the id already showing; it only comes back when nothing else can.
+   */
+  random: async (tag: string | null = null, exclude: number | null = null): Promise<Idea | null> => {
+    const params = new URLSearchParams();
+    if (tag) params.set('tag', tag);
+    if (exclude != null) params.set('exclude', String(exclude));
+    const qs = params.toString();
     try {
-      return await request<Idea>(`/api/ideas/random${tag ? `?tag=${encodeURIComponent(tag)}` : ''}`);
+      return await request<Idea>(`/api/ideas/random${qs ? `?${qs}` : ''}`);
     } catch (err) {
       if (err instanceof ApiError) return null;
       throw err;

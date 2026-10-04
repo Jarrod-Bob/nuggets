@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -93,6 +94,46 @@ func TestCreateThenListRoundTrip(t *testing.T) {
 	}
 	if len(listed) != 1 {
 		t.Errorf("listed %d ideas, want 1", len(listed))
+	}
+}
+
+func TestRandomExcludeSkipsTheShownIdeaUnlessItIsTheOnlyOne(t *testing.T) {
+	srv := newTestServer(t)
+	create := func(title string) idea.Idea {
+		t.Helper()
+		rec := do(t, srv, "POST", "/api/ideas", idea.Draft{Title: ptr(title)})
+		var created idea.Idea
+		if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+			t.Fatalf("decoding create response: %v", err)
+		}
+		return created
+	}
+	draw := func(exclude int64) idea.Idea {
+		t.Helper()
+		rec := do(t, srv, "GET", "/api/ideas/random?exclude="+strconv.FormatInt(exclude, 10), nil)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET random status = %d, want 200; body = %s", rec.Code, rec.Body)
+		}
+		var drawn idea.Idea
+		if err := json.Unmarshal(rec.Body.Bytes(), &drawn); err != nil {
+			t.Fatalf("decoding random: %v", err)
+		}
+		return drawn
+	}
+
+	shown := create("Showing")
+	if got := draw(shown.ID); got.ID != shown.ID {
+		t.Fatalf("drew %q, want the sole idea even though it is excluded", got.Title)
+	}
+	create("Other")
+	for i := 0; i < 25; i++ {
+		if got := draw(shown.ID); got.ID == shown.ID {
+			t.Fatalf("drew the excluded idea although another was drawable")
+		}
+	}
+
+	if rec := do(t, srv, "GET", "/api/ideas/random?exclude=abc", nil); rec.Code != http.StatusBadRequest {
+		t.Errorf("non-numeric exclude status = %d, want 400", rec.Code)
 	}
 }
 
