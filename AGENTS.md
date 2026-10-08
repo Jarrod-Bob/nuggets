@@ -18,6 +18,20 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - There is no app version: the web build's identifier is the git short SHA injected as `__NUGGETS_BUILD__` by `web/vite.config.ts` (`define`), used by the "Report a bug" link (`web/src/lib/bugReport.ts`, whose field ids must match `.github/ISSUE_TEMPLATE/bug_report.yml`).
 - The `-race` build flag doesn't work in this sandboxed dev environment (no C toolchain for cgo); run plain `go test ./...` here.
 
+## Agent skills
+
+### Issue tracker
+
+GitHub issues in `Jarrod-Bob/nuggets`, using the `gh` CLI. Bugs and feature requests follow `.github/ISSUE_TEMPLATE/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default triage labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), added alongside `bug` / `enhancement`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.
