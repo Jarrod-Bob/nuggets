@@ -152,9 +152,14 @@ export function BankRoute() {
     return result;
   };
 
-  // The create dialog lives here — capture stays fast in a dialog. Editing an
-  // existing nugget happens on its own page, so this dialog only ever creates.
+  // The create and edit dialogs live here — capture and quick edits stay in a
+  // dialog over the bank, so saving never leaves the list. The nugget's own page
+  // has its own edit dialog for edits made there.
   const [creating, setCreating] = React.useState(false);
+  // A snapshot taken when the dialog opens, not a lookup in `ideas`: the form
+  // resets whenever its idea changes, so a list refetch behind it must not hand
+  // it a fresh object mid-edit.
+  const [editing, setEditing] = React.useState<Idea | null>(null);
   const [formError, setFormError] = React.useState<string | undefined>(undefined);
   const openCreate = () => {
     setFormError(undefined);
@@ -164,6 +169,30 @@ export function BankRoute() {
     setCreating(false);
     setFormError(undefined);
   };
+  const openEdit = (id: number) => {
+    const idea = ideas.find((i) => i.id === id);
+    if (!idea) return;
+    setFormError(undefined);
+    setEditing(idea);
+  };
+  const closeEdit = () => {
+    setEditing(null);
+    setFormError(undefined);
+  };
+  const submitEdit = (draft: IdeaDraft) => {
+    if (!editing) return;
+    api
+      .update(editing.id, draft)
+      .then(() => {
+        closeEdit();
+        setActionError(undefined);
+        refreshList();
+        refreshTags();
+        fetchNextRandom(activeTag);
+      })
+      .catch((err) => setFormError(describeError(err)));
+  };
+
   const submitCreate = (draft: IdeaDraft) => {
     api
       .create(draft)
@@ -231,7 +260,7 @@ export function BankRoute() {
           onOpen={(item) => navigate(nuggetPath(item.id))}
           rowActions={(item) => (
             <span style={{ display: 'flex', gap: 2 }} onClick={(e) => e.stopPropagation()}>
-              <IconButton label="Edit" onClick={() => navigate(`${nuggetPath(item.id)}?edit=1`)}>
+              <IconButton label="Edit" onClick={() => openEdit(Number(item.id))}>
                 {iconPencil}
               </IconButton>
               <IconButton label="Archive" onClick={() => archiveIdea(Number(item.id))}>
@@ -251,6 +280,18 @@ export function BankRoute() {
         onClose={closeCreate}
         error={formError}
       />
+
+      {editing && (
+        <IdeaForm
+          open
+          mode="edit"
+          idea={editing}
+          tagOptions={tags.map((t) => t.name)}
+          onSubmit={submitEdit}
+          onClose={closeEdit}
+          error={formError}
+        />
+      )}
     </>
   );
 }

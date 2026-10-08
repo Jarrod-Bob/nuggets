@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LiveUpdatesProvider } from '../live/LiveUpdates';
 import { TagsProvider } from '../tags/TagsProvider';
@@ -96,5 +96,69 @@ describe('BankRoute draw', () => {
     fireEvent.click(screen.getByText('Reroll nugget'));
     await ready('Reroll nugget');
     expect(drawnTitle()).toBe('Lonely idea');
+  });
+});
+
+describe('BankRoute edit', () => {
+  const renderRoutes = () =>
+    render(
+      <LiveUpdatesProvider>
+        <TagsProvider>
+          <MemoryRouter initialEntries={['/']}>
+            <Routes>
+              <Route path="/" element={<BankRoute />} />
+              <Route path="/nuggets/:id" element={<p>The nugget page</p>} />
+            </Routes>
+          </MemoryRouter>
+        </TagsProvider>
+      </LiveUpdatesProvider>,
+    );
+
+  it('edits in a dialog over the bank, and saving closes it without leaving the bank', async () => {
+    const patches: { path: string; body: unknown }[] = [];
+    const base = fetch as unknown as (path: string, init?: RequestInit) => Promise<Response>;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((path: string, init?: RequestInit) => {
+        if (init?.method === 'PATCH') {
+          patches.push({ path, body: JSON.parse(String(init.body)) });
+          return Promise.resolve(json({ ...bank[0], title: 'Renamed idea' }));
+        }
+        return base(path, init);
+      }),
+    );
+    renderRoutes();
+    await screen.findByText('First idea');
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+    const dialog = await screen.findByRole('dialog');
+    expect(screen.queryByText('The nugget page')).toBeNull();
+
+    fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Renamed idea' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(patches).toHaveLength(1);
+    expect(patches[0].path).toBe('/api/ideas/1');
+    expect(patches[0].body).toMatchObject({ title: 'Renamed idea' });
+    expect(screen.queryByText('The nugget page')).toBeNull();
+    expect(screen.getByText('First idea')).toBeTruthy();
+  });
+
+  it('keeps unsaved edits when the list refetches behind the dialog', async () => {
+    renderRoutes();
+    await screen.findByText('First idea');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Half-typed' } });
+
+    // A search change refetches the list, handing back fresh objects — the same
+    // thing a background import does.
+    bank = [nugget(1, 'First idea'), nugget(2, 'Second idea')];
+    fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: 'idea' } });
+    await waitFor(() => expect((fetch as ReturnType<typeof vi.fn>).mock.calls.some(([p]) => String(p).includes('q=idea'))).toBe(true));
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect((within(screen.getByRole('dialog')).getByLabelText('Title') as HTMLInputElement).value).toBe('Half-typed');
   });
 });
