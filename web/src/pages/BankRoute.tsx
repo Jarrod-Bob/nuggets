@@ -137,8 +137,9 @@ export function BankRoute() {
     fetchNextRandom(activeTag);
   }, [activeTag, fetchNextRandom]);
   // Nuggets imported in the background show up without a reload, under the
-  // same URL filters. The create dialog keeps its own state, so refetching the
-  // list behind it never resets what's being typed.
+  // same URL filters. Neither dialog reads from `ideas` while open (the edit
+  // dialog holds a snapshot), so refetching the list behind them never resets
+  // what's being typed.
   useLiveRefresh('ideas-changed', () => {
     refreshList();
     fetchNextRandom(activeTag);
@@ -179,18 +180,27 @@ export function BankRoute() {
     setEditing(null);
     setFormError(undefined);
   };
+  // The save may resolve after the dialog was cancelled and another nugget
+  // opened; only touch the dialog if it is still the one that sent the save.
+  const editingRef = React.useRef<Idea | null>(null);
+  React.useEffect(() => {
+    editingRef.current = editing;
+  }, [editing]);
   const submitEdit = (draft: IdeaDraft) => {
-    if (!editing) return;
+    const target = editing;
+    if (!target) return;
     api
-      .update(editing.id, draft)
+      .update(target.id, draft)
       .then(() => {
-        closeEdit();
+        if (editingRef.current === target) closeEdit();
         setActionError(undefined);
         refreshList();
         refreshTags();
         fetchNextRandom(activeTag);
       })
-      .catch((err) => setFormError(describeError(err)));
+      .catch((err) => {
+        if (editingRef.current === target) setFormError(describeError(err));
+      });
   };
 
   const submitCreate = (draft: IdeaDraft) => {

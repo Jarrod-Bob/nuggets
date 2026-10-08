@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { TopBar } from '../components/navigation/TopBar';
 import { Button } from '../components/core/Button';
 import { Tag } from '../components/core/Tag';
@@ -83,11 +83,7 @@ export function NuggetPage() {
     reloadRequests();
   });
 
-  // The pencil in the list navigates here with ?edit=1 to open editing straight
-  // away; a plain open starts in view mode. Read once — the toggle is local from
-  // then on.
-  const [searchParams] = useSearchParams();
-  const [editing, setEditing] = React.useState(searchParams.get('edit') === '1');
+  const [editing, setEditing] = React.useState(false);
   const [formError, setFormError] = React.useState<string | undefined>(undefined);
   const [formDirty, setFormDirty] = React.useState(false);
 
