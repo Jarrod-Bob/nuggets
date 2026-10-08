@@ -17,7 +17,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - No env-var config exists in this repo by design — all runtime config is either CLI flags in `cmd/nuggets/main.go` or rows in the `settings` DB table (the spices API token deliberately lives there, not in an env var — the reasoning is in the superseded `docs/superpowers/specs/2026-08-30-telegram-capture-design.md` §4.3).
 - There is no app version: the web build's identifier is the git short SHA injected as `__NUGGETS_BUILD__` by `web/vite.config.ts` (`define`), used by the "Report a bug" link (`web/src/lib/bugReport.ts`, whose field ids must match `.github/ISSUE_TEMPLATE/bug_report.yml`).
 - The `-race` build flag doesn't work in this sandboxed dev environment (no C toolchain for cgo); run plain `go test ./...` here.
-- `.claude/skills/` holds a vendored copy of mattpocock/skills (the plugin route didn't load in cloud sessions). To update: re-clone upstream and copy the folders listed in its `.claude-plugin/plugin.json` over the matching ones, then review the diff. Don't also enable it as a plugin, or every skill appears twice.
+- `mattpocock/skills` reaches agents as a plugin declared in `.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`), not vendored files; don't also copy the skills into `.claude/skills/`, or every skill appears twice. If cloud sessions don't list them, vendor instead: copy the folders named in upstream's `.claude-plugin/plugin.json` into `.claude/skills/`, plus its MIT `LICENSE`.
 
 ## Maintaining this file
 
