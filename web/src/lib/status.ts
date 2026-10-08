@@ -4,9 +4,9 @@ import type { BadgeProps } from '../components/core/Badge';
 type Tone = NonNullable<BadgeProps['tone']>;
 
 /**
- * Each status maps to one Badge tone (the design system ships exactly five, one
- * per status) and a human label. raw is the neutral resting state; parked is
- * ink (stopped but kept); killed is ketchup (decided against).
+ * Each status maps to one Badge tone and a human label. raw is the neutral resting state; parked is
+ * ink (stopped but kept); killed is ketchup (decided against); done is sage, a
+ * solid green so a finished nugget reads differently from one still building.
  */
 const STATUS_META: Record<Status, { label: string; tone: Tone }> = {
   raw: { label: 'Raw', tone: 'neutral' },
@@ -14,6 +14,7 @@ const STATUS_META: Record<Status, { label: string; tone: Tone }> = {
   building: { label: 'Building', tone: 'herb' },
   parked: { label: 'Parked', tone: 'ink' },
   killed: { label: 'Killed', tone: 'ketchup' },
+  done: { label: 'Done', tone: 'sage' },
 };
 
 export function statusLabel(status: Status): string {

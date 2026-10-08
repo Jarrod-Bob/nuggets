@@ -153,6 +153,9 @@ func TestRandomOnlyDrawsLiveStatuses(t *testing.T) {
 	if _, err := store.Create(ctx, Draft{Title: ptr("Killed"), Status: ptr(StatusKilled)}); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
+	if _, err := store.Create(ctx, Draft{Title: ptr("Done"), Status: ptr(StatusDone)}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
 	if _, err := store.Create(ctx, Draft{Title: ptr("Exploring"), Status: ptr(StatusExploring)}); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}

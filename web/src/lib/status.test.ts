@@ -8,11 +8,13 @@ describe('status helpers', () => {
     expect(statusTone('building')).toBe('herb');
     expect(statusTone('parked')).toBe('ink');
     expect(statusTone('killed')).toBe('ketchup');
+    expect(statusTone('done')).toBe('sage');
   });
 
   it('labels statuses in title case', () => {
     expect(statusLabel('raw')).toBe('Raw');
     expect(statusLabel('exploring')).toBe('Exploring');
+    expect(statusLabel('done')).toBe('Done');
   });
 
   it('treats anything past raw as acted on', () => {

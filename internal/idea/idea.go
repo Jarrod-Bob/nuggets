@@ -27,13 +27,14 @@ const (
 	StatusBuilding  Status = "building"  // Actually under construction.
 	StatusParked    Status = "parked"    // Stopped, but not rejected.
 	StatusKilled    Status = "killed"    // Decided against.
+	StatusDone      Status = "done"      // Finished.
 )
 
 // ParseStatus validates a status value, returning ErrInvalidStatus for anything
 // outside the five known states.
 func ParseStatus(s string) (Status, error) {
 	switch Status(s) {
-	case StatusRaw, StatusExploring, StatusBuilding, StatusParked, StatusKilled:
+	case StatusRaw, StatusExploring, StatusBuilding, StatusParked, StatusKilled, StatusDone:
 		return Status(s), nil
 	default:
 		return "", ErrInvalidStatus

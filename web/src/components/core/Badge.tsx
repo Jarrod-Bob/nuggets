@@ -2,7 +2,7 @@ import React from 'react';
 
 /** Small uppercase status pill — counts, states, "new", plan names. */
 export interface BadgeProps {
-  tone?: 'neutral' | 'golden' | 'ketchup' | 'herb' | 'ink';
+  tone?: 'neutral' | 'golden' | 'ketchup' | 'herb' | 'ink' | 'sage';
   children?: React.ReactNode;
   style?: React.CSSProperties;
 }
@@ -15,6 +15,7 @@ const nugBadgeTones: Record<NonNullable<BadgeProps['tone']>, ToneSpec> = {
   ketchup: { bg: 'var(--nug-ketchup-100)', fg: 'var(--nug-ketchup-600)' },
   herb: { bg: '#DCEFE1', fg: '#2C6E42' },
   ink: { bg: 'var(--nug-ink-900)', fg: 'var(--nug-cream-50)' },
+  sage: { bg: '#2C6E42', fg: 'var(--nug-cream-50)' },
 };
 
 export function Badge({ tone = 'neutral', children, style }: BadgeProps) {
