@@ -4,7 +4,7 @@
  */
 export type Status = 'raw' | 'exploring' | 'building' | 'parked' | 'killed' | 'done';
 
-/** The five statuses in lifecycle order, for rendering filters and pickers. */
+/** The six statuses in lifecycle order, for rendering filters and pickers. */
 export const STATUSES: Status[] = ['raw', 'exploring', 'building', 'parked', 'killed', 'done'];
 
 /** Mirrors internal/idea.Link. A blank label renders as the URL host. */

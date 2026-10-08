@@ -146,7 +146,7 @@ func TestRandomOnlyDrawsLiveStatuses(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	// Two dead ideas and one live: many draws must only ever return the live one.
+	// Three dead ideas (parked, killed, done) and one live: many draws must only ever return the live one.
 	if _, err := store.Create(ctx, Draft{Title: ptr("Parked"), Status: ptr(StatusParked)}); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -179,6 +179,9 @@ func TestRandomOnBankOfOnlyDeadIdeasReturnsEmptyState(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 	if _, err := store.Create(ctx, Draft{Title: ptr("Killed"), Status: ptr(StatusKilled)}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := store.Create(ctx, Draft{Title: ptr("Done"), Status: ptr(StatusDone)}); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 

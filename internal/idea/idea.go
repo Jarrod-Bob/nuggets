@@ -31,7 +31,7 @@ const (
 )
 
 // ParseStatus validates a status value, returning ErrInvalidStatus for anything
-// outside the five known states.
+// outside the six known states.
 func ParseStatus(s string) (Status, error) {
 	switch Status(s) {
 	case StatusRaw, StatusExploring, StatusBuilding, StatusParked, StatusKilled, StatusDone:
