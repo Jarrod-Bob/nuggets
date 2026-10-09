@@ -261,7 +261,7 @@ export function NuggetPage() {
             )}
 
             <h1 style={{ fontSize: 'var(--text-title-1)', fontWeight: 'var(--weight-bold)', textWrap: 'pretty', margin: 0 }}>{idea.title}</h1>
-            {idea.project_name && <ProjectNameLine projectName={idea.project_name} style={{ marginTop: -10, fontSize: 'var(--text-body-md)' }} />}
+            {idea.project_name && <ProjectNameLine projectName={idea.project_name} style={{ marginTop: -4, fontSize: 'var(--text-body-md)' }} />}
 
             {idea.tags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

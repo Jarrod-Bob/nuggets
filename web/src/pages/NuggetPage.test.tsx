@@ -81,13 +81,17 @@ describe('the project name', () => {
     answer = async () => json({ ...idea, project_name: 'Ideanori' });
     renderPage();
     expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('A loaded nugget');
-    expect(screen.getByText('Suggested project name: Ideanori')).toBeTruthy();
+    // A pill: the name shows, and "Suggested project name" is its tooltip and accessible label.
+    const pill = screen.getByLabelText('Suggested project name: Ideanori');
+    expect(pill.textContent).toContain('Ideanori');
+    expect(pill.getAttribute('title')).toBe('Suggested project name');
+    expect(screen.queryByText(/Suggested project name/)).toBeNull();
   });
 
   it('is left out when the nugget has none', async () => {
     renderPage();
     await screen.findByRole('heading', { level: 1 });
-    expect(screen.queryByText(/Suggested project name/)).toBeNull();
+    expect(screen.queryByLabelText(/Suggested project name/)).toBeNull();
   });
 });
 

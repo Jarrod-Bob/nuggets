@@ -100,7 +100,7 @@ export function IdeaCard({ title, projectName, notes, tags = [], status, linkCou
           </div>
         )}
         <h3 style={{ width: '100%', fontSize: 'var(--text-title-3)', fontWeight: 'var(--weight-bold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{truncate(title, 40)}</h3>
-        {projectName && <ProjectNameLine projectName={projectName} style={{ marginTop: -3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} />}
+        {projectName && <ProjectNameLine projectName={projectName} />}
         {notes && <p style={{ width: '100%', margin: 0, fontSize: 'var(--text-body-sm)', lineHeight: 'var(--leading-normal)', color: 'var(--nug-ink-700)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{clampSentences(notes, 2)}</p>}
         {tags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginTop: 1, paddingBottom: 2, scrollbarWidth: 'none' }}>

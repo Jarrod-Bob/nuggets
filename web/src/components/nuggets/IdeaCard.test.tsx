@@ -9,11 +9,15 @@ describe('IdeaCard', () => {
   it('shows the project name under the title when there is one', () => {
     render(<IdeaCard title="A bank for little ideas" projectName="Ideanori" />);
     expect(screen.getByRole('heading').textContent).toBe('A bank for little ideas');
-    expect(screen.getByText('Suggested project name: Ideanori')).toBeTruthy();
+    // A pill: the name shows, and "Suggested project name" is its tooltip and accessible label.
+    const pill = screen.getByLabelText('Suggested project name: Ideanori');
+    expect(pill.textContent).toContain('Ideanori');
+    expect(pill.getAttribute('title')).toBe('Suggested project name');
+    expect(screen.queryByText(/Suggested project name/)).toBeNull();
   });
 
   it('shows no project-name line without one', () => {
     render(<IdeaCard title="A bank for little ideas" projectName="" />);
-    expect(screen.queryByText(/Suggested project name/)).toBeNull();
+    expect(screen.queryByLabelText(/Suggested project name/)).toBeNull();
   });
 });
