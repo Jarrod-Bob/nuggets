@@ -28,8 +28,9 @@ export const UNAVAILABLE_TEXT = 'kimi is not available at the moment';
 
 // A 3px arc, fading in from transparent, cut out of a disc just outside the
 // button by a radial mask. Spun by the .nug-spin class (motion.css).
+const RING_GAP = 5;
 const spinRingStyle: React.CSSProperties = {
-  position: 'absolute', inset: -5, borderRadius: '50%', pointerEvents: 'none',
+  position: 'absolute', inset: -RING_GAP, borderRadius: '50%', pointerEvents: 'none',
   background: 'conic-gradient(from 0deg, transparent 0 30%, var(--nug-golden-300) 60%, var(--nug-golden-500) 100%)',
   mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
   WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
@@ -118,7 +119,9 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
           hint={hint}
           style={{ flex: 1 }}
         />
-        <div style={{ paddingTop: 23 }}>
+        {/* Reserves the busy ring's width on the right at all times, so the
+            dialog's scrolling body doesn't clip it and nothing shifts when it appears. */}
+        <div style={{ paddingTop: 23, paddingRight: RING_GAP }}>
           {naming ? (
             // A golden arc spins around the button while kimi works; the
             // button itself cancels, showing ✕ when hovered or focused.
