@@ -2,7 +2,10 @@ package idea
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -14,21 +17,29 @@ import (
 // empty tag or link array, which clears the set. An update with nothing present
 // is a no-op that returns the current nugget. updated_at is always set whenever
 // any field is present.
+//
+// A save that changes nothing but the project name keeps an imported nugget
+// unedited in the spices sense (kimi project-name design §6): if
+// source_synced_at equalled updated_at before, both advance together, so
+// spices keeps refreshing the title and notes. The edit form sends every field
+// on save, so "changes nothing" compares values, not which keys are present.
 func (s *Store) Update(ctx context.Context, id int64, draft Draft) (*Idea, error) {
 	// Nothing to change: return the current nugget (or ErrNotFound if it is
 	// gone). No write, so updated_at is not touched either.
 	if draft.Title == nil && draft.Notes == nil && draft.Tags == nil &&
-		draft.Status == nil && draft.Links == nil {
+		draft.Status == nil && draft.Links == nil && draft.ProjectName == nil {
 		return s.Get(ctx, id)
 	}
 
 	// Validate everything up front so a bad value is a clean error before any
 	// write, and so an unknown status or link is a 400, not a 500.
+	now := time.Now().UTC()
 	sets := []string{"updated_at = ?"}
-	args := []any{time.Now().UTC()}
+	args := []any{now}
 
+	var title string
 	if draft.Title != nil {
-		title := strings.TrimSpace(*draft.Title)
+		title = strings.TrimSpace(*draft.Title)
 		if title == "" {
 			return nil, ErrEmptyTitle
 		}
@@ -39,11 +50,17 @@ func (s *Store) Update(ctx context.Context, id int64, draft Draft) (*Idea, error
 		sets = append(sets, "notes = ?")
 		args = append(args, *draft.Notes)
 	}
+	if draft.ProjectName != nil {
+		sets = append(sets, "project_name = ?")
+		args = append(args, strings.TrimSpace(*draft.ProjectName))
+	}
+	var status Status
 	if draft.Status != nil {
-		status, err := ParseStatus(string(*draft.Status))
+		parsed, err := ParseStatus(string(*draft.Status))
 		if err != nil {
 			return nil, err
 		}
+		status = parsed
 		sets = append(sets, "status = ?")
 		args = append(args, string(status))
 	}
@@ -56,6 +73,10 @@ func (s *Store) Update(ctx context.Context, id int64, draft Draft) (*Idea, error
 		}
 		links = valid
 	}
+	var tags []string
+	if draft.Tags != nil {
+		tags = normalizeTagSet(*draft.Tags)
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -63,36 +84,60 @@ func (s *Store) Update(ctx context.Context, id int64, draft Draft) (*Idea, error
 	}
 	defer tx.Rollback()
 
+	var (
+		curTitle, curNotes, curStatus string
+		updatedAt                     time.Time
+		syncedAt                      sql.NullTime
+	)
+	err = tx.QueryRowContext(ctx,
+		`SELECT title, notes, status, updated_at, source_synced_at FROM ideas WHERE id = ?`, id,
+	).Scan(&curTitle, &curNotes, &curStatus, &updatedAt, &syncedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("loading idea: %w", err)
+	}
+	beforeTags, err := loadTags(ctx, tx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if syncedAt.Valid && syncedAt.Time.Equal(updatedAt) && draft.ProjectName != nil {
+		onlyProjectName := (draft.Title == nil || title == curTitle) &&
+			(draft.Notes == nil || *draft.Notes == curNotes) &&
+			(draft.Status == nil || string(status) == curStatus) &&
+			(draft.Tags == nil || sameTagSet(tags, beforeTags))
+		if onlyProjectName && draft.Links != nil {
+			beforeLinks, err := loadLinks(ctx, tx, id)
+			if err != nil {
+				return nil, err
+			}
+			onlyProjectName = slices.Equal(links, beforeLinks)
+		}
+		if onlyProjectName {
+			sets = append(sets, "source_synced_at = ?")
+			args = append(args, now)
+		}
+	}
+
 	args = append(args, id)
 	query := fmt.Sprintf("UPDATE ideas SET %s WHERE id = ?", strings.Join(sets, ", "))
-	res, err := tx.ExecContext(ctx, query, args...)
-	if err != nil {
+	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
 		return nil, fmt.Errorf("updating idea: %w", err)
-	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return nil, fmt.Errorf("reading rows affected: %w", err)
-	}
-	if affected == 0 {
-		return nil, ErrNotFound
 	}
 
 	// Tags and links replace the whole set — clear then re-insert, the same rule
 	// the request follows for tags. Only touched when the field is present.
 	if draft.Tags != nil {
-		before, err := loadTags(ctx, tx, id)
-		if err != nil {
-			return nil, err
-		}
 		if _, err := tx.ExecContext(ctx,
 			`DELETE FROM idea_tags WHERE idea_id = ?`, id); err != nil {
 			return nil, fmt.Errorf("clearing tags: %w", err)
 		}
-		after := normalizeTagSet(*draft.Tags)
-		if err := upsertTags(ctx, tx, id, after); err != nil {
+		if err := upsertTags(ctx, tx, id, tags); err != nil {
 			return nil, err
 		}
-		if err := s.notifyTagsAdded(ctx, tx, id, before, after); err != nil {
+		if err := s.notifyTagsAdded(ctx, tx, id, beforeTags, tags); err != nil {
 			return nil, err
 		}
 	}
@@ -110,4 +155,10 @@ func (s *Store) Update(ctx context.Context, id int64, draft Draft) (*Idea, error
 	}
 
 	return s.Get(ctx, id)
+}
+
+// sameTagSet reports whether two normalized tag sets hold the same tags,
+// ignoring order.
+func sameTagSet(a, b []string) bool {
+	return len(a) == len(b) && !slices.ContainsFunc(a, func(t string) bool { return !slices.Contains(b, t) })
 }

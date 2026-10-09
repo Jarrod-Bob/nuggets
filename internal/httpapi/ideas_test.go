@@ -302,7 +302,7 @@ func TestLinksRoundTripThroughAPI(t *testing.T) {
 // rename a field here and this fails, reminding you to update web/src/api.ts.
 func TestIdeaJSONMatchesGolden(t *testing.T) {
 	sample := idea.Idea{
-		ID: 1, Title: "Idea bank", Notes: "this one",
+		ID: 1, Title: "Idea bank", Notes: "this one", ProjectName: "Ideanori",
 		Tags:   []string{"go", "saas"},
 		Status: idea.StatusRaw,
 		Links: []idea.Link{

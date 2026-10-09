@@ -81,6 +81,11 @@ func (s *Store) Create(ctx context.Context, draft Draft) (*Idea, error) {
 		notes = *draft.Notes
 	}
 
+	projectName := ""
+	if draft.ProjectName != nil {
+		projectName = strings.TrimSpace(*draft.ProjectName)
+	}
+
 	status := StatusRaw
 	if draft.Status != nil {
 		parsed, err := ParseStatus(string(*draft.Status))
@@ -112,8 +117,8 @@ func (s *Store) Create(ctx context.Context, draft Draft) (*Idea, error) {
 
 	now := time.Now().UTC()
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO ideas (title, notes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		title, notes, string(status), now, now,
+		`INSERT INTO ideas (title, notes, project_name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		title, notes, projectName, string(status), now, now,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("inserting idea: %w", err)
@@ -145,7 +150,7 @@ func (s *Store) Create(ctx context.Context, draft Draft) (*Idea, error) {
 // Get loads one idea, archived or not, with its tags.
 func (s *Store) Get(ctx context.Context, id int64) (*Idea, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, title, notes, status, created_at, updated_at, archived_at, source, source_ref
+		`SELECT id, title, notes, project_name, status, created_at, updated_at, archived_at, source, source_ref
 		 FROM ideas WHERE id = ?`, id)
 
 	found, err := scanIdea(row)
@@ -171,7 +176,7 @@ func scanIdea(row rowScanner) (*Idea, error) {
 	var archivedAt sql.NullTime
 	var status string
 	var source, sourceRef sql.NullString
-	err := row.Scan(&found.ID, &found.Title, &found.Notes, &status,
+	err := row.Scan(&found.ID, &found.Title, &found.Notes, &found.ProjectName, &status,
 		&found.CreatedAt, &found.UpdatedAt, &archivedAt, &source, &sourceRef)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound

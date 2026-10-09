@@ -84,15 +84,20 @@ func validateLinks(links []Link) ([]Link, error) {
 
 // Idea is one row of the ideas table plus its tags and links.
 type Idea struct {
-	ID         int64      `json:"id"`
-	Title      string     `json:"title"`
-	Notes      string     `json:"notes"`
-	Tags       []string   `json:"tags"`
-	Status     Status     `json:"status"`
-	Links      []Link     `json:"links"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
-	ArchivedAt *time.Time `json:"archived_at"`
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
+	Notes string `json:"notes"`
+	// ProjectName is the nugget's optional project name (CONTEXT.md): a
+	// creative name for what it would be called if built, kept alongside the
+	// title. "" means none. Only the captain sets it; kimi-no-name-wa merely
+	// suggests values and spices never touches it.
+	ProjectName string     `json:"project_name"`
+	Tags        []string   `json:"tags"`
+	Status      Status     `json:"status"`
+	Links       []Link     `json:"links"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	ArchivedAt  *time.Time `json:"archived_at"`
 	// Source and SourceRef record where an imported nugget came from — null
 	// for anything typed directly into the app. Origin is Source's friendly
 	// label ("spices") for the nugget page's "arrived via" line
@@ -148,6 +153,8 @@ type Draft struct {
 	Tags   *[]string `json:"tags"`
 	Status *Status   `json:"status"`
 	Links  *[]Link   `json:"links"`
+	// ProjectName is trimmed; "" clears it, exactly like notes.
+	ProjectName *string `json:"project_name"`
 }
 
 // NormalizeTag is the single definition of tag identity. The server owns this
