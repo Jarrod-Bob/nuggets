@@ -69,6 +69,10 @@ type OpenQuality struct {
 	Suggestions  int     `json:"suggestions"`
 	Judged       int     `json:"judged"`
 	PrecisionAt3 float64 `json:"precision_at_3"`
+	// PerCheck is the mean number of suggestions. On GitHub data every one
+	// is wrong by construction (the item's labels are all already on it),
+	// so this is the false-positive rate there.
+	PerCheck float64 `json:"suggestions_per_check"`
 }
 
 // SweepPoint is the hidden-tag task's precision and recall at one threshold.
@@ -96,6 +100,8 @@ type ScalePoint struct {
 	MeanInputTokens  float64 `json:"mean_input_tokens"`
 	MeanOutputTokens float64 `json:"mean_output_tokens"`
 	CostPerCheck     float64 `json:"cost_per_check_usd"`
+	MalformedPer100  float64 `json:"malformed_per_100"`
+	RefusedPer100    float64 `json:"refused_per_100"`
 	ErroredPer100    float64 `json:"errored_per_100"`
 }
 
@@ -196,6 +202,7 @@ func summarize(rs []Record, j Judgments) *ContenderSummary {
 	}
 	o := atThreshold(open, Threshold, j)
 	cs.Open.Cases = len(open)
+	cs.Open.PerCheck = ratio(o.suggestions, len(open))
 	cs.Open.Suggestions, cs.Open.Judged, cs.Open.PrecisionAt3 = o.suggestions, o.judged, o.precision
 
 	// The threshold sweep, on the hidden-tag task.
@@ -204,7 +211,8 @@ func summarize(rs []Record, j Judgments) *ContenderSummary {
 		m := atThreshold(hidden, t, j)
 		p := SweepPoint{Threshold: t, Precision: m.precision, Recall: m.recall, F1: f1(m.precision, m.recall)}
 		cs.Sweep = append(cs.Sweep, p)
-		if p.F1 >= cs.BestThreshold.F1 {
+		// Ties go to the higher threshold; no F1 at all, no best.
+		if p.F1 > 0 && p.F1 >= cs.BestThreshold.F1 {
 			cs.BestThreshold = p
 		}
 	}
@@ -268,20 +276,12 @@ func summarize(rs []Record, j Judgments) *ContenderSummary {
 	cs.Checks = len(rs)
 	var latencies []float64
 	var in, out int64
-	var malformed, refused, errored int
 	for _, r := range rs {
 		cs.TotalCostUSD += r.CostUSD
 		in += r.InputTokens
 		out += r.OutputTokens
-		switch r.Outcome {
-		case OutcomeOK:
+		if r.Outcome == OutcomeOK {
 			latencies = append(latencies, r.LatencyMS)
-		case OutcomeMalformed:
-			malformed++
-		case OutcomeRefused:
-			refused++
-		default:
-			errored++
 		}
 	}
 	cs.LatencyP50MS = percentile(latencies, 50)
@@ -293,9 +293,7 @@ func summarize(rs []Record, j Judgments) *ContenderSummary {
 	if correct := h.correct + o.correct; correct > 0 {
 		cs.CostPerCorrect = cs.TotalCostUSD / float64(correct)
 	}
-	cs.MalformedPer100 = 100 * ratio(malformed, len(rs))
-	cs.RefusedPer100 = 100 * ratio(refused, len(rs))
-	cs.ErroredPer100 = 100 * ratio(errored, len(rs))
+	cs.MalformedPer100, cs.RefusedPer100, cs.ErroredPer100 = failuresPer100(rs)
 	return cs
 }
 
@@ -337,13 +335,12 @@ func scalePoint(rs []Record) *ScalePoint {
 	var latencies []float64
 	var in, out int64
 	var cost float64
-	var answered, hits, errored int
+	var answered, hits int
 	for _, r := range rs {
 		in += r.InputTokens
 		out += r.OutputTokens
 		cost += r.CostUSD
 		if r.Outcome != OutcomeOK {
-			errored++
 			continue
 		}
 		answered++
@@ -358,8 +355,25 @@ func scalePoint(rs []Record) *ScalePoint {
 	p.MeanInputTokens = ratio64(float64(in), len(rs))
 	p.MeanOutputTokens = ratio64(float64(out), len(rs))
 	p.CostPerCheck = ratio64(cost, len(rs))
-	p.ErroredPer100 = 100 * ratio(errored, len(rs))
+	p.MalformedPer100, p.RefusedPer100, p.ErroredPer100 = failuresPer100(rs)
 	return p
+}
+
+// failuresPer100 counts malformed, refused and errored checks per 100.
+func failuresPer100(rs []Record) (malformed, refused, errored float64) {
+	var m, f, e int
+	for _, r := range rs {
+		switch r.Outcome {
+		case OutcomeOK:
+		case OutcomeMalformed:
+			m++
+		case OutcomeRefused:
+			f++
+		default:
+			e++
+		}
+	}
+	return 100 * ratio(m, len(rs)), 100 * ratio(f, len(rs)), 100 * ratio(e, len(rs))
 }
 
 func f1(p, r float64) float64 {

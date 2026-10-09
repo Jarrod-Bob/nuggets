@@ -159,3 +159,10 @@ func TestScalePaddingNeverUsesTheBanksTags(t *testing.T) {
 		}
 	}
 }
+
+func TestLimitCountsOnlyTheTasksAskedFor(t *testing.T) {
+	cs := BuildCases(bankItems(), CaseOptions{Seed: 3, Repeats: 1, Tasks: []string{TaskHidden}, Limit: 3})
+	if len(cs) != 3 || len(casesOf(cs, TaskHidden)) != 3 {
+		t.Errorf("got %d cases (%d hidden), want 3 hidden", len(cs), len(casesOf(cs, TaskHidden)))
+	}
+}

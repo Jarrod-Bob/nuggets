@@ -34,17 +34,24 @@ func WriteReport(w io.Writer, s Summary) {
 			title = ds
 		}
 		fmt.Fprintf(w, "## %s\n\n", title)
-		fmt.Fprintf(w, "Quality at threshold %.2f, top %d. Hidden-tag precision counts suggestions of known truth; on the bank that means judged ones.\n\n", Threshold, TopK)
-		fmt.Fprintln(w, "| Contender | Checks | Recall@3 | Precision@3 | F1 | Hit@1 / Hit@3 (rank) | Open precision@3 (judged/suggested) | Best threshold | Brier | Top-3 change rate | p50 / p95 ms | $/check | $/1k checks | $/correct | Malformed / refused / errored per 100 |")
-		fmt.Fprintln(w, "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+		fmt.Fprintf(w, "Quality at threshold %.2f, top %d. Precision counts suggestions of known truth; on the bank that means judged ones.\n\n", Threshold, TopK)
+		fmt.Fprintln(w, "| Contender | Checks | Recall@3 | Precision@3 | F1 | Hit@1 / Hit@3 (rank) | Open precision@3 (judged/suggested) | Open suggestions per check | Best threshold | Brier | Top-3 change rate | p50 / p95 ms | $/check | $/1k checks | $/correct | Malformed / refused / errored per 100 |")
+		fmt.Fprintln(w, "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
 		byName := s.Datasets[ds]
 		for _, name := range slices.Sorted(maps.Keys(byName)) {
 			c := byName[name]
-			fmt.Fprintf(w, "| %s | %d | %.3f | %.3f | %.3f | %.2f / %.2f | %.3f (%d/%d) | %.2f (F1 %.3f) | %.3f | %.2f (%d cases) | %.0f / %.0f | $%.6f | $%.3f | $%.6f | %.1f / %.1f / %.1f |\n",
+			fmt.Fprintf(w, "| %s | %d | %.3f | %.3f | %.3f | %.2f / %.2f | %.3f (%d/%d) | %.2f | %.2f (F1 %.3f) | %.3f | %.2f (%d cases) | %.0f / %.0f | $%.6f | $%.3f | $%.6f | %.1f / %.1f / %.1f |\n",
 				name, c.Checks, c.Hidden.RecallAt3, c.Hidden.PrecisionAt3, c.Hidden.F1, c.Hidden.HitAt1, c.Hidden.HitAt3,
-				c.Open.PrecisionAt3, c.Open.Judged, c.Open.Suggestions, c.BestThreshold.Threshold, c.BestThreshold.F1,
+				c.Open.PrecisionAt3, c.Open.Judged, c.Open.Suggestions, c.Open.PerCheck, c.BestThreshold.Threshold, c.BestThreshold.F1,
 				c.Brier, c.TopSetChangeRate, c.StabilityCases, c.LatencyP50MS, c.LatencyP95MS,
 				c.CostPerCheck, c.CostPer1000, c.CostPerCorrect, c.MalformedPer100, c.RefusedPer100, c.ErroredPer100)
+		}
+		fmt.Fprintln(w)
+		switch ds {
+		case DatasetGitHub:
+			fmt.Fprintln(w, "On GitHub data an item's labels are all on it already, so every open suggestion is wrong by construction: read open suggestions per check as the false-positive rate, not open precision. Those negatives also dominate calibration.")
+		case DatasetBank:
+			fmt.Fprintln(w, "Bank calibration covers only scores of known truth: hidden tags and judged top-3 suggestions. Low-scoring candidates are never judged, so the reliability bins lean on confident scores.")
 		}
 		fmt.Fprintln(w)
 	}
@@ -53,13 +60,14 @@ func WriteReport(w io.Writer, s Summary) {
 	}
 	fmt.Fprintln(w, "## Scaling")
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "| Contender | Vocabulary | Checks | Recall@3 | p50 / p95 ms | Input tokens | Output tokens | $/check | Errored per 100 |")
+	fmt.Fprintln(w, "| Contender | Vocabulary | Checks | Recall@3 | p50 / p95 ms | Input tokens | Output tokens | $/check | Malformed / refused / errored per 100 |")
 	fmt.Fprintln(w, "|---|---|---|---|---|---|---|---|---|")
 	for _, name := range slices.Sorted(maps.Keys(s.Scaling)) {
 		for _, size := range slices.Sorted(maps.Keys(s.Scaling[name])) {
 			p := s.Scaling[name][size]
-			fmt.Fprintf(w, "| %s | %d | %d | %.3f | %.0f / %.0f | %.0f | %.0f | $%.6f | %.1f |\n",
-				name, size, p.Checks, p.RecallAt3, p.LatencyP50MS, p.LatencyP95MS, p.MeanInputTokens, p.MeanOutputTokens, p.CostPerCheck, p.ErroredPer100)
+			fmt.Fprintf(w, "| %s | %d | %d | %.3f | %.0f / %.0f | %.0f | %.0f | $%.6f | %.1f / %.1f / %.1f |\n",
+				name, size, p.Checks, p.RecallAt3, p.LatencyP50MS, p.LatencyP95MS, p.MeanInputTokens, p.MeanOutputTokens, p.CostPerCheck,
+				p.MalformedPer100, p.RefusedPer100, p.ErroredPer100)
 		}
 	}
 	fmt.Fprintln(w)

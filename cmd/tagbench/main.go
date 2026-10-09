@@ -147,16 +147,8 @@ func run(ctx context.Context, args []string) error {
 		items = append(items, gh.Issues...)
 	}
 
-	opt := tagbench.CaseOptions{Seed: *seed, Repeats: *repeats, MaxHidden: *maxHidden, MaxOpen: *maxOpen, Limit: *limit}
-	if slices.Contains(wantTasks, tagbench.TaskScale) {
-		opt.ScaleItems, opt.ScaleSizes = *scaleItems, sizes
-	}
-	var cases []tagbench.Case
-	for _, c := range tagbench.BuildCases(items, opt) {
-		if slices.Contains(wantTasks, c.Task) {
-			cases = append(cases, c)
-		}
-	}
+	cases := tagbench.BuildCases(items, tagbench.CaseOptions{Seed: *seed, Repeats: *repeats, MaxHidden: *maxHidden, MaxOpen: *maxOpen,
+		ScaleItems: *scaleItems, ScaleSizes: sizes, Tasks: wantTasks, Limit: *limit})
 
 	ep := tagbench.Endpoints{JevKey: jevKey}
 	var contenders []tagbench.Contender

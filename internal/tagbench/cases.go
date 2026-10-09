@@ -41,8 +41,10 @@ type CaseOptions struct {
 	// candidate tags.
 	ScaleItems int
 	ScaleSizes []int
-	// Limit caps the cases (before repeats), sampled with Seed: for smoke
-	// runs.
+	// Tasks are the tasks to build (default all).
+	Tasks []string
+	// Limit caps the cases of those tasks (before repeats), sampled with
+	// Seed: for smoke runs.
 	Limit int
 }
 
@@ -104,6 +106,9 @@ func BuildCases(items []Item, opt CaseOptions) []Case {
 		cases = append(cases, sample(rng, open[ds], opt.MaxOpen)...)
 	}
 	cases = append(cases, scaleCases(rng, items, hidden[DatasetGitHub], uses, opt)...)
+	if len(opt.Tasks) > 0 {
+		cases = slices.DeleteFunc(cases, func(c Case) bool { return !slices.Contains(opt.Tasks, c.Task) })
+	}
 	if opt.Limit > 0 && len(cases) > opt.Limit {
 		cases = sample(rng, cases, opt.Limit)
 	}

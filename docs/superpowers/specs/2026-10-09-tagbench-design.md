@@ -70,7 +70,7 @@ Each repo is its own bank: an issue's candidates and examples come only from its
 - **Open suggestion.** Each item as it is (`-max-open`, default 120 per dataset). An item with no candidates is skipped, as production makes no call.
 - **Scaling.** `-scale-items` (default 10) GitHub hidden-tag cases are re-asked with exactly 10, 50 and 200 candidates. The hidden tag comes first, then the rest of its repo's candidates, then labels from the other repos, in a seeded order (each smaller vocabulary is a subset of the larger one), then sorted by tag like production.
 - **Repeats.** Every case is asked `-repeats` times (default 3).
-- `-limit N` caps the cases (before repeats) for a smoke run. `-seed` fixes every sample.
+- `-limit N` caps the cases of the chosen `-tasks` (before repeats) for a smoke run. `-seed` fixes every sample.
 
 ## 6. Ground truth and judging
 
@@ -83,27 +83,28 @@ Each repo is its own bank: an issue's candidates and examples come only from its
 Production's rule applies throughout: the suggested tags are those scoring at least **0.7**, at most **3**, highest first. Quality metrics use the checks that answered. Cost and failure rates use every check.
 
 - **Recall@3** (hidden tag): the share of checks whose hidden tag is suggested. **By rank**, ignoring the threshold: Hit@1, Hit@3 and the hidden tag's mean rank.
-- **Precision@3:** right suggestions over suggestions of known truth, for the hidden-tag and open tasks. **F1** combines hidden-tag precision and recall.
-- **Threshold sweep:** precision, recall and F1 for the hidden-tag task at 0.05, 0.10, … 0.95. The best threshold is the highest F1 (the higher threshold on a tie).
-- **Calibration:** every candidate score with known truth, in ten reliability bins (mean score against the observed rate), plus the Brier score.
+- **Precision@3:** right suggestions over suggestions of known truth, for the hidden-tag and open tasks. **F1** combines hidden-tag precision and recall. **Open suggestions per check** sits beside open precision: on GitHub data every open suggestion is wrong by construction (an item's labels are all on it already), so there it is the false-positive rate, and the report says so.
+- **Threshold sweep:** precision, recall and F1 for the hidden-tag task at 0.05, 0.10, … 0.95. The best threshold is the highest F1 (the higher threshold on a tie), and none when every F1 is 0.
+- **Calibration:** every candidate score with known truth, in ten reliability bins (mean score against the observed rate), plus the Brier score. On the bank only hidden tags and judged top-3 suggestions are known, so low scores are under-represented; on GitHub, open-task negatives dominate. The report notes both.
 - **Stability:** the share of cases whose suggested set (as a set) differs between any two repeats.
 - **Scaling:** for each vocabulary size, recall@3, latency p50 and p95, mean input and output tokens, and cost per check.
 - **Latency:** p50 and p95, nearest rank.
 - **Cost:** per check, per 1,000 checks, and per correct suggestion (total cost over suggestions known to be right, both tasks).
-- **Failures:** malformed, refused and errored checks per 100.
+- **Failures:** malformed, refused and errored checks per 100, overall and per vocabulary size.
 
 ## 8. Spend safety
 
-- **`-max-usd`** (default **$2.00**) is a hard cap. Before a check starts, the runner reserves its worst case (twice the heuristic input, and the full `max_tokens` of output for Claude). The check starts only if the spend so far, plus every reservation in flight, plus its own, fits under the cap. At the first one that doesn't, the run stops dispatching, waits for the checks in flight, and writes its partial results with the reason. Contenders take turns case by case, so a stopped run still compares them on the same cases. Ctrl-C stops the same way.
+- **`-max-usd`** (default **$2.00**) is a hard cap. Before a case starts, the runner reserves its estimated worst case for every contender: twice the heuristic input (plus 1,000 tokens per question for Jev, whose own usage counts overhead the heuristic can't see), and the full `max_tokens` of output for Claude. The case starts only if the spend so far, plus every reservation in flight, plus its own, fits under the cap. At the first one that doesn't, the run stops dispatching, waits for the checks in flight, and writes its partial results with the reason. Reserving whole cases means a stopped run still compares every contender on the same cases. The worst case is an estimate, not a proof, but the margin is wide (a Haiku check reserves about 30 times its expected cost).
+- **Spend is what was paid.** Tokens used by attempts that then failed (an early request of a split Jev check, before a later one was rate limited) count towards the check's cost. Ctrl-C stops dispatching the same way; checks it cuts short are paid for but not recorded, since their failure isn't the model's.
 - **`-dry-run`** calls nothing and prints tokens and cost per contender. Input tokens are estimated as characters / 4, and output as the answer's size plus a labelled thinking allowance (400 tokens at `low`). With **`-count-tokens`**, Claude's input is counted by Anthropic's free `count_tokens` endpoint instead: still a network call, so only on request.
-- **Rate limits:** `-concurrency` checks at once (default 4), and at most `-rps` call starts per second per contender (default 4). A 429 or 529 is retried up to 5 tries, waiting 2 s doubled each time or the `Retry-After`, whichever is longer. The Anthropic SDK's own retries are off, so latency is one call's.
+- **Rate limits:** `-concurrency` checks at once (default 4), and at most `-rps` check starts per second per contender (default 4); a split Jev check sends its requests back to back, as production does. A 429 or 529 is retried up to 5 tries, waiting 2 s doubled each time or the `Retry-After`, whichever is longer. The Anthropic SDK's own retries are off, so latency is one call's.
 
 ## 9. Tests
 
 `httptest` fakes stand in for TypeSafe and Anthropic. Nothing calls a real API.
 
 - The metric math against hand-computed fixtures: recall, precision, F1, rank, calibration bins and Brier, the sweep and best threshold, latency percentiles, the cost per check, per 1,000 and per correct, the failure rates, stability, and bank precision from judgments.
-- The spend cap stops a run before the cap, with contenders still in step. Retries back off on 429 and 529, honouring `Retry-After`. Failures are recorded without stopping the run. An interrupt stops it.
+- The spend cap stops a run before the cap, reserving whole cases so contenders of different prices stay in step. Retries back off on 429 and 529, honouring `Retry-After`, and tokens paid on a failed attempt are charged. Failures are recorded without stopping the run. An interrupt stops it and leaves out the checks it cut short.
 - Claude: the schema covers exactly the candidate tags; the request carries Jev's state, examples and criteria; `low` and `nothink` set thinking and effort; score mapping; every malformed shape, and refusal; rate limits surface for the runner, with no SDK retry.
 - Jev: the requests are byte-identical to `jev.BuildRequests`; usage is summed across split requests.
 - Datasets: housekeeping labels are dropped; fetch prefers multi-label issues and skips pull requests; the bank loader reads only active nuggets, their dismissals and the key, through a read-only handle.

@@ -109,3 +109,34 @@ func TestSummaryBankPrecisionComesFromJudgments(t *testing.T) {
 		t.Errorf("open precision %v over %d judged of %d, want 0.5 over 2 of 3", s.Open.PrecisionAt3, s.Open.Judged, s.Open.Suggestions)
 	}
 }
+
+func TestNoBestThresholdWhenNothingIsEverRight(t *testing.T) {
+	records := []Record{{Contender: "a", Dataset: DatasetGitHub, Task: TaskHidden, CaseKey: "c", ItemID: "i", ItemTags: []string{"x", "y"}, Hidden: "x",
+		Scores: map[string]float64{"x": 0.01, "z": 0.99}, Outcome: OutcomeOK}}
+	if b := Summarize(records, nil).Datasets[DatasetGitHub]["a"].BestThreshold; b != (SweepPoint{}) {
+		t.Errorf("best = %+v, want none rather than 0.95", b)
+	}
+}
+
+func TestOpenSuggestionsPerCheck(t *testing.T) {
+	records := []Record{
+		{Contender: "a", Dataset: DatasetGitHub, Task: TaskOpen, CaseKey: "c1", ItemID: "i1", Scores: map[string]float64{"p": 0.9, "q": 0.8}, Outcome: OutcomeOK},
+		{Contender: "a", Dataset: DatasetGitHub, Task: TaskOpen, CaseKey: "c2", ItemID: "i2", Scores: map[string]float64{"p": 0.1}, Outcome: OutcomeOK},
+	}
+	if got := Summarize(records, nil).Datasets[DatasetGitHub]["a"].Open.PerCheck; !near(got, 1) {
+		t.Errorf("open suggestions per check = %v, want 1", got)
+	}
+}
+
+func TestScalingCountsEveryFailureKindSeparately(t *testing.T) {
+	records := []Record{
+		{Contender: "a", Task: TaskScale, VocabSize: 10, Outcome: OutcomeMalformed},
+		{Contender: "a", Task: TaskScale, VocabSize: 10, Outcome: OutcomeError},
+		{Contender: "a", Task: TaskScale, VocabSize: 10, Outcome: OutcomeOK, Scores: map[string]float64{}},
+		{Contender: "a", Task: TaskScale, VocabSize: 10, Outcome: OutcomeRefused},
+	}
+	p := Summarize(records, nil).Scaling["a"][10]
+	if !near(p.MalformedPer100, 25) || !near(p.ErroredPer100, 25) || !near(p.RefusedPer100, 25) {
+		t.Errorf("scale point = %+v, want 25 per 100 of each kind", p)
+	}
+}
