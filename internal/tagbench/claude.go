@@ -56,23 +56,27 @@ func newClaude(model, config string, ep Endpoints) *claude {
 func (c *claude) Name() string { return "claude:" + c.model + ":" + c.config }
 func (c *claude) Price() Price { return Prices[c.model] }
 
-// schema allows exactly the candidate tags, each {applies, confidence}.
-func schema(in Input) map[string]any {
-	props := make(map[string]any, len(in.Candidates))
-	required := make([]string, 0, len(in.Candidates))
-	for _, cand := range in.Candidates {
-		props[cand.Tag] = map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"applies":    map[string]any{"type": "boolean"},
-				"confidence": map[string]any{"type": "number"},
-			},
-			"required":             []string{"applies", "confidence"},
-			"additionalProperties": false,
-		}
-		required = append(required, cand.Tag)
+// schema asks for a list of {tag, applies, confidence}. Its size doesn't
+// depend on the candidates: one property per tag compiles to a grammar the
+// API rejects at around 50 tags ("The compiled grammar is too large").
+// parseAnswer checks the list covers exactly the candidates.
+func schema(Input) map[string]any {
+	answer := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"tag":        map[string]any{"type": "string"},
+			"applies":    map[string]any{"type": "boolean"},
+			"confidence": map[string]any{"type": "number"},
+		},
+		"required":             []string{"tag", "applies", "confidence"},
+		"additionalProperties": false,
 	}
-	return map[string]any{"type": "object", "properties": props, "required": required, "additionalProperties": false}
+	return map[string]any{
+		"type":                 "object",
+		"properties":           map[string]any{"answers": map[string]any{"type": "array", "items": answer}},
+		"required":             []string{"answers"},
+		"additionalProperties": false,
+	}
 }
 
 type candidateJSON struct {
@@ -174,12 +178,15 @@ func Score(applies bool, confidence float64) float64 {
 	return 1 - confidence
 }
 
-// parseAnswer checks the answer covers exactly the candidates, each with
-// applies and a confidence in [0, 1], and scores it.
+// parseAnswer checks the answer covers exactly the candidates, each once
+// with applies and a confidence in [0, 1], and scores it.
 func parseAnswer(text string, in Input) (map[string]float64, error) {
-	var answer map[string]struct {
-		Applies    *bool    `json:"applies"`
-		Confidence *float64 `json:"confidence"`
+	var answer struct {
+		Answers []struct {
+			Tag        string   `json:"tag"`
+			Applies    *bool    `json:"applies"`
+			Confidence *float64 `json:"confidence"`
+		} `json:"answers"`
 	}
 	if err := json.Unmarshal([]byte(text), &answer); err != nil {
 		return nil, fmt.Errorf("answer is not the JSON object asked for: %w", err)
@@ -188,18 +195,21 @@ func parseAnswer(text string, in Input) (map[string]float64, error) {
 	for _, c := range in.Candidates {
 		want[c.Tag] = true
 	}
-	scores := make(map[string]float64, len(answer))
-	for tag, a := range answer {
-		if !want[tag] {
-			return nil, fmt.Errorf("answer has tag %q, which isn't a candidate", tag)
+	scores := make(map[string]float64, len(answer.Answers))
+	for _, a := range answer.Answers {
+		if !want[a.Tag] {
+			return nil, fmt.Errorf("answer has tag %q, which isn't a candidate", a.Tag)
+		}
+		if _, seen := scores[a.Tag]; seen {
+			return nil, fmt.Errorf("answer has tag %q twice", a.Tag)
 		}
 		if a.Applies == nil || a.Confidence == nil {
-			return nil, fmt.Errorf("answer for %q lacks applies or confidence", tag)
+			return nil, fmt.Errorf("answer for %q lacks applies or confidence", a.Tag)
 		}
 		if *a.Confidence < 0 || *a.Confidence > 1 {
-			return nil, fmt.Errorf("answer for %q has confidence %v, outside 0 to 1", tag, *a.Confidence)
+			return nil, fmt.Errorf("answer for %q has confidence %v, outside 0 to 1", a.Tag, *a.Confidence)
 		}
-		scores[tag] = Score(*a.Applies, *a.Confidence)
+		scores[a.Tag] = Score(*a.Applies, *a.Confidence)
 	}
 	if len(scores) != len(want) {
 		return nil, fmt.Errorf("answer covers %d of %d candidates", len(scores), len(want))
@@ -210,10 +220,10 @@ func parseAnswer(text string, in Input) (map[string]float64, error) {
 func (c *claude) Estimate(in Input) Estimate {
 	schemaJSON, _ := json.Marshal(schema(in))
 	inTokens := int64(len(claudeSystem)+len(userText(in))+len(schemaJSON))/4 + 20
-	// The answer is about {"tag":{"applies":false,"confidence":0.95}}, per tag.
+	// The answer is about {"tag":"…","applies":false,"confidence":0.95}, per tag.
 	var answerChars int
 	for _, cand := range in.Candidates {
-		answerChars += len(cand.Tag) + 40
+		answerChars += len(cand.Tag) + 50
 	}
 	return Estimate{
 		InputTokens:       inTokens,

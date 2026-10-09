@@ -2,10 +2,11 @@ package tagbench
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -32,38 +33,44 @@ func newTestClaude(t *testing.T, url, spec string) Contender {
 	return c
 }
 
-func TestClaudeSchemaCoversExactlyTheCandidateTags(t *testing.T) {
+func TestClaudeSchemaStaysTheSameSizeWhateverTheVocabulary(t *testing.T) {
+	// One property per tag compiles to a grammar the API rejects at 50+ tags
+	// ("The compiled grammar is too large"), so the schema is a list whose
+	// size doesn't grow with the vocabulary; parseAnswer checks coverage.
 	fake, srv := newFakeAnthropic(t)
 	c := newTestClaude(t, srv.URL, "claude:claude-haiku-5-5:low")
 	if _, err := c.Check(context.Background(), sampleInput()); err != nil {
 		t.Fatal(err)
 	}
-	body := fake.bodies[0]
-	format := body["output_config"].(map[string]any)["format"].(map[string]any)
-	schema := format["schema"].(map[string]any)
-	props := schema["properties"].(map[string]any)
-	var keys []string
-	for k, v := range props {
-		keys = append(keys, k)
-		tag := v.(map[string]any)
-		inner := tag["properties"].(map[string]any)
-		if inner["applies"].(map[string]any)["type"] != "boolean" || inner["confidence"].(map[string]any)["type"] != "number" {
-			t.Errorf("tag %q schema = %v", k, tag)
-		}
-		if tag["additionalProperties"] != false || !reflect.DeepEqual(tag["required"], []any{"applies", "confidence"}) {
-			t.Errorf("tag %q must require exactly applies and confidence: %v", k, tag)
-		}
-	}
-	slices.Sort(keys)
-	if !reflect.DeepEqual(keys, []string{"hardware", "weekend"}) {
-		t.Errorf("schema properties = %v, want exactly the candidates", keys)
-	}
-	if !reflect.DeepEqual(schema["required"], []any{"hardware", "weekend"}) || schema["additionalProperties"] != false {
-		t.Errorf("schema must require every candidate and nothing else: %v", schema)
-	}
+	format := fake.bodies[0]["output_config"].(map[string]any)["format"].(map[string]any)
 	if format["type"] != "json_schema" {
 		t.Errorf("format type = %v", format["type"])
 	}
+	small := format["schema"]
+	big := sampleInput()
+	for i := 0; i < 200; i++ {
+		big.Candidates = append(big.Candidates, jev.Candidate{Tag: fmt.Sprintf("tag-%d", i)})
+	}
+	if !reflect.DeepEqual(toJSONValue(t, schema(big)), small) {
+		t.Errorf("schema grows with the candidates: %v", small)
+	}
+	items := small.(map[string]any)["properties"].(map[string]any)["answers"].(map[string]any)["items"].(map[string]any)
+	if !reflect.DeepEqual(items["required"], []any{"tag", "applies", "confidence"}) || items["additionalProperties"] != false {
+		t.Errorf("each answer must be exactly tag, applies, confidence: %v", items)
+	}
+}
+
+func toJSONValue(t *testing.T, v any) any {
+	t.Helper()
+	data, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out any
+	if err := json.Unmarshal(data, &out); err != nil {
+		t.Fatal(err)
+	}
+	return out
 }
 
 func TestClaudeSendsTheSameStateAndExamplesAsJev(t *testing.T) {
@@ -105,7 +112,7 @@ func TestClaudeNothinkDisablesThinking(t *testing.T) {
 func TestClaudeScoreIsConfidenceWhenItAppliesElseItsComplement(t *testing.T) {
 	fake, srv := newFakeAnthropic(t)
 	fake.reply = func(map[string]any) (string, string) {
-		return `{"hardware":{"applies":true,"confidence":0.8},"weekend":{"applies":false,"confidence":0.9}}`, "end_turn"
+		return `{"answers":[{"tag":"hardware","applies":true,"confidence":0.8},{"tag":"weekend","applies":false,"confidence":0.9}]}`, "end_turn"
 	}
 	c := newTestClaude(t, srv.URL, "claude:claude-haiku-5-5:low")
 	res, err := c.Check(context.Background(), sampleInput())
@@ -123,11 +130,12 @@ func TestClaudeScoreIsConfidenceWhenItAppliesElseItsComplement(t *testing.T) {
 func TestClaudeMalformedAnswers(t *testing.T) {
 	for name, tc := range map[string]struct{ text, stop, outcome string }{
 		"not JSON":             {`hardware: yes`, "end_turn", OutcomeMalformed},
-		"a tag missing":        {`{"hardware":{"applies":true,"confidence":0.8}}`, "end_turn", OutcomeMalformed},
-		"an extra tag":         {`{"hardware":{"applies":true,"confidence":0.8},"weekend":{"applies":false,"confidence":0.9},"cars":{"applies":true,"confidence":1}}`, "end_turn", OutcomeMalformed},
-		"confidence above one": {`{"hardware":{"applies":true,"confidence":1.8},"weekend":{"applies":false,"confidence":0.9}}`, "end_turn", OutcomeMalformed},
-		"no applies":           {`{"hardware":{"confidence":0.8},"weekend":{"applies":false,"confidence":0.9}}`, "end_turn", OutcomeMalformed},
-		"cut off":              {`{"hardware":{"applies":tr`, "max_tokens", OutcomeMalformed},
+		"a tag missing":        {`{"answers":[{"tag":"hardware","applies":true,"confidence":0.8}]}`, "end_turn", OutcomeMalformed},
+		"an extra tag":         {`{"answers":[{"tag":"hardware","applies":true,"confidence":0.8},{"tag":"weekend","applies":false,"confidence":0.9},{"tag":"cars","applies":true,"confidence":1}]}`, "end_turn", OutcomeMalformed},
+		"confidence above one": {`{"answers":[{"tag":"hardware","applies":true,"confidence":1.8},{"tag":"weekend","applies":false,"confidence":0.9}]}`, "end_turn", OutcomeMalformed},
+		"a tag twice":          {`{"answers":[{"tag":"hardware","applies":true,"confidence":0.8},{"tag":"hardware","applies":false,"confidence":0.9}]}`, "end_turn", OutcomeMalformed},
+		"no applies":           {`{"answers":[{"tag":"hardware","confidence":0.8},{"tag":"weekend","applies":false,"confidence":0.9}]}`, "end_turn", OutcomeMalformed},
+		"cut off":              {`{"answers":[{"tag":"hardware","applies":tr`, "max_tokens", OutcomeMalformed},
 		"refused":              {``, "refusal", OutcomeRefused},
 	} {
 		t.Run(name, func(t *testing.T) {
