@@ -5,6 +5,7 @@ import { iconSettings } from '../icons';
 import { SpicesSettings } from './SpicesSettings';
 import { GitHubSettings } from './GitHubSettings';
 import { KimiSettings } from './KimiSettings';
+import { TagSuggestionSettings } from './TagSuggestionSettings';
 
 /**
  * The top-bar entry point to settings (design §11: "reached from the top bar").
@@ -12,7 +13,8 @@ import { KimiSettings } from './KimiSettings';
  * without threading that state through the route. The dialog overlays whichever
  * route you are on rather than navigating away from it, and holds one section
  * per integration: spices, where nuggets arrive from, GitHub, where tagged
- * nuggets go as feature requests, and kimi, which suggests project names.
+ * nuggets go as feature requests, kimi, which suggests project names, and tag
+ * suggestions, which TypeSafe makes.
  */
 export function SettingsButton() {
   const [open, setOpen] = React.useState(false);
@@ -26,6 +28,7 @@ export function SettingsButton() {
           <SpicesSettings open={open} />
           <GitHubSettings open={open} />
           <KimiSettings open={open} />
+          <TagSuggestionSettings open={open} />
         </div>
       </Dialog>
     </>
