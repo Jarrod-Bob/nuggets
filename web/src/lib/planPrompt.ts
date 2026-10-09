@@ -8,13 +8,16 @@ import { statusLabel } from './status';
  *
  * THE PROMPT TEMPLATE. Edit the wording here; each {{placeholder}} is filled
  * from the nugget by buildPlanPrompt below. An empty field renders as the
- * "(none)" text in EMPTY so Claude knows it was left blank on purpose.
+ * "(none)" text in EMPTY so Claude knows it was left blank on purpose, except
+ * the project name: a line holding {{project_name}} is left out entirely when
+ * the nugget has none.
  */
 export const PLAN_PROMPT_TEMPLATE = `I keep a bank of side-project ideas I call "nuggets". Help me turn this one into a plan I can start building.
 
 ## The idea
 
 Title: {{title}}
+Working name: {{project_name}}
 Status: {{status}}
 Tags: {{tags}}
 
@@ -61,11 +64,13 @@ export function claudeDesktopUrl(prompt: string): string {
  */
 export const CLAUDE_WEB_NEW_CHAT_URL = 'https://claude.ai/new';
 
-type PromptIdea = Pick<Idea, 'title' | 'notes' | 'tags' | 'status' | 'links'>;
+type PromptIdea = Pick<Idea, 'title' | 'notes' | 'tags' | 'status' | 'links'> & Partial<Pick<Idea, 'project_name'>>;
 
 function render(idea: PromptIdea, notes: string): string {
+  const projectName = (idea.project_name ?? '').trim();
   const fields: Record<string, string> = {
     title: idea.title.trim(),
+    project_name: projectName,
     status: statusLabel(idea.status),
     tags: idea.tags.length ? idea.tags.join(', ') : EMPTY.tags,
     notes: notes.trim() ? notes.trim() : EMPTY.notes,
@@ -74,7 +79,10 @@ function render(idea: PromptIdea, notes: string): string {
       : EMPTY.links,
   };
   // A replacer function, so a `$&` typed into a nugget is inserted literally.
-  return PLAN_PROMPT_TEMPLATE.replace(/\{\{(\w+)\}\}/g, (whole, key: string) => fields[key] ?? whole);
+  const template = projectName
+    ? PLAN_PROMPT_TEMPLATE
+    : PLAN_PROMPT_TEMPLATE.split('\n').filter((line) => !line.includes('{{project_name}}')).join('\n');
+  return template.replace(/\{\{(\w+)\}\}/g, (whole, key: string) => fields[key] ?? whole);
 }
 
 /** The complete prompt for a nugget — what Copy puts on the clipboard. */

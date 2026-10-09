@@ -18,6 +18,8 @@ export interface Idea {
   id: number;
   title: string;
   notes: string;
+  /** The optional project name (CONTEXT.md): a creative name kept alongside the title. '' means none. */
+  project_name: string;
   tags: string[];
   status: Status;
   links: Link[];
@@ -48,6 +50,8 @@ export interface Draft {
   tags?: string[];
   status?: Status;
   links?: Link[];
+  /** Trimmed by the server; '' clears it. */
+  project_name?: string;
 }
 
 export interface ListFilter {
@@ -162,6 +166,19 @@ export interface FeatureRequest {
   url?: string;
 }
 
+/** GET/PUT /api/settings/kimi: where kimi-no-name-wa listens. */
+export interface KimiSettings {
+  url: string;
+}
+
+/** Mirrors internal/kimi.Name: one suggested project name. */
+export interface KimiName {
+  name: string;
+  explanation: string;
+  technique: string;
+  tone: string;
+}
+
 export const api = {
   list: (filter: ListFilter = {}) => request<Idea[]>(`/api/ideas${query(filter)}`),
   get: (id: number) => request<Idea>(`/api/ideas/${id}`),
@@ -196,6 +213,26 @@ export const api = {
     disconnect: () => request<void>('/api/settings/spices', { method: 'DELETE' }),
     sync: () => request<void>('/api/spices/sync', { method: 'POST' }),
     resync: () => request<SpicesStatus>('/api/spices/resync', { method: 'POST' }),
+  },
+  kimi: {
+    settings: () => request<KimiSettings>('/api/settings/kimi'),
+    save: (settings: KimiSettings) =>
+      request<KimiSettings>('/api/settings/kimi', { method: 'PUT', body: JSON.stringify(settings) }),
+    /** Whether kimi can generate names right now. Never throws: any failure is "not available". */
+    available: async (): Promise<boolean> => {
+      try {
+        return (await request<{ available: boolean }>('/api/kimi/health')).available === true;
+      } catch {
+        return false;
+      }
+    },
+    /** Five suggestions for a nugget's notes. Aborting `signal` cancels the call to kimi too. */
+    names: (notes: string, avoid: string[], signal?: AbortSignal) =>
+      request<{ names: KimiName[] }>('/api/kimi/names', {
+        method: 'POST',
+        body: JSON.stringify({ notes, avoid }),
+        signal,
+      }).then((r) => r.names),
   },
   github: {
     status: () => request<GitHubStatus>('/api/settings/github'),

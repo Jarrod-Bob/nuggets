@@ -11,6 +11,7 @@ import { ActionError } from '../components/feedback/ActionError';
 import { iconArrowLeft, iconPencil } from '../components/icons';
 import { FeatureRequests } from '../components/nuggets/FeatureRequests';
 import { PlanWithClaude } from '../components/nuggets/PlanWithClaude';
+import { ProjectNameLine } from '../components/nuggets/ProjectNameLine';
 import { api, ApiError, type FeatureRequest, type Idea } from '../api';
 import { formatRelative } from '../lib/formatRelative';
 import { describeOrigin } from '../lib/origin';
@@ -260,6 +261,7 @@ export function NuggetPage() {
             )}
 
             <h1 style={{ fontSize: 'var(--text-title-1)', fontWeight: 'var(--weight-bold)', textWrap: 'pretty', margin: 0 }}>{idea.title}</h1>
+            {idea.project_name && <ProjectNameLine name={idea.project_name} style={{ marginTop: -10, fontSize: 'var(--text-body-md)' }} />}
 
             {idea.tags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

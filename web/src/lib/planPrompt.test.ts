@@ -42,6 +42,16 @@ describe('buildPlanPrompt', () => {
     expect(prompt).toContain('Links:\n(none)');
   });
 
+  it('adds a working-name line when the nugget has a project name', () => {
+    const prompt = buildPlanPrompt({ ...full, project_name: ' Scalewise ' });
+    expect(prompt).toContain('Title: Recipe scaler\nWorking name: Scalewise\nStatus: Exploring');
+  });
+
+  it('leaves the working-name line out without a project name', () => {
+    expect(buildPlanPrompt({ ...full, project_name: '  ' })).not.toContain('Working name');
+    expect(buildPlanPrompt(full)).toContain('Title: Recipe scaler\nStatus: Exploring');
+  });
+
   it('inserts replacement patterns typed into a nugget literally', () => {
     const prompt = buildPlanPrompt({ ...empty, title: "Price in $& and $' and {{notes}}" });
     expect(prompt).toContain("Title: Price in $& and $' and {{notes}}");
