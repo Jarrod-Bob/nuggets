@@ -1,7 +1,7 @@
 # nuggets — Tag Suggestions from Jev
 
 **Date:** 2026-10-09
-**Status:** Approved, not yet implemented
+**Status:** Implemented (PR #39)
 **Issue:** closes [#25](https://github.com/Jarrod-Bob/nuggets/issues/25)
 **Builds on:** [`2026-09-28-tag-to-github-issue-design.md`](2026-09-28-tag-to-github-issue-design.md) (a hook inside the nugget write's transaction, one goroutine per external service, a write-only token, events after commits) and [`2026-09-26-spices-pull-design.md`](2026-09-26-spices-pull-design.md) (imports, refreshes and Re-sync).
 
@@ -48,7 +48,7 @@ The model is fixed at `jev-latest`, and the base URL at `https://api.typesafe.ai
 | `GET` | `/api/settings/jev` | `{connected, last_error?, pending}`. `pending` is the number of queued checks. Never the key. |
 | `PUT` | `/api/settings/jev` | `{api_key}`. A new key clears the last error and un-parks the Suggester. |
 | `DELETE` | `/api/settings/jev` | Forgets the key and last error, and empties the queue (through `Suggester.Reset`). Suggestions stay. |
-| `GET` | `/api/ideas/{id}/tag-suggestions` | The nugget's open suggestions: `[{tag, probability}]`, highest first, excluding tags it now has. |
+| `GET` | `/api/ideas/{id}/tag-suggestions` | The nugget's open suggestions: `[{tag, probability, examples}]`, highest first, excluding tags it now has. `examples` is the list of titles sent to Jev for that tag in the check that produced the suggestion (up to 3, never recomputed), or `[]` for a suggestion stored before migration `00009`. |
 | `POST` | `/api/ideas/{id}/tag-suggestions/{tag}/dismiss` | Records a dismissal. `204`. The tag is normalized with `idea.NormalizeTag`. Dismissing a tag with no open suggestion still records it. |
 
 Accepting has no endpoint of its own. The page `PATCH`es the nugget's tags with the suggested tag added, and the hand-added rule (§2) clears the suggestion.
@@ -65,6 +65,8 @@ Migration `00008_tag_suggestions.sql` adds two tables.
 - Columns: `idea_id` (`ON DELETE CASCADE`), `tag`, `state` (`open` | `dismissed`), `probability`, `created_at`, `updated_at`.
 - Primary key `(idea_id, tag)`.
 - A dismissal sets `state = 'dismissed'`, inserting the row if needed.
+
+Migration `00009_tag_suggestion_examples.sql` adds `examples TEXT NOT NULL DEFAULT '[]'` to `tag_suggestions`: a JSON array of the example titles the check sent to Jev with that tag's question (§6 step 3). The Suggester writes it with the suggestion (step 5); reads never recompute it, so the page explains a suggestion with exactly what Jev saw, even after the bank changes. Rows from before `00009`, and dismissals, keep `[]`.
 
 **Enqueue.** `idea.Store` takes a new `WithContentChanged` hook. It runs inside the transaction of `Create`, the `ApplySynced` insert, and any `Update` or `ApplySynced` refresh whose title or notes differ from before. `jev.Queue.ContentChanged` reads `jev_api_key` through the transaction (`settings.GetTx`) and upserts a `tag_checks` row only when a key is set. No network call happens in a save.
 
@@ -83,7 +85,7 @@ Migration `00008_tag_suggestions.sql` adds two tables.
    - `questions`: one `noul` per candidate tag, keyed `t0`, `t1`, …, with the key mapped back to the tag in code. Question keys aren't sent to the model, so each question carries its full meaning.
    - Each question's `instructions` is an object: the question ("Does this tag belong on the nugget in `nugget`? Tags group a person's project ideas."), the tag name, and its example titles. Its `criteria`: `true` means the idea is about what the tag covers, judged by its name and examples; `false` means the idea is unrelated, or only shares a word with the tag.
    - If there are more than 50 candidates, the questions are split across requests of at most 50, sent one after another. The API documents no per-request maximum, so 50 is a starting point to measure.
-4. Read the answers and keep `noul ≥ Threshold`, the top `MaxSuggestions`.
+4. Read the answers and keep `noul ≥ Threshold`, the top `MaxSuggestions`, each with the examples its question carried.
 5. In one transaction: if the check's `requested_at` is still the one read in step 1, replace the nugget's open suggestions with the result and delete the check. Otherwise leave the check for the next pass (§2 "Stale results"). Dismissed rows are never touched.
 6. After the commit, publish `tag-suggestions-changed` with the nugget's id if its open suggestions changed.
 
@@ -101,7 +103,13 @@ Outcomes:
 
 ## 7. UI
 
-**Nugget page:** under the tags, a **"Suggested tags"** row appears when there are open suggestions. Each suggestion is a chip showing the tag, with **Add** and **Dismiss** controls. The probability isn't shown. The row is hidden while the edit form is open. It refetches on `tag-suggestions-changed` for this nugget and on `ideas-changed`. The UI never names Jev.
+**Nugget page** (`web/src/components/nuggets/TagSuggestions.tsx`): open suggestions sit in the tag row, after the real tags, in one **tray**: a pill with a cream-200 fill and a dashed golden-500 border, opening with a small mono `suggested` label and a golden blob dot (a `group` named "Suggested tags"). The tray renders only when there are open suggestions, so a nugget with no tags but some suggestions still gets a tag row.
+
+- Each suggestion is a compact chip: white fill, golden-300 border (golden-500 on hover), a "+" in a golden-100 blob, then the tag name. Clicking the name adds the tag ("Add the suggested tag X"): the page re-reads the nugget and `PATCH`es its tags with the tag added. The chip's `×` dismisses it through the dismiss endpoint ("Dismiss the suggested tag X"). A chip is disabled while its add or dismiss is in flight.
+- **The reason shows only on hover or keyboard focus**, after 250 ms, and goes as soon as both pointer and focus have left the chip. It is a dark ink-900 popover under the chip: "Suggested because it reads like these nuggets tagged **X**:" ("this nugget" for one example), a bulleted list of the stored example titles (§5), then a mono hint "click to add · × to dismiss". A suggestion without stored examples says only "Suggested from nuggets already tagged **X**", with the hint and no list.
+- The popover is a `role="tooltip"` always in the DOM (hidden until open) and linked from the add button with `aria-describedby`. It opens leftwards when it would run past the page's right edge, closes on Escape without moving focus, and can be hovered (a transparent bridge spans the gap under the chip). Its motion uses the duration tokens, which `prefers-reduced-motion` sets to 0.
+- **Touch is out of scope.** nuggets is desktop-first, and the reason has no touch trigger; on a touch screen the chips still add and dismiss.
+- The probability isn't shown. The tray is hidden while the edit form is open and on archived nuggets. It refetches on `tag-suggestions-changed` and on `ideas-changed`. The UI never names Jev.
 
 **Settings:** a "Tag suggestions" section in the style of the GitHub one. It has the API key field (write-only, "Connected" or "Not connected"), Disconnect, the last error, and "N nuggets waiting to be checked" when `pending > 0`. The help text names TypeSafe and links to where a key is issued.
 
@@ -111,6 +119,7 @@ Outcomes:
   - The request shape: bearer key, `jev-latest`, `state`, and one noul per candidate with its examples.
   - The candidates exclude the nugget's own tags, its dismissed tags, and tags found only on archived nuggets.
   - Examples: at most 3, most recently updated first, excluding the nugget itself, with no repeated titles.
+  - A stored suggestion keeps exactly the examples its question carried, unaffected by later tagging; a row stored without examples reads as `[]`.
   - The threshold, the cap and the ordering.
   - A re-check replaces open suggestions and keeps dismissed ones.
   - A stale result is discarded and the check re-runs.
@@ -120,8 +129,11 @@ Outcomes:
   - No key set: nothing is queued. Disconnect empties the queue.
   - The key never appears in a log.
 - **`internal/idea`:** `WithContentChanged` fires on create, on import, on a title or notes change by edit or refresh, and not on a tags-, status-, links- or project-name-only save. Several `WithTagsAdded` hooks run in order, and an error from any one rolls the write back. `WithTagsRemoved` fires with only the removed tags on an edit or a refresh, and never on create or import.
-- **`internal/httpapi`:** the settings round trip with the key never echoed; listing suggestions excludes tags the nugget now has; dismiss normalizes the tag and is idempotent; removing a tag in a `PATCH` records it as dismissed, with or without a key; accepting via `PATCH` clears the suggestion and still queues a GitHub request for a mapped tag.
-- **Web** (vitest, jsdom): the row shows only with suggestions and hides in edit mode; Add sends the current tags plus the suggested one; Dismiss calls the endpoint and removes the chip; the event refetches; the settings section's connected, not connected and pending states.
+- **`internal/httpapi`:** the settings round trip with the key never echoed; listing suggestions excludes tags the nugget now has and carries each one's examples; dismiss normalizes the tag and is idempotent; removing a tag in a `PATCH` records it as dismissed, with or without a key; accepting via `PATCH` clears the suggestion and still queues a GitHub request for a mapped tag.
+- **Web** (vitest, jsdom):
+  - `TagSuggestions`: nothing without suggestions; one labelled tray with the chips in order and no probability; the name adds and `×` dismisses; a busy chip is disabled; the reason appears only after the delay on hover or focus, survives moving focus between the chip's two buttons, and closes on leaving, blur and Escape (focus stays put); "this nugget" for one example; the no-examples wording; `aria-describedby` points at the tooltip; it opens leftwards near the right edge.
+  - `NuggetPage`: the tray sits in the tag row after the real tags, also for a nugget with no tags; hidden in edit mode and on an archived nugget; the reason lists the stored examples; adding sends the current server tags plus the suggested one; `×` calls the endpoint and removes the chip; the events refetch.
+  - The settings section's connected, not connected and pending states.
 
 ## 9. Out of scope
 
@@ -129,6 +141,7 @@ Outcomes:
 - Suggesting tags that aren't in use yet.
 - A manual "suggest tags" button, a bank-wide backfill, re-checking old nuggets when a new tag appears, and checking nuggets saved while disconnected once a key is added.
 - Suggestion badges on bank cards, or a "has suggestions" filter.
+- Showing a suggestion's reason on touch screens (§7).
 - Per-tag descriptions written by the captain.
 - Carrying dismissals over to Re-sync copies, and Re-sync duplicates themselves ([#38](https://github.com/Jarrod-Bob/nuggets/issues/38)).
 
