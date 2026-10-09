@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"strings"
 	"time"
 
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
@@ -249,74 +248,65 @@ func (q *Queue) earliestDue(ctx context.Context) (*time.Time, error) {
 	return &at.Time, nil
 }
 
-// candidate is a tag a check asks Jev about, with the titles that explain it.
-type candidate struct {
-	tag      string
-	examples []string
-}
-
-// candidates builds a check's questions (design §2): every tag carried by at
-// least one active nugget, except the nugget's own tags and its dismissed
-// suggestions, each with the titles of up to maxExamples other active nuggets
-// carrying it — most recently updated first, no title repeated after
-// trimming, case-folding and collapsing whitespace. Sorted by tag.
-func (q *Queue) candidates(ctx context.Context, nugget *idea.Idea) ([]candidate, error) {
+// candidates builds a check's questions (design §2, BuildCandidates): every
+// tag carried by at least one active nugget, except the nugget's own tags
+// and its dismissed suggestions.
+func (q *Queue) candidates(ctx context.Context, nugget *idea.Idea) ([]Candidate, error) {
 	skip := make(map[string]bool, len(nugget.Tags))
 	for _, t := range nugget.Tags {
 		skip[t] = true
 	}
-	dismissed, err := q.db.QueryContext(ctx,
-		`SELECT tag FROM tag_suggestions WHERE idea_id = ? AND state = ?`, nugget.ID, stateDismissed)
+	dismissed, err := q.Dismissed(ctx, nugget.ID)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range dismissed {
+		skip[t] = true
+	}
+	uses, err := q.TagUses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return BuildCandidates(nugget.ID, skip, uses), nil
+}
+
+// Dismissed returns the tags the captain turned down for a nugget.
+func (q *Queue) Dismissed(ctx context.Context, ideaID int64) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx,
+		`SELECT tag FROM tag_suggestions WHERE idea_id = ? AND state = ? ORDER BY tag`, ideaID, stateDismissed)
 	if err != nil {
 		return nil, fmt.Errorf("loading dismissed suggestions: %w", err)
 	}
-	for dismissed.Next() {
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
 		var tag string
-		if err := dismissed.Scan(&tag); err != nil {
-			dismissed.Close()
+		if err := rows.Scan(&tag); err != nil {
 			return nil, fmt.Errorf("scanning dismissed suggestion: %w", err)
 		}
-		skip[tag] = true
+		out = append(out, tag)
 	}
-	dismissed.Close()
-	if err := dismissed.Err(); err != nil {
-		return nil, err
-	}
+	return out, rows.Err()
+}
 
+// TagUses returns every use of a tag on an active nugget.
+func (q *Queue) TagUses(ctx context.Context) ([]TagUse, error) {
 	rows, err := q.db.QueryContext(ctx,
-		`SELECT t.name, i.id, i.title FROM tags t
+		`SELECT t.name, i.id, i.title, i.updated_at FROM tags t
 		 JOIN idea_tags it ON it.tag_id = t.id
 		 JOIN ideas i ON i.id = it.idea_id
-		 WHERE i.archived_at IS NULL
-		 ORDER BY t.name, i.updated_at DESC, i.id DESC`)
+		 WHERE i.archived_at IS NULL`)
 	if err != nil {
 		return nil, fmt.Errorf("loading tags in use: %w", err)
 	}
 	defer rows.Close()
-	var out []candidate
-	seen := map[string]bool{}
+	var out []TagUse
 	for rows.Next() {
-		var (
-			tag, title string
-			id         int64
-		)
-		if err := rows.Scan(&tag, &id, &title); err != nil {
+		var u TagUse
+		if err := rows.Scan(&u.Tag, &u.NuggetID, &u.Title, &u.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scanning tag in use: %w", err)
 		}
-		if skip[tag] {
-			continue
-		}
-		if len(out) == 0 || out[len(out)-1].tag != tag {
-			out = append(out, candidate{tag: tag, examples: []string{}})
-			seen = map[string]bool{}
-		}
-		c := &out[len(out)-1]
-		folded := strings.ToLower(strings.Join(strings.Fields(title), " "))
-		if id == nugget.ID || len(c.examples) >= maxExamples || seen[folded] {
-			continue
-		}
-		seen[folded] = true
-		c.examples = append(c.examples, strings.TrimSpace(title))
+		out = append(out, u)
 	}
 	return out, rows.Err()
 }
