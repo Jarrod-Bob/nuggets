@@ -32,6 +32,7 @@ Everything lives in the `settings` table, owned by `internal/spices` (`config.go
 | `spices_last_sync_at` | When the last pull succeeded, RFC 3339 | "not synced yet" |
 | `spices_last_error` | The last failure, for the status | None |
 | `spices_needs_resync` | `1` after a 409 or an address change (§5), until Re-sync | Not set |
+| `spices_reattach` | `1` from a Re-sync until the full pull after it commits (§5) | Not set |
 
 **The token is write-only.** No response includes it, not even masked. It travels only in the `Authorization` header, never in a URL, so a transport error, which embeds the request URL, can't carry it into a log or into `spices_last_error`. A test drives every failure path and checks that the log never contains it. As with the Telegram token, this means `nuggets.db` now holds a second credential. The settings screen says so.
 
@@ -63,7 +64,7 @@ Unlike Telegram's connect, `PUT` doesn't validate the token by calling spices. T
 
 1. `GET /api/v1/items?since=<cursor>&type=idea&limit=100`, with a 15 s timeout.
 2. Take the lock, re-read the settings, and **drop the page unsaved** if the token, the address or the cursor changed while it was in flight (disconnect, reconnect, Re-sync). This is the same guard Telegram uses against a batch arriving after a disconnect.
-3. Apply the page and write `spices_cursor = next_cursor` **in one transaction** (`idea.Store.ApplySynced`, with the cursor write passed in via `settings.Store.SetTx`). The cursor can't commit without the page it covers, or the page without its cursor. The network call finished at step 1, so the transaction never spans a network call. At 100 items, a page holds the connection for a few milliseconds. This relaxes the Telegram design's "one nugget per transaction" rule (§8 of that spec), because spices' contract asks for the cursor to be stored with the page's writes.
+3. Apply the page and write `spices_cursor = next_cursor` **in one transaction** (`idea.Store.ApplySynced`, with the cursor write passed in via `settings.Store.SetTx`). The cursor can't commit without the page it covers, or the page without its cursor. The network call finished at step 1, so the transaction never spans a network call. At 100 items, a page holds the connection for a few milliseconds. This relaxes the Telegram design's "one nugget per transaction" rule (§8 of that spec), because spices' contract asks for the cursor to be stored with the page's writes. The pull right after a Re-sync is the one exception: it saves every page in one transaction (§5).
 4. Loop while `has_more`. A `next_cursor` that doesn't advance is treated as an error rather than an infinite loop.
 5. **Acknowledge** with `PUT /api/v1/consumers/nuggets/cursor`. This is best effort. A failure is logged and never retried inside the pull. The next successful pull tries again, so a failing ack is retried at most once per interval. The stored cursor stays authoritative, as spices' contract says. The last cursor acknowledged is remembered in memory, so an unchanged cursor isn't acknowledged twice.
 6. Record `spices_last_sync_at` and clear `spices_last_error`.
@@ -87,19 +88,26 @@ A `409` means nuggets' cursor is ahead of spices' database: spices was recreated
 
 **On 409:** the loop sets `spices_needs_resync`, records "spices was reset or restored; press Re-sync" as the status error, and parks. From then on `Drain` refuses to call spices at all, even on Sync now, until Re-sync. This matters. Once the reset spices has grown past the old cursor it stops answering 409, and a plain retry would silently resume and write reused ids over old nuggets. Only the flag prevents that.
 
-**On an address change:** a new address may be a different spices database. If its latest rev is already past nuggets' cursor it never answers 409, and pulling would match its ids against the old server's nuggets. So once anything has been pulled, `PUT` treats a changed address like a 409: in the same locked write as the new settings it sets `spices_needs_resync` and records "spices address changed; press Re-sync". It leaves the cursor and the refs alone; Re-sync does the detaching. An existing flag is never cleared by `PUT`, and while the flag is set the loop never overwrites the stored reason. Moving the same spices to a new address (localhost to a tailnet name, say) costs a Re-sync and its duplicates; that is the price of not guessing.
+**On an address change:** a new address may be a different spices database. If its latest rev is already past nuggets' cursor it never answers 409, and pulling would match its ids against the old server's nuggets. So once anything has been pulled, `PUT` treats a changed address like a 409: in the same locked write as the new settings it sets `spices_needs_resync` and records "spices address changed; press Re-sync". It leaves the cursor and the refs alone; Re-sync does the detaching. An existing flag is never cleared by `PUT`, and while the flag is set the loop never overwrites the stored reason. Moving the same spices to a new address (localhost to a tailnet name, say) costs a Re-sync, and the duplicates of any idea it can't match with certainty; that is the price of not guessing.
 
 **Re-sync** (`POST /api/spices/resync`, a confirmed button in the Spices section) runs one transaction that:
 
 - moves every `source='spices'` nugget to `source='spices-detached'`
 - copies its old id to `source_detached_ref` and sets `source_ref = NULL`. A second reset can then detach again without colliding on the `(source, source_ref)` unique index, whose partial `WHERE source IS NOT NULL` treats NULL refs as distinct.
-- sets the cursor to 0, and clears the flag and the error
+- sets the cursor to 0, sets `spices_reattach`, and clears the flag and the error
 
-Then it wakes the loop, which pulls everything from spices as new nuggets.
+Then it wakes the loop, which pulls everything from spices again.
 
 Nothing about a detached nugget's content changes: not its title, notes, tags, status, links, archive state or `updated_at`. A test edits a nugget before Re-sync and checks the edits survive. A detached nugget still shows "arrived via spices".
 
-**The cost, accepted:** an idea that survived the reset (a restore from backup, say) is in the bank twice afterwards: once detached, once fresh. Duplicates are recoverable by hand. Ideas overwritten by unrelated ones are not. spices' planned per-database `feed_id` would let a future version tell a restore from a recreation, and match items instead of detaching them.
+**Reattaching survivors (issue #38).** While `spices_reattach` is set, the pull is not saved a page at a time: `Drain` holds every page, then saves all the ideas, the final cursor and the end of `spices_reattach` in one transaction (`idea.Store.ReattachSynced`). A failure part-way saves nothing, and the next pass starts again from 0. In that transaction, a live idea with a title that would otherwise be created reattaches to a `spices-detached` nugget instead, when:
+
+- its title and its notes each match the nugget's, compared after trimming, case-folding and collapsing runs of whitespace (`idea.SameText`, the same rule the tag → GitHub issue feature uses), and
+- exactly one detached nugget matches the idea, and no other idea in the pull matches that nugget.
+
+Reattaching sets the nugget's `source` back to `spices`, its `source_ref` and `source_rev` to the idea's, and clears `source_detached_ref` and `source_deleted_at`. Nothing else changes: not its content, tags, status, links, project name, archive state, `updated_at`/`source_synced_at` (an edited nugget stays edited) or tag suggestions, and no tag or content hook runs, so it isn't checked as a new nugget. Any ambiguity, either way round, falls back to a fresh copy as before, leaving every matching nugget detached. So does an idea edited in spices since the reset, since its title or notes no longer match. Tombstones never reattach. Every `spices-detached` nugget is a candidate, including ones left from an earlier Re-sync. Holding the whole pull is why the ambiguity check is exact: a match on page 1 can't be undone by a second match on page 5.
+
+**The cost, accepted:** an idea that survived the reset but can't be matched with certainty (edited in spices since, or sharing its title and notes with another idea or nugget) is in the bank twice afterwards: once detached, once fresh. Duplicates are recoverable by hand. Ideas overwritten by unrelated ones are not, which is why a match must be exact and one-to-one. spices' planned per-database `feed_id` would let a future version tell a restore from a recreation, and match items instead of detaching them.
 
 **Known limitation, inherited from spices §7:** a restore that leaves spices' latest rev at or above nuggets' cursor raises no 409, and can't be detected until `feed_id` exists. The per-nugget rev guard (§6) blunts it: a reused id arriving with a rev no higher than the one already applied changes nothing.
 

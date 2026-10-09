@@ -27,7 +27,7 @@ The captain tags nuggets by hand, mostly through spices hashtags, and sometimes 
 - **Adding a suggested tag by hand** (instead of accepting) clears the suggestion in the same transaction.
 - **Removing a tag counts as a dismissal.** A tag removed from a nugget, by an edit or a spices refresh, is recorded as dismissed for that nugget in the same transaction, so a later check never suggests it back.
 - **Stale results are thrown away.** If the nugget's title or notes change while its check is in flight, the result isn't stored, and the check runs again on the newer text.
-- **Re-sync.** Every nugget a Re-sync creates is checked like any other new nugget, through the same queue, one check at a time. Dismissals on the detached originals don't carry over to the copies. Re-sync duplicates themselves are [#38](https://github.com/Jarrod-Bob/nuggets/issues/38).
+- **Re-sync.** Every nugget a Re-sync creates is checked like any other new nugget, through the same queue, one check at a time. Dismissals on the detached originals don't carry over to the copies. A survivor that reattaches to its detached nugget instead ([#38](https://github.com/Jarrod-Bob/nuggets/issues/38), spices pull design §5) keeps its suggestions and dismissals and isn't checked again.
 - **Not connected.** With no TypeSafe API key, saves queue nothing and nothing is shown. Disconnecting empties the queue and keeps existing suggestions.
 
 ## 3. Configuration

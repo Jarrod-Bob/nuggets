@@ -40,7 +40,10 @@ type fakeSpices struct {
 	token      string
 	items      []fakeItem
 	failStatus int // nonzero: every items request fails with this
-	ackStatus  int // nonzero: every ack fails with this
+	// failAfter, if nonzero, makes every items request after that many fail
+	// with 500.
+	failAfter int
+	ackStatus int // nonzero: every ack fails with this
 	// block, if set, is received from before an items request is answered.
 	block chan struct{}
 
@@ -69,6 +72,10 @@ func (f *fakeSpices) server(t *testing.T) *httptest.Server {
 			f.itemCalls++
 			if f.failStatus != 0 {
 				writeFakeError(w, f.failStatus, "boom")
+				return
+			}
+			if f.failAfter != 0 && f.itemCalls > f.failAfter {
+				writeFakeError(w, http.StatusInternalServerError, "boom")
 				return
 			}
 			q := r.URL.Query()
@@ -630,6 +637,137 @@ func TestResyncDetachesKeepsEditsAndPullsAgain(t *testing.T) {
 	}
 	waitFor(t, "the cursor", func() bool { return h.setting(t, KeyCursor) == "2" })
 	waitFor(t, "the error to clear", func() bool { return h.setting(t, KeyLastError) == "" })
+}
+
+// restoreFakeSpices pulls Alpha, Beta and Gamma, has the captain hand-add a
+// tag to Alpha, then replaces the fake's database with a restore whose ids and
+// revs start again: Alpha survived unchanged under a new id, Beta now appears
+// twice, and Gamma's notes were edited since. One item per page, so each one
+// arrives in its own page.
+func restoreFakeSpices(t *testing.T, h *harness) (alpha idea.Idea) {
+	t.Helper()
+	ctx := context.Background()
+	h.fake.set(func(f *fakeSpices) {
+		f.items = []fakeItem{
+			ideaItem(1, 10, "Alpha", "first", "go"),
+			ideaItem(2, 11, "Beta", "second"),
+			ideaItem(3, 12, "Gamma", "third"),
+		}
+	})
+	if err := h.syncer.Drain(ctx); err != nil {
+		t.Fatal(err)
+	}
+	alpha = byTitle(h.list(t, false))["Alpha"]
+	tags := []string{"go", "cli"}
+	if _, err := h.ideas.Update(ctx, alpha.ID, idea.Draft{Tags: &tags}); err != nil {
+		t.Fatal(err)
+	}
+	h.fake.set(func(f *fakeSpices) {
+		f.items = []fakeItem{
+			ideaItem(1, 1, "beta", "Second"),
+			ideaItem(2, 2, "Alpha", "first", "go"),
+			ideaItem(3, 3, "Gamma", "third, edited since"),
+			ideaItem(4, 4, "Beta", "second"),
+		}
+	})
+	if err := h.syncer.Drain(ctx); !errors.Is(err, ErrNeedsResync) {
+		t.Fatalf("Drain = %v, want ErrNeedsResync", err)
+	}
+	return alpha
+}
+
+func TestResyncReattachesSurvivorsAcrossPages(t *testing.T) {
+	h := newHarness(t, &fakeSpices{}, WithPageLimit(1))
+	h.connect(t, testToken)
+	alpha := restoreFakeSpices(t, h)
+	ctx := context.Background()
+
+	if _, err := h.syncer.Resync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if h.setting(t, KeyReattach) != "1" {
+		t.Fatalf("reattach flag = %q, want 1 after Re-sync", h.setting(t, KeyReattach))
+	}
+	if err := h.syncer.Drain(ctx); err != nil {
+		t.Fatalf("Drain after Re-sync: %v", err)
+	}
+
+	ideas := h.list(t, false)
+	// Alpha reattached; Beta's original stays detached beside two copies,
+	// since two ideas match it; Gamma's stays detached beside a copy.
+	if len(ideas) != 6 {
+		t.Fatalf("ideas = %d, want 6: %+v", len(ideas), ideas)
+	}
+	got, err := h.ideas.Get(ctx, alpha.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *got.Source != idea.SourceSpices || got.SourceRef == nil || *got.SourceRef != "2" {
+		t.Errorf("Alpha source = %v/%v, want spices/2", *got.Source, got.SourceRef)
+	}
+	if len(got.Tags) != 2 || got.Tags[0] != "cli" || got.Tags[1] != "go" {
+		t.Errorf("Alpha tags = %v, want the hand-added cli kept", got.Tags)
+	}
+	counts := map[string]map[string]int{}
+	for _, i := range ideas {
+		key := strings.ToLower(i.Title)
+		if counts[key] == nil {
+			counts[key] = map[string]int{}
+		}
+		counts[key][*i.Source]++
+	}
+	if c := counts["alpha"]; c[idea.SourceSpices] != 1 || c[idea.SourceSpicesDetached] != 0 {
+		t.Errorf("alpha = %v, want one live nugget", c)
+	}
+	if c := counts["beta"]; c[idea.SourceSpices] != 2 || c[idea.SourceSpicesDetached] != 1 {
+		t.Errorf("beta = %v, want 2 copies and the original detached", c)
+	}
+	if c := counts["gamma"]; c[idea.SourceSpices] != 1 || c[idea.SourceSpicesDetached] != 1 {
+		t.Errorf("gamma = %v, want a copy and the original detached", c)
+	}
+	if h.setting(t, KeyReattach) != "" || h.setting(t, KeyCursor) != "4" {
+		t.Errorf("reattach flag / cursor = %q / %q, want cleared / 4", h.setting(t, KeyReattach), h.setting(t, KeyCursor))
+	}
+
+	// Later pulls are a page at a time again: a new idea matching a detached
+	// nugget is just a new idea.
+	h.fake.set(func(f *fakeSpices) { f.items = append(f.items, ideaItem(5, 5, "Gamma", "third")) })
+	if err := h.syncer.Drain(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := h.ideas.CountBySource(ctx, idea.SourceSpicesDetached); n != 2 {
+		t.Errorf("detached = %d, want Beta's and Gamma's originals still detached", n)
+	}
+}
+
+func TestResyncPullThatFailsPartWaySavesNothing(t *testing.T) {
+	h := newHarness(t, &fakeSpices{}, WithPageLimit(1))
+	h.connect(t, testToken)
+	restoreFakeSpices(t, h)
+	ctx := context.Background()
+	if _, err := h.syncer.Resync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	calls, _, _, _ := h.fake.snapshot()
+	h.fake.set(func(f *fakeSpices) { f.failAfter = calls + 2 })
+
+	if err := h.syncer.Drain(ctx); err == nil {
+		t.Fatal("Drain succeeded, want the third page's failure")
+	}
+	if n := len(h.list(t, false)); n != 3 {
+		t.Errorf("ideas = %d, want only the 3 detached ones", n)
+	}
+	if h.setting(t, KeyReattach) != "1" || h.setting(t, KeyCursor) != "0" {
+		t.Errorf("reattach flag / cursor = %q / %q, want 1 / 0", h.setting(t, KeyReattach), h.setting(t, KeyCursor))
+	}
+
+	h.fake.set(func(f *fakeSpices) { f.failAfter = 0 })
+	if err := h.syncer.Drain(ctx); err != nil {
+		t.Fatalf("retried Drain: %v", err)
+	}
+	if n, _ := h.ideas.CountBySource(ctx, idea.SourceSpicesDetached); n != 2 {
+		t.Errorf("detached = %d, want Alpha reattached on the retry", n)
+	}
 }
 
 func TestAckFailureIsBestEffort(t *testing.T) {
