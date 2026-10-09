@@ -21,6 +21,7 @@ Jev was asked exactly what production asks: one noul per candidate tag, with up 
 - **Jev's best threshold is 0.70**, the one the feature ships with. Haiku's best is 0.45–0.55, so a Claude version would need its own tuning.
 - **Jev holds up as the vocabulary grows.** Its recall stays at 0.50 from 10 to 200 tags. Haiku's falls (thinking off: 0.57 → 0.29), and 7–13% of its 200-tag answers left tags out.
 - **Jev is steadier.** Its top 3 changed in 0–6% of repeated checks, against 16–29% for Haiku. Jev never returned a malformed answer; Haiku at low effort did 3–6 times per 100.
+- **On the real bank, Jev was never wrong but rarely spoke.** Blind judging found all 3 of its open suggestions right, against 14 of 18 for Haiku at low effort and 20 of 41 for Haiku with thinking off. Haiku surfaces more genuinely missing tags, at the cost of more noise.
 - **The whole run cost $1.15** for 2,682 checks, plus $0.02 of smoke tests.
 
 ## Data
@@ -47,15 +48,17 @@ An issue's labels are all on it already, so any suggestion on an unaltered issue
 
 ### Real bank
 
-84 checks per contender (28 cases × 3).
+84 checks per contender (28 cases × 3). The open suggestions were judged blind by the captain: 102 pooled suggestions, 16 yes and 86 no.
 
-| Contender | Recall@3 | Best threshold (F1) | Open suggestions made | p50 / p95 | $ per 1k checks | Top 3 changed | Malformed per 100 |
-|---|---|---|---|---|---|---|---|
-| **Jev** | 0.667 | 0.55 (0.941) | 3 | **247 / 340 ms** | **$0.061** | **0%** | **0** |
-| Haiku, low effort | 0.640 | 0.60 (0.936) | 18 | 2,105 / 3,218 ms | $0.221 | 19% | 6.0 |
-| Haiku, thinking off | **0.778** | 0.15 (1.000) | 41 | 2,028 / 2,179 ms | $0.207 | 29% | 0 |
+| Contender | Hidden-tag recall@3 | Open suggestions made | Judged right | Open precision | Precision@3 (hidden + open) | Best threshold (F1) | p50 / p95 | $ per 1k checks | $ per correct | Top 3 changed | Malformed per 100 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Jev** | 0.667 | 3 | 3 | **1.00** | **1.000** | 0.60 (**0.902**) | **247 / 340 ms** | **$0.061** | **$0.00025** | **0%** | **0** |
+| Haiku, low effort | 0.640 | 18 | 14 | 0.78 | 0.800 | 0.60 (0.772) | 2,105 / 3,218 ms | $0.221 | $0.00062 | 19% | 6.0 |
+| Haiku, thinking off | **0.778** | 41 | **20** | 0.49 | 0.875 | 0.80 (0.833) | 2,028 / 2,179 ms | $0.207 | $0.00043 | 29% | 0 |
 
-**Precision on the bank is still to come.** The open suggestions need the captain's blind judgments (`tagbench judge`), and none were in when this was written. Jev is far more conservative here: 3 open suggestions against 18–41.
+Counts include the 3 repeats of each case.
+
+**Jev never suggested a wrong tag on the bank, but it suggested very little.** It made 3 open suggestions, all right. Haiku with thinking off found the most genuinely missing tags (20), but more than half of its 41 suggestions were wrong. Haiku at low effort sits between them: 14 right out of 18. On a bank this small and sparsely tagged, a 0.70 threshold makes Jev quiet. Its best threshold here was 0.60, so it's worth watching whether real use feels too sparse.
 
 ### Scaling
 
@@ -82,7 +85,7 @@ Jev reads about twice as many input tokens as Haiku, because each tag's question
 
 ## Limits of these numbers
 
-- **The real bank is tiny.** 28 hidden-tag cases is enough to spot a gross failure, not to rank the models. The GitHub stand-in carries the comparison.
+- **The real bank is tiny.** 28 hidden-tag cases and 62 open suggestions are enough to spot a gross failure or a clear lean, not to rank the models. The GitHub stand-in carries the comparison.
 - **GitHub labels are an imperfect stand-in.** They are other projects' labels, applied by other people, and incomplete in the same way the captain's tags are. The stand-in's absolute numbers matter less than the gaps between contenders.
 - **Only Haiku has been run.** Sonnet 5.5 and Opus 5.5 may well beat Jev on quality, at roughly 20–40× Haiku's cost per check. That's Phase 2.
 - **Latency was measured from one machine,** with up to 8 checks in flight and at most 4 calls per second per contender. It includes network time to both APIs.
