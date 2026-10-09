@@ -13,3 +13,7 @@
   .nug-bug-report{padding:0;width:40px}
   .nug-bug-report__label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 }
+
+/* A tag suggestion's reason popover (components/nuggets/TagSuggestions.tsx):
+   golden bullets, which inline styles can't reach. */
+.nug-reason li::marker{color:var(--nug-golden-400)}

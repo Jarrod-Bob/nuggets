@@ -251,6 +251,9 @@ export function NuggetPage() {
     </Button>
   );
   const archived = !!idea?.archived_at;
+  // Suggestions sit at the end of the tag row, hidden while editing (the form
+  // owns the tags then) and in the trash.
+  const showSuggestions = suggestions.length > 0 && !editing && !archived;
 
   return (
     <>
@@ -326,19 +329,17 @@ export function NuggetPage() {
             <h1 style={{ fontSize: 'var(--text-title-1)', fontWeight: 'var(--weight-bold)', textWrap: 'pretty', margin: 0 }}>{idea.title}</h1>
             {idea.project_name && <ProjectNameLine projectName={idea.project_name} style={{ marginTop: -4, fontSize: 'var(--text-body-md)' }} />}
 
-            {idea.tags.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {(idea.tags.length > 0 || showSuggestions) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
                 {idea.tags.map((t) => (
                   <Link key={t} to={tagFilterHref(t)} style={{ textDecoration: 'none' }}>
                     <Tag name={t} onClick={() => {}} />
                   </Link>
                 ))}
+                {showSuggestions && (
+                  <TagSuggestions suggestions={suggestions} onAdd={addSuggestedTag} onDismiss={dismissSuggestedTag} busy={suggestionBusy} />
+                )}
               </div>
-            )}
-
-            {/* Hidden while editing (the form owns the tags then) and in the trash. */}
-            {!editing && !archived && (
-              <TagSuggestions suggestions={suggestions} onAdd={addSuggestedTag} onDismiss={dismissSuggestedTag} busy={suggestionBusy} />
             )}
 
             {idea.notes && (

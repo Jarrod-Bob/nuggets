@@ -102,84 +102,107 @@ const renderPage = () =>
     </LiveUpdatesProvider>,
   );
 
-const row = () => screen.queryByRole('list', { name: 'Suggested tags' });
+const tray = () => screen.queryByRole('group', { name: 'Suggested tags' });
+const cooking: TagSuggestion = { tag: 'cooking', probability: 0.9, examples: ['Recipe box'] };
+const weekend: TagSuggestion = { tag: 'weekend', probability: 0.8, examples: ['Bike shed', 'Picnic map'] };
 
 describe('NuggetPage tag suggestions', () => {
-  it('shows no row for a nugget without suggestions', async () => {
+  it('shows no tray for a nugget without suggestions', async () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Meal planner' });
-    expect(row()).toBeNull();
-    expect(screen.queryByText('Suggested tags')).toBeNull();
+    expect(tray()).toBeNull();
+    expect(screen.queryByText('suggested')).toBeNull();
   });
 
-  it('shows each suggestion with Add and Dismiss, without its probability', async () => {
-    suggestions = [
-      { tag: 'cooking', probability: 0.93 },
-      { tag: 'weekend', probability: 0.71 },
-    ];
+  it('puts the tray in the tag row, after the real tags', async () => {
+    suggestions = [cooking, weekend];
     renderPage();
-    const list = await screen.findByRole('list', { name: 'Suggested tags' });
-    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      expect.stringContaining('cooking'),
-      expect.stringContaining('weekend'),
+    const group = await screen.findByRole('group', { name: 'Suggested tags' });
+    const realTag = screen.getByRole('link', { name: 'home' });
+    expect(group.parentElement).toBe(realTag.parentElement);
+    expect(realTag.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(group).getAllByRole('button', { name: /^Add the suggested tag / }).map((b) => b.textContent)).toEqual([
+      'cooking',
+      'weekend',
     ]);
-    expect(screen.getByRole('button', { name: 'Add the tag cooking' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Dismiss the tag weekend' })).toBeTruthy();
-    expect(list.textContent).not.toMatch(/0\.9|93|%/);
+    expect(group.textContent).not.toMatch(/0\.9|90|%/);
   });
 
-  it('hides the row while the edit form is open', async () => {
-    suggestions = [{ tag: 'cooking', probability: 0.9 }];
+  it('shows the tray for a nugget with no tags yet', async () => {
+    current = { ...idea, tags: [] };
+    suggestions = [cooking];
     renderPage();
-    await screen.findByRole('list', { name: 'Suggested tags' });
+    expect(await screen.findByRole('group', { name: 'Suggested tags' })).toBeTruthy();
+  });
+
+  it('hides the tray while the edit form is open', async () => {
+    suggestions = [cooking];
+    renderPage();
+    await screen.findByRole('group', { name: 'Suggested tags' });
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
-    expect(row()).toBeNull();
+    expect(tray()).toBeNull();
   });
 
-  it('Add saves the current tags plus the suggested one', async () => {
-    suggestions = [{ tag: 'cooking', probability: 0.9 }];
+  it('hides the tray on an archived nugget', async () => {
+    current = { ...idea, archived_at: '2026-09-02T00:00:00Z' };
+    suggestions = [cooking];
     renderPage();
-    await screen.findByRole('list', { name: 'Suggested tags' });
+    await screen.findByRole('heading', { name: 'Meal planner' });
+    await act(async () => {});
+    expect(tray()).toBeNull();
+  });
+
+  it('describes each suggestion with the examples it was made from', async () => {
+    suggestions = [weekend];
+    renderPage();
+    const add = await screen.findByRole('button', { name: 'Add the suggested tag weekend' });
+    const reason = document.getElementById(add.getAttribute('aria-describedby') ?? '');
+    expect(reason?.textContent).toContain('these nuggets tagged weekend');
+    expect(reason?.textContent).toContain('Bike shed');
+    expect(reason?.textContent).toContain('Picnic map');
+  });
+
+  it('clicking a suggestion saves the current tags plus the suggested one', async () => {
+    suggestions = [cooking];
+    renderPage();
+    await screen.findByRole('group', { name: 'Suggested tags' });
     // The server has gained a tag since the page loaded; Add must keep it.
     current = { ...current, tags: ['home', 'kitchen'] };
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Add the tag cooking' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Add the suggested tag cooking' }));
     });
 
     expect(calls('PATCH', '/api/ideas/1')).toEqual([{ tags: ['home', 'kitchen', 'cooking'] }]);
-    expect(row()).toBeNull();
+    expect(tray()).toBeNull();
     expect(await screen.findByRole('link', { name: 'cooking' })).toBeTruthy();
   });
 
-  it('Dismiss calls the endpoint and removes the chip', async () => {
-    suggestions = [
-      { tag: 'cooking', probability: 0.9 },
-      { tag: 'weekend', probability: 0.8 },
-    ];
+  it('× calls the dismiss endpoint and removes the chip', async () => {
+    suggestions = [cooking, weekend];
     renderPage();
-    await screen.findByRole('list', { name: 'Suggested tags' });
+    await screen.findByRole('group', { name: 'Suggested tags' });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss the tag weekend' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss the suggested tag weekend' }));
     });
 
     expect(calls('POST', '/api/ideas/1/tag-suggestions/weekend/dismiss')).toHaveLength(1);
-    expect(screen.queryByRole('button', { name: 'Dismiss the tag weekend' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Dismiss the tag cooking' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Dismiss the suggested tag weekend' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Dismiss the suggested tag cooking' })).toBeTruthy();
   });
 
   it('refetches when suggestions change in the background', async () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Meal planner' });
-    expect(row()).toBeNull();
+    expect(tray()).toBeNull();
 
-    suggestions = [{ tag: 'cooking', probability: 0.9 }];
+    suggestions = [cooking];
     await FakeEventSource.latest!.emit('tag-suggestions-changed');
-    expect(await screen.findByRole('list', { name: 'Suggested tags' })).toBeTruthy();
+    expect(await screen.findByRole('group', { name: 'Suggested tags' })).toBeTruthy();
 
     suggestions = [];
     await FakeEventSource.latest!.emit('ideas-changed');
-    expect(row()).toBeNull();
+    expect(tray()).toBeNull();
   });
 });

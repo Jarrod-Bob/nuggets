@@ -171,6 +171,12 @@ export interface TagSuggestion {
   tag: string;
   /** How sure the suggestion is, 0 to 1. Not shown to the captain. */
   probability: number;
+  /**
+   * The titles of other nuggets carrying the tag that Jev was shown when it
+   * made the suggestion (up to 3). Empty for a suggestion stored before they
+   * were kept.
+   */
+  examples: string[];
 }
 
 /** Mirrors internal/httpapi's jevStatus. The API key is write-only: the server never returns it. */
