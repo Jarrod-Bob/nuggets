@@ -42,15 +42,6 @@ const RejectedMessage = "TypeSafe rejected the API key. Check it and save it aga
 // stays visible until the key is saved again or disconnected.
 const refusedPrefix = "TypeSafe refused a tag check: "
 
-// The question every candidate tag is asked, and what yes and no mean
-// (design §6). Question keys aren't sent to the model, so these carry the
-// whole meaning.
-const (
-	questionText  = "Does this tag belong on the nugget in `nugget`? Tags group a person's project ideas."
-	criteriaTrue  = "The idea is about what the tag covers, judged by the tag's name and the example titles of other ideas carrying it."
-	criteriaFalse = "The idea is unrelated to what the tag covers, or only shares a word with the tag."
-)
-
 var (
 	// errNotConfigured means no key is stored: nothing is sent.
 	errNotConfigured = errors.New("jev: not connected")
@@ -263,36 +254,20 @@ func (s *Suggester) check(ctx context.Context, key string, c check) error {
 	return nil
 }
 
-// ask sends the candidates' questions, at most maxQuestionsPerRequest per
-// request, one request after another, and returns each tag's
-// yes-probability.
-func (s *Suggester) ask(ctx context.Context, key string, nugget *idea.Idea, candidates []candidate) (map[string]float64, error) {
-	cl := &client{baseURL: s.baseURL, key: key, httpClient: s.httpClient}
-	state := map[string]any{"nugget": map[string]any{"title": nugget.Title, "notes": nugget.Notes, "tags": nugget.Tags}}
+// ask sends the candidates' questions (BuildRequests), one request after
+// another, and returns each tag's yes-probability.
+func (s *Suggester) ask(ctx context.Context, key string, nugget *idea.Idea, candidates []Candidate) (map[string]float64, error) {
+	cl := &Client{BaseURL: s.baseURL, Key: key, HTTPClient: s.httpClient}
 	out := make(map[string]float64, len(candidates))
-	for start := 0; start < len(candidates); start += maxQuestionsPerRequest {
-		batch := candidates[start:min(start+maxQuestionsPerRequest, len(candidates))]
-		req := systemOneRequest{State: state, Model: Model, Questions: make(map[string]question, len(batch))}
-		tagFor := make(map[string]string, len(batch))
-		for i, cand := range batch {
-			id := "t" + strconv.Itoa(i)
-			tagFor[id] = cand.tag
-			req.Questions[id] = question{
-				Type:         "noul",
-				Instructions: instructions{Question: questionText, Tag: cand.tag, Examples: cand.examples},
-				Criteria:     criteria{True: criteriaTrue, False: criteriaFalse},
-			}
-		}
+	for _, req := range BuildRequests(nugget.Title, nugget.Notes, nugget.Tags, candidates) {
 		reqCtx, cancel := context.WithTimeout(ctx, s.requestTimeout)
-		answers, err := cl.ask(reqCtx, req)
+		answers, _, err := cl.Ask(reqCtx, req)
 		cancel()
 		if err != nil {
 			return nil, err
 		}
-		for id, p := range answers {
-			if tag, ok := tagFor[id]; ok {
-				out[tag] = p
-			}
+		for tag, p := range answers {
+			out[tag] = p
 		}
 	}
 	return out, nil
@@ -300,10 +275,10 @@ func (s *Suggester) ask(ctx context.Context, key string, nugget *idea.Idea, cand
 
 // confident keeps the tags at or above Threshold, highest first, at most
 // MaxSuggestions, each with the examples its question carried.
-func confident(answers map[string]float64, candidates []candidate) []Suggestion {
+func confident(answers map[string]float64, candidates []Candidate) []Suggestion {
 	examples := make(map[string][]string, len(candidates))
 	for _, c := range candidates {
-		examples[c.tag] = c.examples
+		examples[c.Tag] = c.Examples
 	}
 	var out []Suggestion
 	for tag, p := range answers {
