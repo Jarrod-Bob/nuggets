@@ -141,7 +141,7 @@ func (s *Store) Update(ctx context.Context, id int64, draft Draft) (*Idea, error
 		if err := upsertTags(ctx, tx, id, tags); err != nil {
 			return nil, err
 		}
-		if err := s.notifyTagsAdded(ctx, tx, id, beforeTags, tags); err != nil {
+		if err := s.notifyTagsChanged(ctx, tx, id, beforeTags, tags); err != nil {
 			return nil, err
 		}
 	}
@@ -151,6 +151,11 @@ func (s *Store) Update(ctx context.Context, id int64, draft Draft) (*Idea, error
 			return nil, fmt.Errorf("clearing links: %w", err)
 		}
 		if err := insertLinks(ctx, tx, id, links); err != nil {
+			return nil, err
+		}
+	}
+	if (draft.Title != nil && title != curTitle) || (draft.Notes != nil && *draft.Notes != curNotes) {
+		if err := s.notifyContentChanged(ctx, tx, id); err != nil {
 			return nil, err
 		}
 	}
