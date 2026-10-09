@@ -12,6 +12,8 @@ export interface ButtonProps {
   type?: 'button' | 'submit' | 'reset';
   children?: React.ReactNode;
   style?: React.CSSProperties;
+  /** An accessible name when the visible text alone is ambiguous (several "Add" buttons in a row). */
+  'aria-label'?: string;
 }
 
 interface SizeSpec { padding: string; height: number; fontSize: string; gap: number }
@@ -32,7 +34,7 @@ const nugBtnVariants: Record<NonNullable<ButtonProps['variant']>, VariantSpec> =
 
 export function Button({
   variant = 'primary', size = 'md', fullWidth = false, disabled = false,
-  iconLeft, iconRight, onClick, type = 'button', children, style,
+  iconLeft, iconRight, onClick, type = 'button', children, style, 'aria-label': ariaLabel,
 }: ButtonProps) {
   const [hover, setHover] = React.useState(false);
   const [press, setPress] = React.useState(false);
@@ -41,7 +43,7 @@ export function Button({
   const lift = v.edge && !disabled;
   return (
     <button
-      type={type} disabled={disabled} onClick={onClick}
+      type={type} disabled={disabled} onClick={onClick} aria-label={ariaLabel}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => { setHover(false); setPress(false); }}
       onMouseDown={() => setPress(true)}
