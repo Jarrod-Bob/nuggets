@@ -26,6 +26,15 @@ export const GENERATE_TOOLTIP = 'Uses kimi-no-name-wa to generate a creative nam
 export const NOTES_EMPTY_HINT = 'Write some notes and kimi will name it';
 export const UNAVAILABLE_TEXT = 'kimi is not available at the moment';
 
+function chipStyle(picked: boolean): React.CSSProperties {
+  return {
+    padding: '4px 12px', cursor: 'pointer', borderRadius: 'var(--radius-pill)',
+    fontSize: 'var(--text-body-sm)', fontWeight: 'var(--weight-semibold)',
+    border: `var(--border-hairline) solid ${picked ? 'var(--nug-golden-500)' : 'var(--nug-ink-200)'}`,
+    background: picked ? 'var(--nug-cream-200)' : 'transparent',
+  };
+}
+
 type Results = { state: 'none' } | { state: 'failed' } | { state: 'names'; names: KimiName[] };
 
 export function ProjectNameField({ value, onChange, notes, onPick }: ProjectNameFieldProps) {
@@ -37,6 +46,9 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
   // state: nothing renders from it.
   const shown = React.useRef<string[]>([]);
   const inFlight = React.useRef<AbortController | null>(null);
+  // The suggestion under the pointer or keyboard focus. Its explanation shows,
+  // else the picked one's.
+  const [pointed, setPointed] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let live = true;
@@ -116,30 +128,33 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
 
       {results.state === 'names' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <ul role="listbox" aria-label="Names from kimi" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {results.names.map((n) => (
-              <li key={n.name} role="option" aria-selected={value === n.name}
-                tabIndex={0}
-                onClick={() => onPick(n.name)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onPick(n.name);
-                  }
-                }}
-                style={{
-                  padding: '8px 12px', cursor: 'pointer', borderRadius: 'var(--radius-md)',
-                  border: `var(--border-hairline) solid ${value === n.name ? 'var(--nug-golden-500)' : 'var(--nug-ink-200)'}`,
-                  background: value === n.name ? 'var(--nug-cream-200)' : 'transparent',
-                }}>
-                <span style={{ display: 'block', fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-body-md)' }}>{n.name}</span>
-                <span style={{ display: 'block', fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)', textWrap: 'pretty' }}>{n.explanation}</span>
-              </li>
-            ))}
-          </ul>
-          <div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+            <ul role="listbox" aria-label="Names from kimi" style={{ listStyle: 'none', margin: 0, padding: 0, flex: 1, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {results.names.map((n) => (
+                <li key={n.name} role="option" aria-selected={value === n.name}
+                  tabIndex={0}
+                  onClick={() => onPick(n.name)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onPick(n.name);
+                    }
+                  }}
+                  onMouseEnter={() => setPointed(n.name)}
+                  onMouseLeave={() => setPointed(null)}
+                  onFocus={() => setPointed(n.name)}
+                  onBlur={() => setPointed(null)}
+                  style={chipStyle(value === n.name)}>
+                  {n.name}
+                </li>
+              ))}
+            </ul>
             <Button variant="ghost" size="sm" disabled={!!naming || notesEmpty} onClick={() => ask(shown.current)}>Re-roll</Button>
           </div>
+          {/* One line, reserved even when empty so the form doesn't jump. */}
+          <p style={{ margin: 0, minHeight: '1.4em', fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)', textWrap: 'pretty' }}>
+            {results.names.find((n) => n.name === (pointed ?? value))?.explanation}
+          </p>
         </div>
       )}
     </div>

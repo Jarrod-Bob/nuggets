@@ -79,7 +79,43 @@ describe('the generate button', () => {
     await generate();
     expect(namesBodies).toEqual([{ notes: 'a bank for little ideas', avoid: [] }]);
     expect(screen.getAllByRole('option')).toHaveLength(5);
+  });
+});
+
+describe('the suggestions', () => {
+  it("show one name's explanation at a time, for the name under the pointer", async () => {
+    await renderForm({ idea: { title: 'A title', notes: 'a bank for little ideas' } });
+    await generate();
+    expect(screen.queryByText(/^why A/)).toBeNull();
+
+    fireEvent.mouseEnter(screen.getByText('A3'));
     expect(screen.getByText('why A3')).toBeTruthy();
+    expect(screen.queryAllByText(/^why A/)).toHaveLength(1);
+
+    fireEvent.mouseLeave(screen.getByText('A3'));
+    expect(screen.queryByText(/^why A/)).toBeNull();
+  });
+
+  it("keep the picked name's explanation once the pointer moves away", async () => {
+    await renderForm({ idea: { title: 'A title', notes: 'a bank for little ideas' } });
+    await generate();
+    fireEvent.mouseEnter(screen.getByText('A2'));
+    fireEvent.click(screen.getByText('A2'));
+    fireEvent.mouseLeave(screen.getByText('A2'));
+    expect(screen.getByText('why A2')).toBeTruthy();
+
+    fireEvent.mouseEnter(screen.getByText('A5'));
+    expect(screen.getByText('why A5')).toBeTruthy();
+    expect(screen.queryByText('why A2')).toBeNull();
+  });
+
+  it("show the focused name's explanation, for keyboard users", async () => {
+    await renderForm({ idea: { title: 'A title', notes: 'a bank for little ideas' } });
+    await generate();
+    fireEvent.focus(screen.getByText('A4'));
+    expect(screen.getByText('why A4')).toBeTruthy();
+    fireEvent.blur(screen.getByText('A4'));
+    expect(screen.queryByText(/^why A/)).toBeNull();
   });
 });
 
