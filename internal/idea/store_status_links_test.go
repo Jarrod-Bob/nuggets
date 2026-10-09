@@ -18,12 +18,12 @@ func TestCreateDefaultsStatusToRaw(t *testing.T) {
 }
 
 func TestParseStatusRejectsUnknown(t *testing.T) {
-	for _, ok := range []string{"raw", "exploring", "building", "parked", "killed"} {
+	for _, ok := range []string{"raw", "exploring", "building", "parked", "killed", "done"} {
 		if _, err := ParseStatus(ok); err != nil {
 			t.Errorf("ParseStatus(%q) error = %v, want nil", ok, err)
 		}
 	}
-	for _, bad := range []string{"", "RAW", "shipping", "done", "raw "} {
+	for _, bad := range []string{"", "RAW", "shipping", "DONE", "raw "} {
 		if _, err := ParseStatus(bad); !errors.Is(err, ErrInvalidStatus) {
 			t.Errorf("ParseStatus(%q) error = %v, want ErrInvalidStatus", bad, err)
 		}

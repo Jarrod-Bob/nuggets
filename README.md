@@ -17,10 +17,10 @@ nuggets gives them somewhere to live: enough structure to find one on purpose, a
 - **See where a nugget came from.** An imported nugget's page says "arrived via spices, 2h ago"; the settings screen shows when spices last synced.
 - **Tag** freely — tags autocomplete from ones I've already used, so I don't end up with `#saas` and `#SaaS`.
 - **Find** by searching the text or filtering by tag.
-- **Track status** through a lifecycle — raw, exploring, building, parked, killed — and filter by it.
+- **Track status** through a lifecycle — raw, exploring, building, parked, killed, done — and filter by it.
 - **Link out** to wherever the work actually lives, so a nugget points at its own progress.
 - **Plan a nugget with Claude.** A nugget's page builds a planning prompt from it and opens Claude with that prompt filled in, or copies it. Claude's answer can be pasted back into the notes. nuggets itself calls no AI and needs no key.
-- **Draw a random nugget** as a mini-challenge, optionally narrowed to one tag. Parked and killed nuggets stay out of the draw. Each draw also deals a timebox and a language + framework to build it with, and each of the three rerolls on its own. See [Draw a nugget](#draw-a-nugget).
+- **Draw a random nugget** as a mini-challenge, optionally narrowed to one tag. Parked, killed and done nuggets stay out of the draw. Each draw also deals a timebox and a language + framework to build it with, and each of the three rerolls on its own. See [Draw a nugget](#draw-a-nugget).
 - **Archive** rather than delete, with a trash view to restore from. Losing an idea should take deliberate effort.
 - **Report a bug** from any page. The floating **Report a bug** button in the bottom-right corner opens this repository's bug-report form on GitHub in a new tab, with the page you were on, the nuggets build (the git commit it was built from) and your browser already filled in. You describe the rest, and can paste or drag screenshots in, on GitHub. nuggets sends nothing itself and never puts your nuggets, settings or tokens in the link.
 

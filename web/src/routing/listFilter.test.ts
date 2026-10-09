@@ -40,6 +40,10 @@ describe('filterFromParams / paramsFromFilter', () => {
     expect(filterFromParams(paramsFromFilter(filter))).toEqual(filter);
   });
 
+  it('accepts the done status', () => {
+    expect(filterFromParams(new URLSearchParams('status=done'))).toEqual({ status: 'done' });
+  });
+
   it('ignores a status value outside the known set', () => {
     expect(filterFromParams(new URLSearchParams('q=idea&status=bogus'))).toEqual({ q: 'idea' });
   });

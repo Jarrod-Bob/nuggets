@@ -2,10 +2,10 @@
  * A nugget's place in its lifecycle. Mirrors idea.Status in Go — that list is
  * the source of truth; this union must stay in step with it.
  */
-export type Status = 'raw' | 'exploring' | 'building' | 'parked' | 'killed';
+export type Status = 'raw' | 'exploring' | 'building' | 'parked' | 'killed' | 'done';
 
-/** The five statuses in lifecycle order, for rendering filters and pickers. */
-export const STATUSES: Status[] = ['raw', 'exploring', 'building', 'parked', 'killed'];
+/** The six statuses in lifecycle order, for rendering filters and pickers. */
+export const STATUSES: Status[] = ['raw', 'exploring', 'building', 'parked', 'killed', 'done'];
 
 /** Mirrors internal/idea.Link. A blank label renders as the URL host. */
 export interface Link {

@@ -12,8 +12,10 @@ import (
 // exclude is the id of the idea already showing (0 for none). It sorts last,
 // so a reroll only hands it back when it is the sole drawable idea.
 func (s *Store) Random(ctx context.Context, tag string, exclude int64) (*Idea, error) {
-	// Only live ideas are drawable: being handed one you killed or parked is
-	// noise, and the draw exists to hand back something you could start.
+	// Only live ideas are drawable: being handed one you killed, parked or
+	// finished is noise, and the draw exists to hand back something you could
+	// start. This is an allow-list on purpose — a new status stays out of the
+	// draw until it is added here.
 	query := `SELECT i.id, i.title, i.notes, i.status, i.created_at, i.updated_at, i.archived_at, i.source, i.source_ref
 	          FROM ideas i
 	          WHERE i.archived_at IS NULL AND i.status IN ('raw','exploring')`
