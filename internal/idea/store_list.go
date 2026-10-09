@@ -53,9 +53,8 @@ func (s *Store) List(ctx context.Context, filter ListFilter) ([]Idea, error) {
 	}
 
 	query := fmt.Sprintf(
-		`SELECT i.id, i.title, i.notes, i.project_name, i.status, i.created_at, i.updated_at, i.archived_at, i.source, i.source_ref
-		 FROM ideas i WHERE %s ORDER BY %s`,
-		strings.Join(where, " AND "), order)
+		`SELECT %s FROM ideas i WHERE %s ORDER BY %s`,
+		ideaColumns, strings.Join(where, " AND "), order)
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {

@@ -98,24 +98,28 @@ func (s *Store) Update(ctx context.Context, id int64, draft Draft) (*Idea, error
 	if err != nil {
 		return nil, fmt.Errorf("loading idea: %w", err)
 	}
-	beforeTags, err := loadTags(ctx, tx, id)
-	if err != nil {
-		return nil, err
+	var beforeTags []string
+	if draft.Tags != nil {
+		if beforeTags, err = loadTags(ctx, tx, id); err != nil {
+			return nil, err
+		}
 	}
 
+	// changesNothingElse: every other field present in the draft already holds
+	// the value it carries, so at most the project name changes.
 	if syncedAt.Valid && syncedAt.Time.Equal(updatedAt) && draft.ProjectName != nil {
-		onlyProjectName := (draft.Title == nil || title == curTitle) &&
+		changesNothingElse := (draft.Title == nil || title == curTitle) &&
 			(draft.Notes == nil || *draft.Notes == curNotes) &&
 			(draft.Status == nil || string(status) == curStatus) &&
 			(draft.Tags == nil || sameTagSet(tags, beforeTags))
-		if onlyProjectName && draft.Links != nil {
+		if changesNothingElse && draft.Links != nil {
 			beforeLinks, err := loadLinks(ctx, tx, id)
 			if err != nil {
 				return nil, err
 			}
-			onlyProjectName = slices.Equal(links, beforeLinks)
+			changesNothingElse = slices.Equal(links, beforeLinks)
 		}
-		if onlyProjectName {
+		if changesNothingElse {
 			sets = append(sets, "source_synced_at = ?")
 			args = append(args, now)
 		}

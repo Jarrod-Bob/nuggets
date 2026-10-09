@@ -102,6 +102,9 @@ func (c *Client) Names(ctx context.Context, notes string, avoid []string) ([]Nam
 		Names []Name `json:"names"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
 		return nil, fmt.Errorf("%w: decoding its answer: %v", ErrFailed, err)
 	}
 	return decoded.Names, nil
@@ -148,6 +151,12 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	}
 	if ctxErr := req.Context().Err(); ctxErr != nil {
 		return nil, ctxErr
+	}
+	// Failing to connect at all, even by timing out, is an unreachable kimi.
+	// Any other timeout is the client's own, on a kimi that answered too slowly.
+	var opErr *net.OpError
+	if errors.As(err, &opErr) && opErr.Op == "dial" {
+		return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
 	}
 	var netErr net.Error
 	if errors.As(err, &netErr) && netErr.Timeout() {

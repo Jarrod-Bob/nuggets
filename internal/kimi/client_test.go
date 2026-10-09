@@ -230,6 +230,20 @@ func TestAvailableFollowsKimiHealth(t *testing.T) {
 	})
 }
 
+func TestNamesReportsASlowKimiAsFailed(t *testing.T) {
+	fake, srv := newFakeKimi(t)
+	fake.names = func(w http.ResponseWriter, r *http.Request) { <-r.Context().Done() }
+	store := newSettings(t)
+	if _, err := SaveURL(context.Background(), store, srv.URL); err != nil {
+		t.Fatal(err)
+	}
+	client := NewClient(store, &http.Client{Timeout: 50 * time.Millisecond})
+
+	if _, err := client.Names(context.Background(), "notes", nil); !errors.Is(err, ErrFailed) {
+		t.Errorf("Names error = %v, want ErrFailed for a kimi that answered too slowly", err)
+	}
+}
+
 func TestNamesReportsUnreachableKimiAsUnavailable(t *testing.T) {
 	_, srv := newFakeKimi(t)
 	url := srv.URL

@@ -150,8 +150,7 @@ func (s *Store) Create(ctx context.Context, draft Draft) (*Idea, error) {
 // Get loads one idea, archived or not, with its tags.
 func (s *Store) Get(ctx context.Context, id int64) (*Idea, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, title, notes, project_name, status, created_at, updated_at, archived_at, source, source_ref
-		 FROM ideas WHERE id = ?`, id)
+		`SELECT `+ideaColumns+` FROM ideas i WHERE i.id = ?`, id)
 
 	found, err := scanIdea(row)
 	if err != nil {
@@ -165,6 +164,10 @@ func (s *Store) Get(ctx context.Context, id int64) (*Idea, error) {
 	}
 	return found, nil
 }
+
+// ideaColumns is what scanIdea reads, in its order, from the ideas table
+// aliased as i. Every query that scans a whole nugget selects exactly this.
+const ideaColumns = `i.id, i.title, i.notes, i.project_name, i.status, i.created_at, i.updated_at, i.archived_at, i.source, i.source_ref`
 
 // rowScanner is satisfied by both *sql.Row and *sql.Rows.
 type rowScanner interface {

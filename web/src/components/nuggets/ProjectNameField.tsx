@@ -45,7 +45,11 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
     });
     return () => {
       live = false;
-      inFlight.current?.abort();
+      // Forget the request before aborting it, so its finally doesn't set
+      // state on a field that is gone.
+      const request = inFlight.current;
+      inFlight.current = null;
+      request?.abort();
     };
   }, []);
 

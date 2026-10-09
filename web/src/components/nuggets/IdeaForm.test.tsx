@@ -92,6 +92,15 @@ describe('picking a suggestion', () => {
     expect(titleInput().value).toBe('A2');
   });
 
+  it('clears the missing-title error when it fills the title', async () => {
+    await renderForm({ idea: { notes: 'a bank for little ideas' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Drop it in' }));
+    expect(screen.getByText('A nugget needs a title.')).toBeTruthy();
+    await generate();
+    fireEvent.click(screen.getByText('A2'));
+    expect(screen.queryByText('A nugget needs a title.')).toBeNull();
+  });
+
   it('leaves a title that is already there', async () => {
     await renderForm({ idea: { title: 'Mine', notes: 'a bank for little ideas' } });
     await generate();

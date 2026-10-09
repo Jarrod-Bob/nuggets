@@ -5,10 +5,10 @@ import React from 'react';
  * page. The title stays the headline; this line only appears when there is a
  * project name.
  */
-export function ProjectNameLine({ name, style }: { name: string; style?: React.CSSProperties }) {
+export function ProjectNameLine({ projectName, style }: { projectName: string; style?: React.CSSProperties }) {
   return (
     <p style={{ margin: 0, fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)', ...style }}>
-      Suggested project name: {name}
+      Suggested project name: {projectName}
     </p>
   );
 }
