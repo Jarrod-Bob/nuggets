@@ -263,7 +263,7 @@ func (q *Queue) candidates(ctx context.Context, nugget *idea.Idea) ([]Candidate,
 	for _, t := range dismissed {
 		skip[t] = true
 	}
-	uses, err := q.TagUses(ctx)
+	uses, err := q.tagUses(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -289,8 +289,8 @@ func (q *Queue) Dismissed(ctx context.Context, ideaID int64) ([]string, error) {
 	return out, rows.Err()
 }
 
-// TagUses returns every use of a tag on an active nugget.
-func (q *Queue) TagUses(ctx context.Context) ([]TagUse, error) {
+// tagUses returns every use of a tag on an active nugget.
+func (q *Queue) tagUses(ctx context.Context) ([]TagUse, error) {
 	rows, err := q.db.QueryContext(ctx,
 		`SELECT t.name, i.id, i.title, i.updated_at FROM tags t
 		 JOIN idea_tags it ON it.tag_id = t.id
