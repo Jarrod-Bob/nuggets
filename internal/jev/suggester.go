@@ -157,24 +157,20 @@ func (s *Suggester) Pending(ctx context.Context) (int, error) { return s.queue.P
 func (s *Suggester) ClearQueue(ctx context.Context) error { return s.queue.Clear(ctx) }
 
 // Reset runs change, which edits the stored settings (and may empty the
-// queue), between checks, then wakes the loop. A new key lifts a 401 park
-// and any pause: it deserves a fresh try.
+// queue), between checks, then wakes the loop. A saved key — new, or the
+// same one saved again after fixing it on TypeSafe's side — lifts a 401
+// park and any pause: it deserves a fresh try, and the settings screen has
+// just cleared the error that explained the park.
 func (s *Suggester) Reset(ctx context.Context, change func() error) error {
 	s.running.Lock()
-	before, _, err := s.settings.Get(ctx, KeyAPIKey)
+	err := change()
 	if err == nil {
-		err = change()
-	}
-	if err == nil {
-		after, _, loadErr := s.settings.Get(ctx, KeyAPIKey)
-		if loadErr == nil && after != before {
-			s.mu.Lock()
-			s.rejectedKey = ""
-			s.pauseUntil = time.Time{}
-			s.failures = 0
-			s.rateLimits = 0
-			s.mu.Unlock()
-		}
+		s.mu.Lock()
+		s.rejectedKey = ""
+		s.pauseUntil = time.Time{}
+		s.failures = 0
+		s.rateLimits = 0
+		s.mu.Unlock()
 	}
 	s.running.Unlock()
 	if err == nil {
@@ -232,7 +228,7 @@ func (s *Suggester) next(ctx context.Context) (done bool, err error) {
 func (s *Suggester) check(ctx context.Context, key string, c check) error {
 	nugget, err := s.ideas.Get(ctx, c.ideaID)
 	if errors.Is(err, idea.ErrNotFound) || (err == nil && nugget.ArchivedAt != nil) {
-		return s.queue.deleteCheck(ctx, c.ideaID)
+		return s.queue.deleteCheck(ctx, c.ideaID, c.requestedAt)
 	}
 	if err != nil {
 		return err
@@ -339,7 +335,7 @@ func (s *Suggester) failed(ctx context.Context, key string, c check, err error) 
 		s.mu.Lock()
 		s.rejectedKey = key
 		s.mu.Unlock()
-		if err := s.queue.markFailed(ctx, c.ideaID, RejectedMessage, nil, false); err != nil {
+		if err := s.queue.holdCheck(ctx, c.ideaID, RejectedMessage, nil); err != nil {
 			return err
 		}
 		s.recordStatus(ctx, key, RejectedMessage)
@@ -348,11 +344,7 @@ func (s *Suggester) failed(ctx context.Context, key string, c check, err error) 
 	case isAPI && (apiErr.StatusCode == http.StatusTooManyRequests || apiErr.StatusCode == 529):
 		s.mu.Lock()
 		s.rateLimits++
-		wait := rateLimitWait
-		for i := 1; i < s.rateLimits && wait < maxRateLimitWait; i++ {
-			wait *= 2
-		}
-		wait = min(wait, maxRateLimitWait)
+		wait := doubled(rateLimitWait, s.rateLimits, maxRateLimitWait)
 		if apiErr.RetryAfter > wait {
 			wait = min(apiErr.RetryAfter, time.Hour)
 		}
@@ -360,7 +352,7 @@ func (s *Suggester) failed(ctx context.Context, key string, c check, err error) 
 		s.pauseUntil = until
 		s.mu.Unlock()
 		message := "TypeSafe is busy (" + strconv.Itoa(apiErr.StatusCode) + "); checking resumes at " + until.Local().Format("15:04") + "."
-		if err := s.queue.markFailed(ctx, c.ideaID, message, &until, false); err != nil {
+		if err := s.queue.holdCheck(ctx, c.ideaID, message, &until); err != nil {
 			return err
 		}
 		s.recordStatus(ctx, key, message)
@@ -369,7 +361,7 @@ func (s *Suggester) failed(ctx context.Context, key string, c check, err error) 
 	case isAPI && apiErr.StatusCode == http.StatusUnprocessableEntity:
 		message := refusedPrefix + apiErr.Message
 		log.Printf("jev: TypeSafe refused the tag check for nugget %d: %s", c.ideaID, message)
-		if err := s.queue.deleteCheck(ctx, c.ideaID); err != nil {
+		if err := s.queue.deleteCheck(ctx, c.ideaID, c.requestedAt); err != nil {
 			return err
 		}
 		s.recordStatus(ctx, key, message)
@@ -383,7 +375,7 @@ func (s *Suggester) failed(ctx context.Context, key string, c check, err error) 
 		s.pauseUntil = until
 		s.mu.Unlock()
 		next := now.Add(s.backoff(c.attempts + 1))
-		if err := s.queue.markFailed(ctx, c.ideaID, message, &next, true); err != nil {
+		if err := s.queue.retryCheck(ctx, c.ideaID, message, next); err != nil {
 			return err
 		}
 		s.recordStatus(ctx, key, message)
@@ -393,11 +385,17 @@ func (s *Suggester) failed(ctx context.Context, key string, c check, err error) 
 
 // backoff is baseBackoff doubled per earlier failure, capped at maxBackoff.
 func (s *Suggester) backoff(n int) time.Duration {
-	d := s.baseBackoff
-	for i := 1; i < n && d < s.maxBackoff; i++ {
+	return doubled(s.baseBackoff, n, s.maxBackoff)
+}
+
+// doubled is base doubled for each of the n-1 earlier failures, capped at
+// max.
+func doubled(base time.Duration, n int, max time.Duration) time.Duration {
+	d := base
+	for i := 1; i < n && d < max; i++ {
 		d *= 2
 	}
-	return min(d, s.maxBackoff)
+	return min(d, max)
 }
 
 // recordStatus stores message as the last error ("" clears it, except a

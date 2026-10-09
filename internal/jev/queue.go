@@ -383,30 +383,39 @@ func openTags(ctx context.Context, tx *sql.Tx, ideaID int64) (map[string]bool, e
 	return out, rows.Err()
 }
 
-// deleteCheck drops a nugget's check: it is archived or gone, or TypeSafe
-// refused the request in a way a retry can't fix.
-func (q *Queue) deleteCheck(ctx context.Context, ideaID int64) error {
-	if _, err := q.db.ExecContext(ctx, `DELETE FROM tag_checks WHERE idea_id = ?`, ideaID); err != nil {
+// deleteCheck drops a nugget's check if it is still the one that started
+// from requestedAt: the nugget is archived or gone, or TypeSafe refused the
+// request in a way a retry can't fix. A newer request made meanwhile stays
+// queued.
+func (q *Queue) deleteCheck(ctx context.Context, ideaID int64, requestedAt time.Time) error {
+	if _, err := q.db.ExecContext(ctx,
+		`DELETE FROM tag_checks WHERE idea_id = ? AND requested_at = ?`, ideaID, requestedAt); err != nil {
 		return fmt.Errorf("deleting tag check: %w", err)
 	}
 	return nil
 }
 
-// markFailed records a failed attempt on a check, which stays queued until
-// next (nil: whenever the Suggester runs again). countAttempt adds it to the
-// check's own backoff.
-func (q *Queue) markFailed(ctx context.Context, ideaID int64, message string, next *time.Time, countAttempt bool) error {
+// holdCheck records why a check waits, without counting it against the
+// check: it stays queued until next (nil: whenever the Suggester runs
+// again). For failures that are about the connection, not this check.
+func (q *Queue) holdCheck(ctx context.Context, ideaID int64, message string, next *time.Time) error {
+	return q.recordFailure(ctx, ideaID, message, next, 0)
+}
+
+// retryCheck records a failed attempt on a check, which stays queued until
+// next, and counts it towards the check's own backoff.
+func (q *Queue) retryCheck(ctx context.Context, ideaID int64, message string, next time.Time) error {
+	return q.recordFailure(ctx, ideaID, message, &next, 1)
+}
+
+func (q *Queue) recordFailure(ctx context.Context, ideaID int64, message string, next *time.Time, attempt int) error {
 	var due any
 	if next != nil {
 		due = next.UTC()
 	}
-	add := 0
-	if countAttempt {
-		add = 1
-	}
 	if _, err := q.db.ExecContext(ctx,
 		`UPDATE tag_checks SET last_error = ?, next_attempt_at = ?, attempts = attempts + ? WHERE idea_id = ?`,
-		message, due, add, ideaID); err != nil {
+		message, due, attempt, ideaID); err != nil {
 		return fmt.Errorf("recording failed tag check: %w", err)
 	}
 	return nil

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Jarrod-Bob/nuggets/internal/idea"
 )
 
 // queueOneCheck leaves one nugget waiting for a check with one candidate tag.
@@ -274,4 +276,47 @@ func TestTheLoopChecksANuggetSoonAfterItIsSaved(t *testing.T) {
 	waitUntil(t, "the suggestion", func() bool { return len(e.suggestedTags(t, n)) == 1 })
 	cancel()
 	<-done
+}
+
+func TestA422KeepsANewerRequestMadeWhileItWasInFlight(t *testing.T) {
+	e := newTestEnv(t)
+	n := queueOneCheck(t, e)
+	e.fake.queue(func(w http.ResponseWriter, r *http.Request) {
+		notes := "edited mid-check"
+		if _, err := e.ideas.Update(context.Background(), n, idea.Draft{Notes: &notes}); err != nil {
+			t.Errorf("editing mid-check: %v", err)
+		}
+		answerWith(http.StatusUnprocessableEntity, nil, `{"error":{"message":"bad"}}`)(w, r)
+	})
+	if err := e.pass(t); err != nil {
+		t.Fatalf("Pass = %v", err)
+	}
+	if got := len(e.fake.sent()); got != 2 {
+		t.Errorf("requests = %d, want the newer text checked too", got)
+	}
+	if got := e.suggestedTags(t, n); len(got) != 1 {
+		t.Errorf("suggestions = %v, want the newer check's [a]", got)
+	}
+}
+
+func TestSavingTheSameKeyAgainAfterA401TriesAgain(t *testing.T) {
+	e := newTestEnv(t)
+	n := queueOneCheck(t, e)
+	e.fake.acceptKey("not-yet")
+	if err := e.pass(t); !errors.Is(err, errRejected) {
+		t.Fatalf("Pass = %v, want errRejected", err)
+	}
+	// The captain fixes the key on TypeSafe's side and saves the same one.
+	e.fake.acceptKey(testKey)
+	if err := e.suggester.Reset(context.Background(), func() error {
+		return e.settings.Set(context.Background(), KeyAPIKey, testKey)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.pass(t); err != nil {
+		t.Fatalf("Pass after saving the key again = %v", err)
+	}
+	if got := e.suggestedTags(t, n); len(got) != 1 {
+		t.Errorf("suggestions = %v, want the check done", got)
+	}
 }
