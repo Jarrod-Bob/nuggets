@@ -19,7 +19,7 @@ Jev was asked exactly what production asks: one noul per candidate tag, with up 
   - Haiku at low effort is a little more precise (0.69 against 0.61).
   - At each model's own best threshold, Jev and Haiku at low effort tie on F1 (0.534 against 0.531).
 - **Jev's best threshold is 0.70**, the one the feature ships with. Haiku's best is 0.45–0.55, so a Claude version would need its own tuning.
-- **Jev holds up as the vocabulary grows.** Its recall stays at 0.50 from 10 to 200 tags. Haiku's falls (thinking off: 0.57 → 0.29), and 7–13% of its 200-tag answers left tags out.
+- **Jev holds up as the vocabulary grows, with one catch.** Its recall stays at 0.50 from 10 all the way to 1,000 tags. Haiku's falls by 200 tags (thinking off: 0.57 → 0.29), and 7–13% of its 200-tag answers left tags out. The catch: past about 500 tags, wrong tags crowd into Jev's top 3, so a big vocabulary will need a shortlist step before Jev.
 - **Jev is steadier.** Its top 3 changed in 0–6% of repeated checks, against 16–29% for Haiku. Jev never returned a malformed answer; Haiku at low effort did 3–6 times per 100.
 - **On the real bank, Jev was never wrong but rarely spoke.** Blind judging found all 3 of its open suggestions right, against 14 of 18 for Haiku at low effort and 20 of 41 for Haiku with thinking off. Haiku surfaces more genuinely missing tags, at the cost of more noise.
 - **The whole run cost $1.15** for 2,682 checks, plus $0.02 of smoke tests.
@@ -77,6 +77,24 @@ The same 10 GitHub hidden-tag cases, asked against vocabularies of 10, 50 and 20
 | Haiku, thinking off | 200 | 0.286 | 15,325 / 15,828 ms | 14,889 | $0.004202 | 6.7 |
 
 Jev reads about twice as many input tokens as Haiku, because each tag's question carries the nugget again. It's still cheaper because its input costs $0.042 per million tokens, about 2.4× less than Haiku's $0.10, and its output is free.
+
+### Scaling to 500 and 1,000 tags (Jev only)
+
+A second run asked Jev the same 10 hidden-tag cases against 200, 500 and 1,000 tags, 30 checks per size. It cost $0.36. Reaching 1,000 tags needed more padding labels: home-assistant/core, rust-lang/rust, kubernetes/kubernetes, flutter/flutter and elastic/kibana were added, for 1,052 distinct labels. The 300 stand-in issues were kept exactly as in Phase 1. The 200-tag size was re-run because the padding mix changed. The harness now refuses to build a size its labels can't fill: earlier it would have quietly trimmed a "1,000-tag" case to the labels available.
+
+| Vocabulary | Recall@3 | Wrong tags shown per check (of up to 3) | p50 / p95 | Input tokens | $ per check | Malformed |
+|---|---|---|---|---|---|---|
+| 200 | 0.50 | 1.13 | 1,254 / 1,407 ms | 33,188 | $0.0014 | 0 |
+| 500 | 0.50 | 1.83 | 3,222 / 3,522 ms | 83,453 | $0.0035 | 0 |
+| 1,000 | 0.50 | **2.37** | 6,290 / 6,725 ms | 167,569 | $0.0070 | 0 |
+
+- **Jev finds the right tag just as often at 1,000 tags as at 10.** Every tag is its own question, so the hidden tag's score doesn't change as the vocabulary grows. The same 15 of 30 clear 0.70 at every size.
+- **Noise grows, though.** Above 0.70 the number of wrong tags per check rises from 1.1 at 200 tags to 6.6 at 1,000. That's enough to crowd the top 3: at 1,000 tags, 2.4 of the 3 tags shown are wrong.
+- **Raising the threshold doesn't fix it.** At 1,000 tags, 0.85 still shows 1.4 wrong tags per check and drops recall to 0.30. 0.90 cuts the wrong tags to 0.5 but keeps recall at only 0.17.
+- **Cost and time grow in a straight line.** Each tag adds about 165 input tokens and 6 ms per check, which comes to $0.007 and 6.3 s at 1,000 tags. The check's 20 requests of 50 questions run one after another.
+- **The fix at a few hundred tags is to shortlist candidates before asking Jev**, not to raise the threshold. TypeSafe's hierarchical classification cookbook covers that.
+
+A limit on this run: the padding labels come from unrelated projects, and some (`ui`, `performance`, `accessibility`) may genuinely fit the issue. So "wrong" overstates the noise a little. The trend is still clear.
 
 ## Found while building it
 

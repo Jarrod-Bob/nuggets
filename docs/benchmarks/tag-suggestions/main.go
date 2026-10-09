@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Jarrod-Bob/nuggets/internal/db"
 	"github.com/Jarrod-Bob/nuggets/docs/benchmarks/tag-suggestions/tagbench"
+	"github.com/Jarrod-Bob/nuggets/internal/db"
 )
 
 func main() {
@@ -160,6 +160,13 @@ func run(ctx context.Context, args []string) error {
 		contenders = append(contenders, c)
 	}
 	printCaseCounts(cases)
+	if slices.Contains(wantTasks, tagbench.TaskScale) {
+		for _, size := range sizes {
+			if !slices.ContainsFunc(cases, func(c tagbench.Case) bool { return c.Task == tagbench.TaskScale && c.VocabSize == size }) {
+				fmt.Fprintf(os.Stderr, "skipping the %d-tag scaling run: the cached labels can't fill it (fetch more padding repos)\n", size)
+			}
+		}
+	}
 
 	if *dryRun {
 		est, err := tagbench.EstimateRun(ctx, cases, contenders, *countTokens)

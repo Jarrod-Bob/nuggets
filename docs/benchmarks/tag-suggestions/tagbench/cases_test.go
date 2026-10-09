@@ -122,7 +122,7 @@ func TestPaddingItemsAreNeverCases(t *testing.T) {
 }
 
 func TestScaleCasesPadTheVocabularyFromOtherRepos(t *testing.T) {
-	cs := casesOf(BuildCases(githubItems(), CaseOptions{Seed: 1, Repeats: 1, ScaleItems: 1, ScaleSizes: []int{2, 10, 200}}), TaskScale)
+	cs := casesOf(BuildCases(githubItems(), CaseOptions{Seed: 1, Repeats: 1, ScaleItems: 1, ScaleSizes: []int{2, 10, 32}}), TaskScale)
 	if len(cs) != 3 {
 		t.Fatalf("%d scale cases, want 3 sizes of 1 item", len(cs))
 	}
@@ -143,9 +143,18 @@ func TestScaleCasesPadTheVocabularyFromOtherRepos(t *testing.T) {
 		}
 	}
 	// Repo o/a offers 2 candidates (its 3 tags minus the one shown); o/pad
-	// 30 more. Asking for 200 gets all 32 there are.
-	if sizes[2] != 2 || sizes[10] != 10 || sizes[200] != 32 {
+	// 30 more, so 32 in all.
+	if sizes[2] != 2 || sizes[10] != 10 || sizes[32] != 32 {
 		t.Errorf("vocabulary sizes = %v, want 2, 10 and 32", sizes)
+	}
+}
+
+func TestScaleSkipsASizeTheLabelsCantFill(t *testing.T) {
+	// Only 32 candidates exist. A "200-tag" case holding 32 would be
+	// reported as 200, so it isn't built at all.
+	cs := casesOf(BuildCases(githubItems(), CaseOptions{Seed: 1, Repeats: 1, ScaleItems: 1, ScaleSizes: []int{10, 200}}), TaskScale)
+	if len(cs) != 1 || cs[0].VocabSize != 10 {
+		t.Errorf("scale cases = %d (first vocab %d), want only the 10-tag one", len(cs), cs[0].VocabSize)
 	}
 }
 

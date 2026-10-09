@@ -55,6 +55,11 @@ var DefaultRepos = []RepoSpec{
 	{Name: "zed-industries/zed", Take: 200, Padding: true, Why: "padding labels for the scaling task"},
 	{Name: "godotengine/godot", Take: 200, Padding: true, Why: "padding labels for the scaling task"},
 	{Name: "microsoft/vscode", Take: 200, Padding: true, Why: "padding labels for the scaling task"},
+	{Name: "home-assistant/core", Take: 600, Padding: true, Why: "padding labels for the 500- and 1,000-tag scaling runs (one label per integration)"},
+	{Name: "rust-lang/rust", Take: 400, Padding: true, Why: "padding labels for the 500- and 1,000-tag scaling runs (A-, T-, O- area labels)"},
+	{Name: "kubernetes/kubernetes", Take: 300, Padding: true, Why: "padding labels for the 500- and 1,000-tag scaling runs (area/, sig/ labels)"},
+	{Name: "flutter/flutter", Take: 400, Padding: true, Why: "padding labels for the 1,000-tag scaling run (a:, p:, platform- labels)"},
+	{Name: "elastic/kibana", Take: 400, Padding: true, Why: "padding labels for the 1,000-tag scaling run (Feature:, Team: labels)"},
 }
 
 // housekeeping matches labels about an issue's process, not its subject:

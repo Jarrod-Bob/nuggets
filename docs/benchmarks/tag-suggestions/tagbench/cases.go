@@ -194,7 +194,12 @@ func scaleCases(rng *rand.Rand, items []Item, hidden []Case, uses map[string][]j
 		rng.Shuffle(len(pad), func(i, j int) { pad[i], pad[j] = pad[j], pad[i] })
 		order := append(append([]jev.Candidate{first}, own...), pad...)
 		for _, size := range opt.ScaleSizes {
-			cands := slices.Clone(order[:min(size, len(order))])
+			// A case can't stand for a vocabulary bigger than the labels
+			// there are: it would be reported at a size it never had.
+			if size > len(order) {
+				continue
+			}
+			cands := slices.Clone(order[:size])
 			slices.SortFunc(cands, func(a, b jev.Candidate) int { return cmp.Compare(a.Tag, b.Tag) })
 			c := base
 			c.Key = DatasetGitHub + "/" + TaskScale + "/" + base.Item.ID + "/" + base.Hidden + "@" + strconv.Itoa(size)
