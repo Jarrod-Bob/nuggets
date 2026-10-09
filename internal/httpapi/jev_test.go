@@ -213,6 +213,32 @@ func TestSuggestionsLeaveOutTagsTheNuggetNowHas(t *testing.T) {
 	}
 }
 
+func TestSuggestionsCarryTheExampleTitlesJevWasShown(t *testing.T) {
+	e := newJevEnv(t)
+	e.create(t, "Recipe box", "cooking")
+	e.create(t, "Pantry tracker", "cooking")
+	e.connect(t)
+	n := e.create(t, "Meal planner")
+	e.pass(t)
+
+	rec := e.do(t, "GET", "/api/ideas/"+itoa(n.ID)+"/tag-suggestions", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("suggestions = %d %s", rec.Code, rec.Body)
+	}
+	var got []map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decoding %s: %v", rec.Body, err)
+	}
+	want := []map[string]any{{
+		"tag":         "cooking",
+		"probability": 0.9,
+		"examples":    []any{"Pantry tracker", "Recipe box"},
+	}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("suggestions = %s, want %v", rec.Body, want)
+	}
+}
+
 func TestDismissNormalizesTheTagAndIsIdempotent(t *testing.T) {
 	e := newJevEnv(t)
 	e.create(t, "Has a", "a")

@@ -3,6 +3,7 @@ package jev
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -13,17 +14,20 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 )
 
-// Suggestion states (the tag_suggestions table, migration 00008).
+// Suggestion states (the tag_suggestions table, migrations 00008 and 00009).
 const (
 	stateOpen      = "open"
 	stateDismissed = "dismissed"
 )
 
 // Suggestion is one open tag suggestion: a tag in use that Jev thinks the
-// nugget is missing, with its yes-probability.
+// nugget is missing, with its yes-probability and the example titles Jev
+// was shown for it in the check that produced it. Examples is empty (never
+// nil) for a suggestion stored before they were kept.
 type Suggestion struct {
-	Tag         string  `json:"tag"`
-	Probability float64 `json:"probability"`
+	Tag         string   `json:"tag"`
+	Probability float64  `json:"probability"`
+	Examples    []string `json:"examples"`
 }
 
 // Queue reads and writes the tag_checks and tag_suggestions tables.
@@ -156,7 +160,7 @@ func (q *Queue) Dismiss(ctx context.Context, ideaID int64, tag string) error {
 // first, leaving out tags it now has. Never nil.
 func (q *Queue) Suggestions(ctx context.Context, ideaID int64) ([]Suggestion, error) {
 	rows, err := q.db.QueryContext(ctx,
-		`SELECT s.tag, COALESCE(s.probability, 0) FROM tag_suggestions s
+		`SELECT s.tag, COALESCE(s.probability, 0), s.examples FROM tag_suggestions s
 		 WHERE s.idea_id = ? AND s.state = ?
 		   AND NOT EXISTS (
 		     SELECT 1 FROM idea_tags it JOIN tags t ON t.id = it.tag_id
@@ -169,9 +173,18 @@ func (q *Queue) Suggestions(ctx context.Context, ideaID int64) ([]Suggestion, er
 	defer rows.Close()
 	out := []Suggestion{}
 	for rows.Next() {
-		var s Suggestion
-		if err := rows.Scan(&s.Tag, &s.Probability); err != nil {
+		var (
+			s        Suggestion
+			examples string
+		)
+		if err := rows.Scan(&s.Tag, &s.Probability, &examples); err != nil {
 			return nil, fmt.Errorf("scanning tag suggestion: %w", err)
+		}
+		if err := json.Unmarshal([]byte(examples), &s.Examples); err != nil {
+			return nil, fmt.Errorf("decoding examples for suggestion %q: %w", s.Tag, err)
+		}
+		if s.Examples == nil {
+			s.Examples = []string{}
 		}
 		out = append(out, s)
 	}
@@ -345,10 +358,17 @@ func (q *Queue) storeResult(ctx context.Context, ideaID int64, requestedAt time.
 	now := time.Now().UTC()
 	after := map[string]bool{}
 	for _, s := range result {
+		if s.Examples == nil {
+			s.Examples = []string{}
+		}
+		examples, err := json.Marshal(s.Examples)
+		if err != nil {
+			return false, false, fmt.Errorf("encoding examples for %q: %w", s.Tag, err)
+		}
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO tag_suggestions (idea_id, tag, state, probability, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(idea_id, tag) DO NOTHING`,
-			ideaID, s.Tag, stateOpen, s.Probability, now, now)
+			`INSERT INTO tag_suggestions (idea_id, tag, state, probability, examples, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(idea_id, tag) DO NOTHING`,
+			ideaID, s.Tag, stateOpen, s.Probability, string(examples), now, now)
 		if err != nil {
 			return false, false, fmt.Errorf("storing suggestion %q: %w", s.Tag, err)
 		}

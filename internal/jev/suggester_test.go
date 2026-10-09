@@ -104,7 +104,11 @@ func TestOnlyConfidentTagsAreSuggestedHighestFirstAtMostThree(t *testing.T) {
 		t.Fatalf("Pass: %v", err)
 	}
 	got := e.suggestions(t, n.ID)
-	want := []Suggestion{{"c", 0.95}, {"d", 0.8}, {"e", 0.75}}
+	want := []Suggestion{
+		{Tag: "c", Probability: 0.95, Examples: []string{"Has c"}},
+		{Tag: "d", Probability: 0.8, Examples: []string{"Has d"}},
+		{Tag: "e", Probability: 0.75, Examples: []string{"Has e"}},
+	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("suggestions = %+v, want %+v", got, want)
 	}
@@ -166,6 +170,46 @@ func TestExamplesAreThreeRecentDistinctTitles(t *testing.T) {
 	got := sent[0].Body.Questions["t0"].Instructions.Examples
 	if want := []string{"FOURTH", "Third", "Second"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("examples = %q, want %q", got, want)
+	}
+}
+
+func TestASuggestionKeepsTheExamplesJevWasShown(t *testing.T) {
+	e := newTestEnv(t)
+	for _, title := range []string{"Oldest", "Second", "Third", "Fourth"} {
+		e.create(t, title, "", "x")
+	}
+	e.fake.answer("x", 0.9)
+	e.setKey(t, testKey)
+	n := e.create(t, "Checked", "")
+	if err := e.pass(t); err != nil {
+		t.Fatal(err)
+	}
+
+	// A nugget tagged x after the check doesn't change what was shown.
+	e.create(t, "Newest", "", "x")
+	got := e.suggestions(t, n.ID)
+	want := []Suggestion{{Tag: "x", Probability: 0.9, Examples: []string{"Fourth", "Third", "Second"}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("suggestions = %+v, want %+v", got, want)
+	}
+	if sent := e.fake.sent()[0].Body.Questions["t0"].Instructions.Examples; !reflect.DeepEqual(sent, want[0].Examples) {
+		t.Errorf("sent examples %q, stored %q: want the same", sent, want[0].Examples)
+	}
+}
+
+func TestASuggestionStoredWithoutExamplesHasNone(t *testing.T) {
+	e := newTestEnv(t)
+	n := e.create(t, "Checked", "")
+	// A row written before migration 00009 added the column.
+	if _, err := e.db.Exec(
+		`INSERT INTO tag_suggestions (idea_id, tag, state, probability, created_at, updated_at)
+		 VALUES (?, 'old', 'open', 0.8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, n.ID); err != nil {
+		t.Fatal(err)
+	}
+	got := e.suggestions(t, n.ID)
+	want := []Suggestion{{Tag: "old", Probability: 0.8, Examples: []string{}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("suggestions = %+v, want %+v", got, want)
 	}
 }
 

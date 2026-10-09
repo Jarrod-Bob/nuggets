@@ -244,7 +244,7 @@ func (s *Suggester) check(ctx context.Context, key string, c check) error {
 		if err != nil {
 			return s.failed(ctx, key, c, err)
 		}
-		result = confident(answers)
+		result = confident(answers, candidates)
 	}
 
 	stored, changed, err := s.queue.storeResult(ctx, c.ideaID, c.requestedAt, result)
@@ -299,12 +299,16 @@ func (s *Suggester) ask(ctx context.Context, key string, nugget *idea.Idea, cand
 }
 
 // confident keeps the tags at or above Threshold, highest first, at most
-// MaxSuggestions.
-func confident(answers map[string]float64) []Suggestion {
+// MaxSuggestions, each with the examples its question carried.
+func confident(answers map[string]float64, candidates []candidate) []Suggestion {
+	examples := make(map[string][]string, len(candidates))
+	for _, c := range candidates {
+		examples[c.tag] = c.examples
+	}
 	var out []Suggestion
 	for tag, p := range answers {
 		if p >= Threshold {
-			out = append(out, Suggestion{Tag: tag, Probability: p})
+			out = append(out, Suggestion{Tag: tag, Probability: p, Examples: examples[tag]})
 		}
 	}
 	slices.SortFunc(out, func(a, b Suggestion) int {
