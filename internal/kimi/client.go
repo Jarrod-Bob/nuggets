@@ -38,6 +38,10 @@ var (
 	// ask: nothing answered, or kimi said ollama_unreachable or
 	// model_missing. The API answers 503.
 	ErrUnavailable = errors.New("kimi is not available")
+	// ErrModelError means kimi is up but its model couldn't run: kimi said
+	// model_error. Kimi's health still says ok then, so the API answers 502
+	// with its own code and the form stops offering kimi (issue #36).
+	ErrModelError = errors.New("kimi's model couldn't run")
 	// ErrFailed is any other failure from kimi, including no_names and
 	// model_timeout. The API answers 502.
 	ErrFailed = errors.New("kimi couldn't suggest names")
@@ -165,7 +169,8 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
 }
 
-// apiError turns a non-200 answer into ErrUnavailable or ErrFailed, keeping
+// apiError turns a non-200 answer into ErrUnavailable, ErrModelError or
+// ErrFailed, keeping
 // kimi's own message (from {"error":{"message","code"}}) for the log.
 func apiError(resp *http.Response) error {
 	var envelope struct {
@@ -180,6 +185,8 @@ func apiError(resp *http.Response) error {
 	switch envelope.Error.Code {
 	case "ollama_unreachable", "model_missing":
 		kind = ErrUnavailable
+	case "model_error":
+		kind = ErrModelError
 	}
 	detail := envelope.Error.Message
 	if detail == "" {

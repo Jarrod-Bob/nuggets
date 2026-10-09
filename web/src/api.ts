@@ -61,13 +61,18 @@ export interface ListFilter {
   archived?: boolean;
 }
 
-/** The API's single error shape: { "error": { "message": "..." } } */
+/**
+ * The API's single error shape: { "error": { "message": "...", "code"?: "..." } }.
+ * code is set only where the UI must tell one failure from another.
+ */
 export class ApiError extends Error {
   readonly status: number;
+  readonly code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -86,7 +91,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const message = payload?.error?.message ?? `Request failed (${response.status})`;
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, payload?.error?.code);
   }
   return payload as T;
 }
@@ -191,6 +196,9 @@ export interface TagSuggestionStatus {
 export interface KimiSettings {
   url: string;
 }
+
+/** The code POST /api/kimi/names errors with when kimi's model couldn't run (httpapi's kimiModelErrorCode). */
+export const KIMI_MODEL_ERROR_CODE = 'kimi_model_error';
 
 /** Mirrors internal/kimi.Name: one suggested project name. */
 export interface KimiName {

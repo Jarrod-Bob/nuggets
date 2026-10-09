@@ -149,7 +149,7 @@ func TestNamesMapsKimiErrors(t *testing.T) {
 		"model missing":      {kimiError(503, "model_missing"), ErrUnavailable},
 		"no names":           {kimiError(502, "no_names"), ErrFailed},
 		"model timeout":      {kimiError(504, "model_timeout"), ErrFailed},
-		"model error":        {kimiError(502, "model_error"), ErrFailed},
+		"model error":        {kimiError(502, "model_error"), ErrModelError},
 		"bad request":        {kimiError(400, "invalid_request"), ErrFailed},
 		"no error envelope": {func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "boom", http.StatusInternalServerError)

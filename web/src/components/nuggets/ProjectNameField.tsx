@@ -2,7 +2,7 @@ import React from 'react';
 import { Input } from '../forms/Input';
 import { Button } from '../core/Button';
 import { IconButton } from '../core/IconButton';
-import { api, type KimiName } from '../../api';
+import { api, ApiError, KIMI_MODEL_ERROR_CODE, type KimiName } from '../../api';
 
 /**
  * The form's "Suggested project name" field and its ✨ button, which asks
@@ -25,6 +25,8 @@ export interface ProjectNameFieldProps {
 export const GENERATE_TOOLTIP = 'Uses kimi-no-name-wa to generate a creative name for your project!';
 export const NOTES_EMPTY_HINT = 'Write some notes and kimi will name it';
 export const UNAVAILABLE_TEXT = 'kimi is not available at the moment';
+/** kimi is up but its model couldn't run. Its health still says ok, so this is the only sign. */
+export const MODEL_ERROR_TEXT = "kimi's model couldn't run; check Ollama on the GPU machine";
 
 // A 3px arc, fading in from transparent, cut out of a disc just outside the
 // button by a radial mask. Spun by the .nug-spin class (motion.css).
@@ -45,7 +47,11 @@ function chipStyle(picked: boolean): React.CSSProperties {
   };
 }
 
-type Results = { state: 'none' } | { state: 'failed' } | { state: 'names'; names: KimiName[] };
+type Results =
+  | { state: 'none' }
+  | { state: 'failed' }
+  | { state: 'modelError' }
+  | { state: 'names'; names: KimiName[] };
 
 export function ProjectNameField({ value, onChange, notes, onPick }: ProjectNameFieldProps) {
   // null while the health check is in flight.
@@ -87,9 +93,17 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
         shown.current = [...shown.current, ...names.map((n) => n.name)];
         setResults({ state: 'names', names });
       })
-      .catch(() => {
-        // A cancel leaves the list as it was; anything else is "not available".
-        if (!controller.signal.aborted) setResults({ state: 'failed' });
+      .catch((err: unknown) => {
+        // A cancel leaves the list as it was. kimi's model failing to run
+        // would fail every try the same way, slowly, so kimi is off for the
+        // rest of this form. Anything else is "not available".
+        if (controller.signal.aborted) return;
+        if (err instanceof ApiError && err.code === KIMI_MODEL_ERROR_CODE) {
+          setAvailable(false);
+          setResults({ state: 'modelError' });
+        } else {
+          setResults({ state: 'failed' });
+        }
       })
       .finally(() => {
         if (inFlight.current === controller) {
@@ -105,7 +119,10 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
   };
 
   const notesEmpty = notes.trim() === '';
-  const hint = notesEmpty ? NOTES_EMPTY_HINT : available === false ? UNAVAILABLE_TEXT : undefined;
+  // After a model error the status line below says why kimi is off.
+  const hint = notesEmpty
+    ? NOTES_EMPTY_HINT
+    : available === false && results.state !== 'modelError' ? UNAVAILABLE_TEXT : undefined;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -143,8 +160,10 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
         </div>
       </div>
 
-      {results.state === 'failed' && (
-        <p role="status" style={{ margin: 0, fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)' }}>{UNAVAILABLE_TEXT}</p>
+      {(results.state === 'failed' || results.state === 'modelError') && (
+        <p role="status" style={{ margin: 0, fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)' }}>
+          {results.state === 'modelError' ? MODEL_ERROR_TEXT : UNAVAILABLE_TEXT}
+        </p>
       )}
 
       {results.state === 'names' && (
