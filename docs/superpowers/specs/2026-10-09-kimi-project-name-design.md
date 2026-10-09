@@ -53,9 +53,10 @@ Nuggets' server calls kimi. The browser never does: kimi grants no CORS, require
 |---|---|
 | `400` | `notes` is blank after trimming, or `avoid` holds more than 500 entries. |
 | `503` | Kimi is unreachable, or answered with `ollama_unreachable` or `model_missing`. |
+| `502` + `code: "kimi_model_error"` | Kimi answered with `model_error`: it is up, but its Ollama model couldn't run. |
 | `502` | Any other failure from kimi, including `no_names` and `model_timeout`. |
 
-Each error body uses nuggets' usual error shape. The UI shows the same fixed text for every 5xx (§5), so kimi's own message is logged, not shown.
+Each error body uses nuggets' usual error shape. Only the `model_error` case carries a `code` (`{"error":{"message","code"}}`), because kimi's health still says `ok` then and the UI must tell it apart from kimi being off (issue #36). The UI shows one of two fixed texts (§5), never kimi's own message, which is logged.
 
 **Client.** `kimi.Client` is built once in `cmd/nuggets/main.go` and handed to the handlers. Handlers don't construct their own. Calls are request-scoped rather than a background loop: each one is made when the captain clicks, and it is cancelled when the browser request is (the request's context is passed through). The `AGENTS.md` "one goroutine per external service" rule targets the background importers. This integration keeps the part that matters, a single client, and needs no loop. The client has its own 6-minute timeout, just over kimi's 5-minute model timeout. The nuggets server has no `WriteTimeout`, so long first calls (model loading) aren't cut off.
 
@@ -70,7 +71,8 @@ Each error body uses nuggets' usual error shape. The UI shows the same fixed tex
   - **Ready:** enabled.
   - **Naming…:** a cancel control replaces the button. The rest of the form stays editable while it runs.
 - Results show as a list of 5 rows (name and explanation) under the field, with **Re-roll**. Clicking a row fills the field (and an empty title, §2).
-- If a request fails, the list area shows "kimi is not available at the moment".
+- If a request fails, the list area shows "kimi is not available at the moment", and the button stays enabled for another try.
+- If kimi answers `model_error` (`code: "kimi_model_error"`, §4), the list area shows "kimi's model couldn't run; check Ollama on the GPU machine" instead, and the button is disabled for the rest of the form session: every try would wait just as long and fail the same way. Reopening the form checks health again (issue #36).
 - Project-name changes count toward the form's dirty state.
 
 **Display:**

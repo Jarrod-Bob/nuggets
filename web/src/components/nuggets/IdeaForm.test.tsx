@@ -219,6 +219,47 @@ describe('while naming', () => {
     fireEvent.click(generateButton());
     expect(await screen.findByText('kimi is not available at the moment')).toBeTruthy();
   });
+
+  it('kimi being off leaves the button for another try', async () => {
+    namesAnswer = async () => json({ error: { message: 'kimi is not available at the moment.' } }, 503);
+    await renderForm({ idea: { notes: 'a bank for little ideas' } });
+    fireEvent.click(generateButton());
+    await screen.findByText('kimi is not available at the moment');
+    expect(generateButton().disabled).toBe(false);
+    expect(screen.queryByText(/model couldn't run/)).toBeNull();
+  });
+
+  it("says when kimi's model couldn't run, and stops offering kimi for the rest of the form", async () => {
+    namesAnswer = async () =>
+      json({ error: { message: "kimi's model couldn't run; check Ollama on the GPU machine.", code: 'kimi_model_error' } }, 502);
+    await renderForm({ idea: { notes: 'a bank for little ideas' } });
+    fireEvent.click(generateButton());
+
+    expect(await screen.findByText("kimi's model couldn't run; check Ollama on the GPU machine")).toBeTruthy();
+    expect(screen.queryByText('kimi is not available at the moment')).toBeNull();
+    expect(generateButton().disabled).toBe(true);
+
+    // Editing the notes doesn't bring it back: every try would wait again.
+    fireEvent.change(notesInput(), { target: { value: 'a bank for big ideas' } });
+    expect(generateButton().disabled).toBe(true);
+    expect(namesBodies).toHaveLength(1);
+  });
+
+  it("a Re-roll that hits kimi's model failing replaces the names and stops offering kimi", async () => {
+    let call = 0;
+    namesAnswer = async () =>
+      call++ === 0
+        ? json({ names: batch('A') })
+        : json({ error: { message: 'secret', code: 'kimi_model_error' } }, 502);
+    await renderForm({ idea: { notes: 'a bank for little ideas' } });
+    await generate();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Re-roll' }));
+    expect(await screen.findByText("kimi's model couldn't run; check Ollama on the GPU machine")).toBeTruthy();
+    expect(screen.queryByText('A1')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Re-roll' })).toBeNull();
+    expect(generateButton().disabled).toBe(true);
+  });
 });
 
 describe('saving', () => {

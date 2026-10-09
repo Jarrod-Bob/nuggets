@@ -83,11 +83,16 @@ func newKimiEnv(t *testing.T) *kimiEnv {
 
 func errorMessage(t *testing.T, rec *httptest.ResponseRecorder) string {
 	t.Helper()
+	return decodeError(t, rec).Error.Message
+}
+
+func decodeError(t *testing.T, rec *httptest.ResponseRecorder) errorBody {
+	t.Helper()
 	var body errorBody
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decoding error %s: %v", rec.Body, err)
 	}
-	return body.Error.Message
+	return body
 }
 
 func TestKimiSettingsRoundTrip(t *testing.T) {
@@ -167,11 +172,16 @@ func TestKimiNamesRejectsBadRequests(t *testing.T) {
 }
 
 func TestKimiNamesErrorPassthrough(t *testing.T) {
-	cases := map[string]int{
-		"ollama_unreachable": http.StatusServiceUnavailable,
-		"model_missing":      http.StatusServiceUnavailable,
-		"no_names":           http.StatusBadGateway,
-		"model_timeout":      http.StatusBadGateway,
+	// Only model_error gets a code: the form tells it apart from kimi being off.
+	cases := map[string]struct {
+		status int
+		code   string
+	}{
+		"ollama_unreachable": {http.StatusServiceUnavailable, ""},
+		"model_missing":      {http.StatusServiceUnavailable, ""},
+		"model_error":        {http.StatusBadGateway, kimiModelErrorCode},
+		"no_names":           {http.StatusBadGateway, ""},
+		"model_timeout":      {http.StatusBadGateway, ""},
 	}
 	for code, want := range cases {
 		t.Run(code, func(t *testing.T) {
@@ -181,11 +191,15 @@ func TestKimiNamesErrorPassthrough(t *testing.T) {
 				_, _ = io.WriteString(w, `{"error":{"message":"secret kimi detail","code":"`+code+`"}}`)
 			}
 			rec := do(t, e.srv, "POST", "/api/kimi/names", map[string]any{"notes": "x"})
-			if rec.Code != want {
-				t.Errorf("status = %d, want %d", rec.Code, want)
+			if rec.Code != want.status {
+				t.Errorf("status = %d, want %d", rec.Code, want.status)
 			}
-			if msg := errorMessage(t, rec); msg == "" || strings.Contains(msg, "secret kimi detail") {
+			body := decodeError(t, rec)
+			if msg := body.Error.Message; msg == "" || strings.Contains(msg, "secret kimi detail") {
 				t.Errorf("message = %q, want nuggets' own text, not kimi's", msg)
+			}
+			if body.Error.Code != want.code {
+				t.Errorf("code = %q, want %q", body.Error.Code, want.code)
 			}
 		})
 	}
