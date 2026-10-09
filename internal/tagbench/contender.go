@@ -46,7 +46,8 @@ type Estimate struct {
 
 // Contender is one model configuration under test. Check returns an error
 // only when the call got no answer at all; a *RateLimitedError (429 or 529)
-// is retried by the runner.
+// is retried by the runner. With an error, the Result carries only the
+// tokens already paid for (the earlier requests of a split Jev check).
 type Contender interface {
 	Name() string
 	Price() Price

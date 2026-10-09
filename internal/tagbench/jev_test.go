@@ -57,3 +57,28 @@ func TestJevRateLimitIsRetryable(t *testing.T) {
 		t.Fatalf("err = %v, want a rate limit asking for 3s", err)
 	}
 }
+
+func TestJevReportsTokensSpentBeforeASplitCheckFails(t *testing.T) {
+	fake, srv := newFakeTypeSafe(t)
+	fake.script = []http.HandlerFunc{nil, anthropicError(429, "")}
+	c, _ := ParseContender("jev", Endpoints{JevBaseURL: srv.URL, JevKey: "ts_test"})
+	in := sampleInput()
+	for i := range 60 {
+		in.Candidates = append(in.Candidates, jev.Candidate{Tag: "pad" + string(rune('a'+i/26)) + string(rune('a'+i%26)), Examples: []string{}})
+	}
+	res, err := c.Check(context.Background(), in)
+	var rl *RateLimitedError
+	if !errors.As(err, &rl) || res.InputTokens != 300*50 {
+		t.Errorf("err %v, input tokens %d; want a rate limit with the first request's 15000 tokens", err, res.InputTokens)
+	}
+}
+
+// TypeSafe's own usage can far exceed chars/4 (its docs show ~300 tokens for
+// a one-line question), so the cap reserves a generous allowance per question.
+func TestJevWorstCaseAllowsForPerQuestionOverhead(t *testing.T) {
+	c, _ := ParseContender("jev", Endpoints{})
+	in := sampleInput()
+	if e := c.Estimate(in); e.WorstInputTokens < 1000*int64(len(in.Candidates)) {
+		t.Errorf("worst input %d tokens for %d questions, want at least 1000 each", e.WorstInputTokens, len(in.Candidates))
+	}
+}

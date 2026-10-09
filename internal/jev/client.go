@@ -98,11 +98,7 @@ func (c *Client) Ask(ctx context.Context, req Request) (map[string]float64, Usag
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("User-Agent", "nuggets")
 
-	hc := c.HTTPClient
-	if hc == nil {
-		hc = http.DefaultClient
-	}
-	resp, err := hc.Do(httpReq)
+	resp, err := c.HTTPClient.Do(httpReq)
 	if err != nil {
 		return nil, Usage{}, fmt.Errorf("calling TypeSafe: %w", err)
 	}

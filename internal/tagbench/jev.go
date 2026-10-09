@@ -37,10 +37,12 @@ func (j *jevContender) Check(ctx context.Context, in Input) (Result, error) {
 		answers, usage, err := j.client.Ask(ctx, req)
 		if err != nil {
 			var apiErr *jev.APIError
+			// Earlier requests of a split check were still paid for.
+			spent := Result{InputTokens: res.InputTokens, OutputTokens: res.OutputTokens}
 			if errors.As(err, &apiErr) && (apiErr.StatusCode == 429 || apiErr.StatusCode == 529) {
-				return Result{}, &RateLimitedError{Status: apiErr.StatusCode, After: apiErr.RetryAfter}
+				return spent, &RateLimitedError{Status: apiErr.StatusCode, After: apiErr.RetryAfter}
 			}
-			return Result{}, err
+			return spent, err
 		}
 		res.InputTokens += usage.InputTokens
 		res.OutputTokens += usage.OutputTokens
@@ -65,9 +67,11 @@ func (j *jevContender) Estimate(in Input) Estimate {
 		inTokens += int64(len(body)) / 4
 	}
 	return Estimate{
-		InputTokens:       inTokens,
-		OutputTokens:      20 * int64(len(reqs)),
-		WorstInputTokens:  2 * inTokens,
+		InputTokens:  inTokens,
+		OutputTokens: 20 * int64(len(reqs)),
+		// TypeSafe counts its own overhead (its docs show ~300 tokens for
+		// a one-line question): reserve well above that per question.
+		WorstInputTokens:  2*inTokens + 1000*int64(len(in.Candidates)),
 		WorstOutputTokens: 100 * int64(len(reqs)),
 		Method:            "chars/4 heuristic",
 	}

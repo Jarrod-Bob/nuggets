@@ -12,9 +12,11 @@ import (
 
 // RunOptions control a run's pace and spend.
 type RunOptions struct {
-	// MaxUSD is the spend cap. A check starts only if the spend so far,
-	// plus every check in flight at its worst case, plus this check's worst
-	// case, stays within it; so the cap is never crossed.
+	// MaxUSD is the spend cap. A case starts only if the spend so far, plus
+	// every check in flight at its estimated worst case, plus this case's
+	// worst case for every contender, stays within it. The worst case is an
+	// estimate (Estimate), so it holds the run under the cap with margin
+	// rather than proving it.
 	MaxUSD float64
 	// Concurrency is how many checks run at once (default 1).
 	Concurrency int
@@ -80,47 +82,69 @@ func Run(ctx context.Context, cases []Case, contenders []Contender, opt RunOptio
 
 dispatch:
 	for i, c := range cases {
+		// Reserve the whole case before any of it runs, so a stop leaves
+		// every contender on the same cases.
+		worst := make([]float64, len(contenders))
+		var caseWorst float64
+		for k, contender := range contenders {
+			est := contender.Estimate(c.Input)
+			worst[k] = contender.Price().Cost(est.WorstInputTokens, est.WorstOutputTokens)
+			caseWorst += worst[k]
+		}
 		for k, contender := range contenders {
 			// Wait for a free slot first, so the reservation below sees
 			// every finished check's real cost.
+			acquired := false
 			select {
 			case slots <- struct{}{}:
+				acquired = true
 			case <-ctx.Done():
-				stopped = "interrupted"
-				break dispatch
 			}
 			if ctx.Err() != nil {
-				<-slots
+				if acquired {
+					<-slots
+				}
+				if k > 0 { // give back the reservation of the checks not started
+					mu.Lock()
+					for _, w := range worst[k:] {
+						reserved -= w
+					}
+					mu.Unlock()
+				}
 				stopped = "interrupted"
 				break dispatch
 			}
-			est := contender.Estimate(c.Input)
-			worst := contender.Price().Cost(est.WorstInputTokens, est.WorstOutputTokens)
-			mu.Lock()
-			if spent+reserved+worst > opt.MaxUSD {
-				stopped = fmt.Sprintf("spend cap: $%.4f spent, $%.4f in flight; the next check could cost up to $%.4f against the $%.2f cap", spent, reserved, worst, opt.MaxUSD)
+			if k == 0 {
+				mu.Lock()
+				if spent+reserved+caseWorst > opt.MaxUSD {
+					stopped = fmt.Sprintf("spend cap: $%.4f spent, $%.4f in flight; the next case could cost up to $%.4f against the $%.2f cap", spent, reserved, caseWorst, opt.MaxUSD)
+					mu.Unlock()
+					<-slots
+					break dispatch
+				}
+				reserved += caseWorst
 				mu.Unlock()
-				<-slots
-				break dispatch
 			}
-			reserved += worst
-			mu.Unlock()
 
 			wg.Add(1)
 			go func(j job) {
 				defer wg.Done()
-				r := check(ctx, j, limiters[j.contender.Name()], opt)
+				r, interrupted := check(ctx, j, limiters[j.contender.Name()], opt)
 				mu.Lock()
 				reserved -= j.reserved
 				spent += r.CostUSD
-				done = append(done, ordered{j.order, r})
+				// A check cut short by an interrupt is paid for but isn't
+				// the model's failure, so it isn't a record.
+				if !interrupted {
+					done = append(done, ordered{j.order, r})
+				}
 				n, s := len(done), spent
 				mu.Unlock()
 				<-slots
 				if opt.Progress != nil {
 					opt.Progress(n, total, s)
 				}
-			}(job{order: i*len(contenders) + k, c: c, contender: contender, reserved: worst})
+			}(job{order: i*len(contenders) + k, c: c, contender: contender, reserved: worst[k]})
 		}
 	}
 	wg.Wait()
@@ -139,23 +163,31 @@ type ordered struct {
 	r     Record
 }
 
-// check makes one check, retrying 429s and 529s, and records it.
-func check(ctx context.Context, j job, lim *limiter, opt RunOptions) Record {
+// check makes one check, retrying 429s and 529s, and records it. Tokens
+// paid for on failed attempts count towards its cost. interrupted reports a
+// check cut short by the run's context.
+func check(ctx context.Context, j job, lim *limiter, opt RunOptions) (r Record, interrupted bool) {
 	c := j.c
-	r := Record{
+	r = Record{
 		Contender: j.contender.Name(), CaseID: c.ID(), CaseKey: c.Key, Dataset: c.Dataset, Task: c.Task,
 		ItemID: c.Item.ID, ItemTags: c.Item.Tags, Hidden: c.Hidden, VocabSize: c.VocabSize, Repeat: c.Repeat,
 	}
 	for _, cand := range c.Input.Candidates {
 		r.Candidates = append(r.Candidates, cand.Tag)
 	}
+	defer func() {
+		r.CostUSD = j.contender.Price().Cost(r.InputTokens, r.OutputTokens)
+		interrupted = r.Outcome == OutcomeError && ctx.Err() != nil
+	}()
 	for attempt := 1; ; attempt++ {
 		r.Attempts = attempt
 		if err := lim.wait(ctx, opt.Sleep); err != nil {
 			r.Outcome, r.Error = OutcomeError, err.Error()
-			return r
+			return
 		}
 		res, err := j.contender.Check(ctx, c.Input)
+		r.InputTokens += res.InputTokens
+		r.OutputTokens += res.OutputTokens
 		var rl *RateLimitedError
 		if errors.As(err, &rl) && attempt < opt.MaxAttempts {
 			wait := opt.Backoff << (attempt - 1)
@@ -164,19 +196,17 @@ func check(ctx context.Context, j job, lim *limiter, opt RunOptions) Record {
 			}
 			if err := opt.Sleep(ctx, wait); err != nil {
 				r.Outcome, r.Error = OutcomeError, err.Error()
-				return r
+				return
 			}
 			continue
 		}
 		if err != nil {
 			r.Outcome, r.Error = OutcomeError, err.Error()
-			return r
+			return
 		}
 		r.Outcome, r.Error, r.Scores = res.Outcome, res.Error, res.Scores
 		r.LatencyMS = float64(res.Latency.Microseconds()) / 1000
-		r.InputTokens, r.OutputTokens = res.InputTokens, res.OutputTokens
-		r.CostUSD = j.contender.Price().Cost(res.InputTokens, res.OutputTokens)
-		return r
+		return
 	}
 }
 
