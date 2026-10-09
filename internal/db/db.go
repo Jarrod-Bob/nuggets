@@ -72,3 +72,22 @@ func Open(path string) (*sql.DB, error) {
 
 	return database, nil
 }
+
+// OpenReadOnly connects to an existing database without migrating it or
+// allowing writes: for developer tools (cmd/tagbench) that read the bank
+// while the app may be running. A missing file is an error, never created.
+func OpenReadOnly(path string) (*sql.DB, error) {
+	if _, err := os.Stat(path); err != nil {
+		return nil, fmt.Errorf("opening %s: %w", path, err)
+	}
+	database, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?mode=ro&_pragma=busy_timeout(5000)")
+	if err != nil {
+		return nil, fmt.Errorf("opening %s: %w", path, err)
+	}
+	database.SetMaxOpenConns(1)
+	if err := database.Ping(); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("connecting to %s: %w", path, err)
+	}
+	return database, nil
+}
