@@ -69,6 +69,7 @@ func (f *fakeTypeSafe) handle(w http.ResponseWriter, r *http.Request) {
 		scripted, f.script = f.script[0], f.script[1:]
 	}
 	before := f.before
+	key := f.key
 	f.mu.Unlock()
 	if before != nil {
 		before()
@@ -82,7 +83,7 @@ func (f *fakeTypeSafe) handle(w http.ResponseWriter, r *http.Request) {
 		writeTypeSafeError(w, http.StatusNotFound, "not found")
 		return
 	}
-	if r.Header.Get("Authorization") != "Bearer "+f.key {
+	if r.Header.Get("Authorization") != "Bearer "+key {
 		writeTypeSafeError(w, http.StatusUnauthorized, "invalid API key")
 		return
 	}
@@ -108,6 +109,13 @@ func (f *fakeTypeSafe) answer(tag string, p float64) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.answers[tag] = p
+}
+
+// acceptKey makes key the only one the fake accepts.
+func (f *fakeTypeSafe) acceptKey(key string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.key = key
 }
 
 func (f *fakeTypeSafe) sent() []sentRequest {

@@ -2,7 +2,8 @@
 // background, so they refetch instead of waiting for a reload. Importers
 // publish a small named Event after their writes commit; the Broker fans it
 // out to every GET /api/events stream (internal/httpapi/events.go). The
-// GitHub sender publishes the same way when a feature request lands. An event
+// GitHub sender publishes the same way when a feature request lands, and the
+// jev Suggester when a tag check changes a nugget's suggestions. An event
 // carries no data: the page refetches what it shows through the regular API.
 package events
 
@@ -22,6 +23,9 @@ const (
 	// GitHubChanged means a nugget's feature request was created, failed or
 	// is waiting to retry, or the GitHub status shown in settings changed.
 	GitHubChanged Event = "github-changed"
+	// TagSuggestionsChanged means a tag check changed a nugget's open tag
+	// suggestions, or the tag-suggestion status shown in settings changed.
+	TagSuggestionsChanged Event = "tag-suggestions-changed"
 )
 
 // Publisher is what an importer needs to announce a change. Publish must

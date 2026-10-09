@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
+	"strings"
 	"time"
 
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
@@ -189,6 +191,223 @@ func (q *Queue) Pending(ctx context.Context) (int, error) {
 func (q *Queue) Clear(ctx context.Context) error {
 	if _, err := q.db.ExecContext(ctx, `DELETE FROM tag_checks`); err != nil {
 		return fmt.Errorf("emptying tag checks: %w", err)
+	}
+	return nil
+}
+
+// check is one queued tag check as a pass read it.
+type check struct {
+	ideaID      int64
+	requestedAt time.Time
+	attempts    int
+}
+
+// nextDue returns the check to run next — the oldest request not backed off
+// past now — or false when none is due.
+func (q *Queue) nextDue(ctx context.Context, now time.Time) (check, bool, error) {
+	var c check
+	err := q.db.QueryRowContext(ctx,
+		`SELECT idea_id, requested_at, attempts FROM tag_checks
+		 WHERE next_attempt_at IS NULL OR next_attempt_at <= ?
+		 ORDER BY requested_at, idea_id LIMIT 1`, now.UTC(),
+	).Scan(&c.ideaID, &c.requestedAt, &c.attempts)
+	if errors.Is(err, sql.ErrNoRows) {
+		return check{}, false, nil
+	}
+	if err != nil {
+		return check{}, false, fmt.Errorf("finding the next tag check: %w", err)
+	}
+	return c, true, nil
+}
+
+// earliestDue is when the soonest backed-off check falls due, or nil when
+// none is waiting on a backoff.
+func (q *Queue) earliestDue(ctx context.Context) (*time.Time, error) {
+	var at sql.NullTime
+	err := q.db.QueryRowContext(ctx,
+		`SELECT next_attempt_at FROM tag_checks WHERE next_attempt_at IS NOT NULL
+		 ORDER BY next_attempt_at LIMIT 1`).Scan(&at)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && !at.Valid) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("finding the next tag check retry: %w", err)
+	}
+	return &at.Time, nil
+}
+
+// candidate is a tag a check asks Jev about, with the titles that explain it.
+type candidate struct {
+	tag      string
+	examples []string
+}
+
+// candidates builds a check's questions (design §2): every tag carried by at
+// least one active nugget, except the nugget's own tags and its dismissed
+// suggestions, each with the titles of up to maxExamples other active nuggets
+// carrying it — most recently updated first, no title repeated after
+// trimming, case-folding and collapsing whitespace. Sorted by tag.
+func (q *Queue) candidates(ctx context.Context, nugget *idea.Idea) ([]candidate, error) {
+	skip := make(map[string]bool, len(nugget.Tags))
+	for _, t := range nugget.Tags {
+		skip[t] = true
+	}
+	dismissed, err := q.db.QueryContext(ctx,
+		`SELECT tag FROM tag_suggestions WHERE idea_id = ? AND state = ?`, nugget.ID, stateDismissed)
+	if err != nil {
+		return nil, fmt.Errorf("loading dismissed suggestions: %w", err)
+	}
+	for dismissed.Next() {
+		var tag string
+		if err := dismissed.Scan(&tag); err != nil {
+			dismissed.Close()
+			return nil, fmt.Errorf("scanning dismissed suggestion: %w", err)
+		}
+		skip[tag] = true
+	}
+	dismissed.Close()
+	if err := dismissed.Err(); err != nil {
+		return nil, err
+	}
+
+	rows, err := q.db.QueryContext(ctx,
+		`SELECT t.name, i.id, i.title FROM tags t
+		 JOIN idea_tags it ON it.tag_id = t.id
+		 JOIN ideas i ON i.id = it.idea_id
+		 WHERE i.archived_at IS NULL
+		 ORDER BY t.name, i.updated_at DESC, i.id DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("loading tags in use: %w", err)
+	}
+	defer rows.Close()
+	var out []candidate
+	seen := map[string]bool{}
+	for rows.Next() {
+		var (
+			tag, title string
+			id         int64
+		)
+		if err := rows.Scan(&tag, &id, &title); err != nil {
+			return nil, fmt.Errorf("scanning tag in use: %w", err)
+		}
+		if skip[tag] {
+			continue
+		}
+		if len(out) == 0 || out[len(out)-1].tag != tag {
+			out = append(out, candidate{tag: tag, examples: []string{}})
+			seen = map[string]bool{}
+		}
+		c := &out[len(out)-1]
+		folded := strings.ToLower(strings.Join(strings.Fields(title), " "))
+		if id == nugget.ID || len(c.examples) >= maxExamples || seen[folded] {
+			continue
+		}
+		seen[folded] = true
+		c.examples = append(c.examples, strings.TrimSpace(title))
+	}
+	return out, rows.Err()
+}
+
+// storeResult replaces the nugget's open suggestions with result and deletes
+// the check, in one transaction — but only if the check is still the one
+// that started from requestedAt. stored is false when it isn't (the title or
+// notes changed meanwhile, or the check is gone): nothing is written, and a
+// queued check runs again on the newer text. changed reports whether the set
+// of open suggested tags differs from before. Dismissed rows are never
+// touched.
+func (q *Queue) storeResult(ctx context.Context, ideaID int64, requestedAt time.Time, result []Suggestion) (stored, changed bool, err error) {
+	tx, err := q.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, false, fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var current time.Time
+	err = tx.QueryRowContext(ctx, `SELECT requested_at FROM tag_checks WHERE idea_id = ?`, ideaID).Scan(&current)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, false, nil
+	}
+	if err != nil {
+		return false, false, fmt.Errorf("reading tag check: %w", err)
+	}
+	if !current.Equal(requestedAt) {
+		return false, false, nil
+	}
+
+	before, err := openTags(ctx, tx, ideaID)
+	if err != nil {
+		return false, false, err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM tag_suggestions WHERE idea_id = ? AND state = ?`, ideaID, stateOpen); err != nil {
+		return false, false, fmt.Errorf("clearing open suggestions: %w", err)
+	}
+	now := time.Now().UTC()
+	after := map[string]bool{}
+	for _, s := range result {
+		res, err := tx.ExecContext(ctx,
+			`INSERT INTO tag_suggestions (idea_id, tag, state, probability, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(idea_id, tag) DO NOTHING`,
+			ideaID, s.Tag, stateOpen, s.Probability, now, now)
+		if err != nil {
+			return false, false, fmt.Errorf("storing suggestion %q: %w", s.Tag, err)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			after[s.Tag] = true
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM tag_checks WHERE idea_id = ?`, ideaID); err != nil {
+		return false, false, fmt.Errorf("deleting tag check: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return false, false, fmt.Errorf("committing: %w", err)
+	}
+	return true, !maps.Equal(before, after), nil
+}
+
+func openTags(ctx context.Context, tx *sql.Tx, ideaID int64) (map[string]bool, error) {
+	rows, err := tx.QueryContext(ctx,
+		`SELECT tag FROM tag_suggestions WHERE idea_id = ? AND state = ?`, ideaID, stateOpen)
+	if err != nil {
+		return nil, fmt.Errorf("loading open suggestions: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, fmt.Errorf("scanning open suggestion: %w", err)
+		}
+		out[tag] = true
+	}
+	return out, rows.Err()
+}
+
+// deleteCheck drops a nugget's check: it is archived or gone, or TypeSafe
+// refused the request in a way a retry can't fix.
+func (q *Queue) deleteCheck(ctx context.Context, ideaID int64) error {
+	if _, err := q.db.ExecContext(ctx, `DELETE FROM tag_checks WHERE idea_id = ?`, ideaID); err != nil {
+		return fmt.Errorf("deleting tag check: %w", err)
+	}
+	return nil
+}
+
+// markFailed records a failed attempt on a check, which stays queued until
+// next (nil: whenever the Suggester runs again). countAttempt adds it to the
+// check's own backoff.
+func (q *Queue) markFailed(ctx context.Context, ideaID int64, message string, next *time.Time, countAttempt bool) error {
+	var due any
+	if next != nil {
+		due = next.UTC()
+	}
+	add := 0
+	if countAttempt {
+		add = 1
+	}
+	if _, err := q.db.ExecContext(ctx,
+		`UPDATE tag_checks SET last_error = ?, next_attempt_at = ?, attempts = attempts + ? WHERE idea_id = ?`,
+		message, due, add, ideaID); err != nil {
+		return fmt.Errorf("recording failed tag check: %w", err)
 	}
 	return nil
 }
