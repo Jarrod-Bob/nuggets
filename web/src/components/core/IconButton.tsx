@@ -7,6 +7,8 @@ export interface IconButtonProps {
   /** Required — becomes both aria-label and tooltip. */
   label: string;
   disabled?: boolean;
+  /** Marks the button as working (aria-busy), e.g. while it waits on a request. */
+  busy?: boolean;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   children?: React.ReactNode;
   style?: React.CSSProperties;
@@ -14,13 +16,13 @@ export interface IconButtonProps {
 
 const nugIconBtnSizes: Record<NonNullable<IconButtonProps['size']>, number> = { sm: 30, md: 38, lg: 46 };
 
-export function IconButton({ size = 'md', variant = 'ghost', label, disabled = false, onClick, children, style }: IconButtonProps) {
+export function IconButton({ size = 'md', variant = 'ghost', label, disabled = false, busy, onClick, children, style }: IconButtonProps) {
   const [hover, setHover] = React.useState(false);
   const d = nugIconBtnSizes[size] || nugIconBtnSizes.md;
   const filled = variant === 'filled';
   return (
     <button
-      type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick}
+      type="button" aria-label={label} title={label} disabled={disabled} aria-busy={busy || undefined} onClick={onClick}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',

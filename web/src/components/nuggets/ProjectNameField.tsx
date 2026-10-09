@@ -26,6 +26,15 @@ export const GENERATE_TOOLTIP = 'Uses kimi-no-name-wa to generate a creative nam
 export const NOTES_EMPTY_HINT = 'Write some notes and kimi will name it';
 export const UNAVAILABLE_TEXT = 'kimi is not available at the moment';
 
+// A 3px arc, fading in from transparent, cut out of a disc just outside the
+// button by a radial mask. Spun by the .nug-spin class (motion.css).
+const spinRingStyle: React.CSSProperties = {
+  position: 'absolute', inset: -5, borderRadius: '50%', pointerEvents: 'none',
+  background: 'conic-gradient(from 0deg, transparent 0 30%, var(--nug-golden-300) 60%, var(--nug-golden-500) 100%)',
+  mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+};
+
 function chipStyle(picked: boolean): React.CSSProperties {
   return {
     padding: '4px 12px', cursor: 'pointer', borderRadius: 'var(--radius-pill)',
@@ -46,6 +55,8 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
   // state: nothing renders from it.
   const shown = React.useRef<string[]>([]);
   const inFlight = React.useRef<AbortController | null>(null);
+  // Whether the busy button is hovered or focused, so it shows ✕ for cancel.
+  const [cancelShown, setCancelShown] = React.useState(false);
   // The suggestion under the pointer or keyboard focus. Its explanation shows,
   // else the picked one's.
   const [pointed, setPointed] = React.useState<string | null>(null);
@@ -83,6 +94,7 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
         if (inFlight.current === controller) {
           inFlight.current = null;
           setNaming(null);
+          setCancelShown(false);
         }
       });
   };
@@ -108,10 +120,16 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
         />
         <div style={{ paddingTop: 23 }}>
           {naming ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 46 }}>
-              <span role="status" style={{ fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)', whiteSpace: 'nowrap' }}>Naming…</span>
-              <IconButton size="lg" variant="outline" label="Cancel naming" onClick={cancel}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+            // A golden arc spins around the button while kimi works; the
+            // button itself cancels, showing ✕ when hovered or focused.
+            <span style={{ position: 'relative', display: 'inline-flex' }}
+              onMouseEnter={() => setCancelShown(true)} onMouseLeave={() => setCancelShown(false)}
+              onFocus={() => setCancelShown(true)} onBlur={() => setCancelShown(false)}>
+              <span aria-hidden="true" className="nug-spin" style={spinRingStyle} />
+              <IconButton size="lg" variant="outline" label="Cancel naming" busy onClick={cancel}>
+                {cancelShown
+                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+                  : <span aria-hidden="true" style={{ fontSize: 18 }}>✨</span>}
               </IconButton>
             </span>
           ) : (
@@ -151,8 +169,13 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
             </ul>
             <Button variant="ghost" size="sm" disabled={!!naming || notesEmpty} onClick={() => ask(shown.current)}>Re-roll</Button>
           </div>
-          {/* One line, reserved even when empty so the form doesn't jump. */}
-          <p style={{ margin: 0, minHeight: '1.4em', fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)', textWrap: 'pretty' }}>
+          {/* A fixed two-line box, the same size empty or full, so hovering
+              names never shifts the form. Longer explanations are clamped. */}
+          <p data-testid="kimi-explanation" style={{
+            margin: 0, height: 'calc(2 * var(--leading-normal) * 1em)', lineHeight: 'var(--leading-normal)', overflow: 'hidden',
+            display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2,
+            fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)', textWrap: 'pretty',
+          }}>
             {results.names.find((n) => n.name === (pointed ?? value))?.explanation}
           </p>
         </div>

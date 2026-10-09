@@ -96,6 +96,20 @@ describe('the suggestions', () => {
     expect(screen.queryByText(/^why A/)).toBeNull();
   });
 
+  // jsdom has no layout: this checks the explanation line has one fixed size,
+  // the rule that stops the form shifting as names are hovered in and out.
+  it('keep the explanation line the same size whether or not a name is hovered', async () => {
+    await renderForm({ idea: { title: 'A title', notes: 'a bank for little ideas' } });
+    await generate();
+    const line = screen.getByTestId('kimi-explanation');
+    const empty = { height: line.style.height, lineHeight: line.style.lineHeight };
+    expect(empty.height).not.toBe('');
+
+    fireEvent.mouseEnter(screen.getByText('A3'));
+    expect(screen.getByTestId('kimi-explanation')).toBe(line);
+    expect({ height: line.style.height, lineHeight: line.style.lineHeight }).toEqual(empty);
+  });
+
   it("keep the picked name's explanation once the pointer moves away", async () => {
     await renderForm({ idea: { title: 'A title', notes: 'a bank for little ideas' } });
     await generate();
@@ -187,6 +201,16 @@ describe('while naming', () => {
     expect(signal?.aborted).toBe(true);
     await waitFor(() => expect(generateButton().disabled).toBe(false));
     expect(screen.queryByText('kimi is not available at the moment')).toBeNull();
+  });
+
+  it('shows a busy ring on the button instead of a "Naming…" label', async () => {
+    namesAnswer = () => new Promise(() => {});
+    await renderForm({ idea: { notes: 'a bank for little ideas' } });
+    fireEvent.click(generateButton());
+
+    const cancel = await screen.findByRole('button', { name: 'Cancel naming' });
+    expect(cancel.getAttribute('aria-busy')).toBe('true');
+    expect(screen.queryByText('Naming…')).toBeNull();
   });
 
   it('a failure says kimi is not available', async () => {
