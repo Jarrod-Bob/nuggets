@@ -137,8 +137,9 @@ export function BankRoute() {
     fetchNextRandom(activeTag);
   }, [activeTag, fetchNextRandom]);
   // Nuggets imported in the background show up without a reload, under the
-  // same URL filters. The create dialog keeps its own state, so refetching the
-  // list behind it never resets what's being typed.
+  // same URL filters. Neither dialog reads from `ideas` while open (the edit
+  // dialog holds a snapshot), so refetching the list behind them never resets
+  // what's being typed.
   useLiveRefresh('ideas-changed', () => {
     refreshList();
     fetchNextRandom(activeTag);
@@ -152,9 +153,14 @@ export function BankRoute() {
     return result;
   };
 
-  // The create dialog lives here — capture stays fast in a dialog. Editing an
-  // existing nugget happens on its own page, so this dialog only ever creates.
+  // The create and edit dialogs live here — capture and quick edits stay in a
+  // dialog over the bank, so saving never leaves the list. The nugget's own page
+  // has its own edit dialog for edits made there.
   const [creating, setCreating] = React.useState(false);
+  // A snapshot taken when the dialog opens, not a lookup in `ideas`: the form
+  // resets whenever its idea changes, so a list refetch behind it must not hand
+  // it a fresh object mid-edit.
+  const [editing, setEditing] = React.useState<Idea | null>(null);
   const [formError, setFormError] = React.useState<string | undefined>(undefined);
   const openCreate = () => {
     setFormError(undefined);
@@ -164,6 +170,39 @@ export function BankRoute() {
     setCreating(false);
     setFormError(undefined);
   };
+  const openEdit = (id: number) => {
+    const idea = ideas.find((i) => i.id === id);
+    if (!idea) return;
+    setFormError(undefined);
+    setEditing(idea);
+  };
+  const closeEdit = () => {
+    setEditing(null);
+    setFormError(undefined);
+  };
+  // The save may resolve after the dialog was cancelled and another nugget
+  // opened; only touch the dialog if it is still the one that sent the save.
+  const editingRef = React.useRef<Idea | null>(null);
+  React.useEffect(() => {
+    editingRef.current = editing;
+  }, [editing]);
+  const submitEdit = (draft: IdeaDraft) => {
+    const target = editing;
+    if (!target) return;
+    api
+      .update(target.id, draft)
+      .then(() => {
+        if (editingRef.current === target) closeEdit();
+        setActionError(undefined);
+        refreshList();
+        refreshTags();
+        fetchNextRandom(activeTag);
+      })
+      .catch((err) => {
+        if (editingRef.current === target) setFormError(describeError(err));
+      });
+  };
+
   const submitCreate = (draft: IdeaDraft) => {
     api
       .create(draft)
@@ -231,7 +270,7 @@ export function BankRoute() {
           onOpen={(item) => navigate(nuggetPath(item.id))}
           rowActions={(item) => (
             <span style={{ display: 'flex', gap: 2 }} onClick={(e) => e.stopPropagation()}>
-              <IconButton label="Edit" onClick={() => navigate(`${nuggetPath(item.id)}?edit=1`)}>
+              <IconButton label="Edit" onClick={() => openEdit(Number(item.id))}>
                 {iconPencil}
               </IconButton>
               <IconButton label="Archive" onClick={() => archiveIdea(Number(item.id))}>
@@ -251,6 +290,18 @@ export function BankRoute() {
         onClose={closeCreate}
         error={formError}
       />
+
+      {editing && (
+        <IdeaForm
+          open
+          mode="edit"
+          idea={editing}
+          tagOptions={tags.map((t) => t.name)}
+          onSubmit={submitEdit}
+          onClose={closeEdit}
+          error={formError}
+        />
+      )}
     </>
   );
 }
