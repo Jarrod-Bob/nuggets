@@ -10,7 +10,11 @@
   /* The house easing: a small overshoot on anything that appears or is picked up */
   --ease-bounce:cubic-bezier(.34,1.56,.64,1); /* @kind other */
 }
+/* A busy indicator turning in place, e.g. the ring around kimi's ✨ button */
+@keyframes nug-spin{to{transform:rotate(360deg)}}
+.nug-spin{animation:nug-spin .9s linear infinite}
 @media (prefers-reduced-motion:reduce){
+  .nug-spin{animation-duration:3s}
   :root{
     --dur-fast:0ms; /* @kind other */
     --dur-base:0ms; /* @kind other */

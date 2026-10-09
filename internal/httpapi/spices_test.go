@@ -117,7 +117,7 @@ func newSpicesEnv(t *testing.T) *spicesEnv {
 		spices.WithInterval(time.Hour),
 	)
 	return &spicesEnv{
-		srv:      NewServer(ideaStore, settingsStore, syncer, nil, nil, nil),
+		srv:      NewServer(ideaStore, settingsStore, syncer, nil, nil, nil, nil),
 		fake:     fake,
 		fakeURL:  fakeSrv.URL,
 		settings: settingsStore,

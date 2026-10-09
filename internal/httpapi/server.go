@@ -8,20 +8,22 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/events"
 	"github.com/Jarrod-Bob/nuggets/internal/github"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
+	"github.com/Jarrod-Bob/nuggets/internal/kimi"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 	"github.com/Jarrod-Bob/nuggets/internal/spices"
 )
 
 // NewServer builds the full handler: API routes plus the embedded frontend.
-// settingsStore, syncer, sender and broker may be nil only in tests that
-// don't exercise the spices, GitHub or live-update routes;
-// cmd/nuggets/main.go always wires all four. broker is what the spices
+// settingsStore, syncer, sender, kimiClient and broker may be nil only in
+// tests that don't exercise the spices, GitHub, kimi or live-update routes;
+// cmd/nuggets/main.go always wires all five. broker is what the spices
 // syncer and the GitHub sender publish to, and GET /api/events streams it to
 // the page.
-func NewServer(store *idea.Store, settingsStore *settings.Store, syncer *spices.Syncer, sender *github.Sender, broker *events.Broker, frontend http.Handler) http.Handler {
+func NewServer(store *idea.Store, settingsStore *settings.Store, syncer *spices.Syncer, sender *github.Sender, kimiClient *kimi.Client, broker *events.Broker, frontend http.Handler) http.Handler {
 	h := &handlers{store: store}
 	sh := &spicesHandlers{settings: settingsStore, ideas: store, syncer: syncer}
 	gh := &githubHandlers{settings: settingsStore, sender: sender}
+	kh := &kimiHandlers{settings: settingsStore, client: kimiClient}
 	eh := &eventsHandler{broker: broker, heartbeat: defaultHeartbeat}
 	mux := http.NewServeMux()
 
@@ -47,6 +49,11 @@ func NewServer(store *idea.Store, settingsStore *settings.Store, syncer *spices.
 	mux.HandleFunc("DELETE /api/settings/github", gh.disconnect)
 	mux.HandleFunc("GET /api/ideas/{id}/github-issues", gh.issues)
 	mux.HandleFunc("POST /api/github-issues/{id}/retry", gh.retry)
+
+	mux.HandleFunc("GET /api/settings/kimi", kh.getSettings)
+	mux.HandleFunc("PUT /api/settings/kimi", kh.saveSettings)
+	mux.HandleFunc("GET /api/kimi/health", kh.health)
+	mux.HandleFunc("POST /api/kimi/names", kh.names)
 
 	mux.HandleFunc("GET /api/events", eh.stream)
 

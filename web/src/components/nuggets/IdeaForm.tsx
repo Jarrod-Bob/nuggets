@@ -4,22 +4,27 @@ import { Button } from '../core/Button';
 import { Input } from '../forms/Input';
 import { Textarea } from '../forms/Textarea';
 import { TagCombobox } from './TagCombobox';
+import { ProjectNameField } from './ProjectNameField';
 import { STATUSES, type Status, type Link } from '../../api';
 import { statusLabel } from '../../lib/status';
 
-export interface IdeaDraft { title: string; notes: string; tags: string[]; status: Status; links: Link[] }
+export interface IdeaDraft { title: string; notes: string; tags: string[]; status: Status; links: Link[]; project_name: string }
 
 /**
  * The create/edit dialog — the only way an idea is written until the individual
  * nugget page lands. `PATCH` replaces the whole tag and link set, so the form
  * always submits the complete arrays. A blank title is rejected inline (the API
  * returns 400 for the same case); errors render in the field, not a toast.
+ *
+ * The project name is optional and free text; kimi only suggests values for
+ * it. Picking a suggestion while the title is empty borrows the name for the
+ * title too, the only time a project name is copied into the title.
  */
 export interface IdeaFormProps {
   open?: boolean;
   mode?: 'create' | 'edit';
   /** Existing idea when editing. */
-  idea?: { title?: string; notes?: string; tags?: string[]; status?: Status; links?: Link[] };
+  idea?: { title?: string; notes?: string; tags?: string[]; status?: Status; links?: Link[]; project_name?: string };
   /** Autocomplete source from `GET /api/tags`. */
   tagOptions?: string[];
   onSubmit?: (draft: IdeaDraft) => void;
@@ -61,6 +66,7 @@ const sameTags = (a: string[], b: string[]) => a.length === b.length && a.every(
 export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [], onSubmit, onClose, error, onDirtyChange, notice }: IdeaFormProps) {
   const [title, setTitle] = React.useState('');
   const [notes, setNotes] = React.useState('');
+  const [projectName, setProjectName] = React.useState('');
   const [tags, setTags] = React.useState<string[]>([]);
   const [status, setStatus] = React.useState<Status>('raw');
   const [links, setLinks] = React.useState<Link[]>([]);
@@ -74,6 +80,7 @@ export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [],
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTitle((idea && idea.title) || '');
     setNotes((idea && idea.notes) || '');
+    setProjectName((idea && idea.project_name) || '');
     setTags((idea && idea.tags) || []);
     setStatus((idea && idea.status) || 'raw');
     setLinks((idea && idea.links) ? idea.links.map((l) => ({ ...l })) : []);
@@ -84,6 +91,7 @@ export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [],
     open &&
     (title !== ((idea && idea.title) || '') ||
       notes !== ((idea && idea.notes) || '') ||
+      projectName !== ((idea && idea.project_name) || '') ||
       !sameTags(tags, (idea && idea.tags) || []) ||
       status !== ((idea && idea.status) || 'raw') ||
       !sameLinks(links, (idea && idea.links) || []));
@@ -102,9 +110,17 @@ export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [],
     const cleaned = links
       .map((l) => ({ url: l.url.trim(), label: l.label.trim() }))
       .filter((l) => l.url !== '');
-    onSubmit?.({ title: title.trim(), notes, tags, status, links: cleaned });
+    onSubmit?.({ title: title.trim(), notes, tags, status, links: cleaned, project_name: projectName.trim() });
   };
   const msg = local || error;
+
+  const pickProjectName = (name: string) => {
+    setProjectName(name);
+    if (!title.trim()) {
+      setTitle(name);
+      setLocal(null);
+    }
+  };
 
   return (
     <Dialog open={open} width={520} onClose={onClose}
@@ -118,6 +134,7 @@ export function IdeaForm({ open = false, mode = 'create', idea, tagOptions = [],
           <p role="status" style={{ margin: 0, fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)', textWrap: 'pretty' }}>{notice}</p>
         )}
         <Input label="Title" placeholder="What's the idea?" value={title} onChange={e => { setTitle(e.target.value); setLocal(null); }} error={msg || undefined} />
+        <ProjectNameField value={projectName} onChange={setProjectName} notes={notes} onPick={pickProjectName} />
         <Textarea label="Notes" rows={4} placeholder="Anything else worth remembering." value={notes} onChange={e => setNotes(e.target.value)} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>

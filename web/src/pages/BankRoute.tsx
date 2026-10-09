@@ -231,6 +231,7 @@ export function BankRoute() {
   const listItems: IdeaListItem[] = ideas.map((i) => ({
     id: i.id,
     title: i.title,
+    projectName: i.project_name,
     notes: i.notes,
     tags: i.tags,
     status: i.status,

@@ -2,6 +2,7 @@
   "id": 1,
   "title": "Idea bank",
   "notes": "this one",
+  "project_name": "Ideanori",
   "tags": [
     "go",
     "saas"

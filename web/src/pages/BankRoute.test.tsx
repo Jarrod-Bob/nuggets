@@ -22,6 +22,7 @@ const nugget = (id: number, title: string): Idea => ({
   id,
   title,
   notes: '',
+  project_name: '',
   tags: [],
   status: 'raw',
   links: [],

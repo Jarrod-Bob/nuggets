@@ -19,6 +19,7 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/github"
 	"github.com/Jarrod-Bob/nuggets/internal/httpapi"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
+	"github.com/Jarrod-Bob/nuggets/internal/kimi"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 	"github.com/Jarrod-Bob/nuggets/internal/spices"
 	"github.com/Jarrod-Bob/nuggets/internal/web"
@@ -99,8 +100,14 @@ func main() {
 	sender := github.NewSender(outbox, ideaStore, settingsStore, github.WithEvents(broker))
 	go sender.Loop(ctx)
 
+	// The one kimi-no-name-wa client. Unlike spices and GitHub it has no loop:
+	// each call runs on the request of the click that asked for names, so
+	// closing the form cancels it. There is deliberately no WriteTimeout
+	// below, so a slow first call (kimi loading its model) isn't cut off.
+	kimiClient := kimi.NewClient(settingsStore, nil)
+
 	server := &http.Server{
-		Handler:           httpapi.NewServer(ideaStore, settingsStore, syncer, sender, broker, frontend),
+		Handler:           httpapi.NewServer(ideaStore, settingsStore, syncer, sender, kimiClient, broker, frontend),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	// Shutdown waits for handlers to return, and an event stream only

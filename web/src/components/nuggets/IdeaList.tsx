@@ -6,12 +6,12 @@ import { SearchField } from '../forms/SearchField';
 import { EmptyState } from '../feedback/EmptyState';
 import type { Status } from '../../api';
 
-export interface IdeaListItem { id: number | string; title: string; notes?: string; tags?: string[]; status?: Status; linkCount?: number; date?: string }
+export interface IdeaListItem { id: number | string; title: string; projectName?: string; notes?: string; tags?: string[]; status?: Status; linkCount?: number; date?: string }
 
 /**
  * The app's main view: the search box and tag filter above a newest-first list
  * of ideas. `q` and `tag` combine with AND, and `q` is case-insensitive
- * (`LIKE '%q%'` over title and notes server-side). Archived ideas never appear
+ * (`LIKE '%q%'` over title, notes and project name server-side). Archived ideas never appear
  * here — the trash is a separate place.
  */
 export interface IdeaListProps {
@@ -48,7 +48,7 @@ export function IdeaList({ ideas = [], tags = [], query = '', activeTag = null, 
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
           {ideas.map(i => (
-            <IdeaCard key={i.id} title={i.title} notes={i.notes} tags={i.tags} status={i.status} linkCount={i.linkCount} date={i.date}
+            <IdeaCard key={i.id} title={i.title} projectName={i.projectName} notes={i.notes} tags={i.tags} status={i.status} linkCount={i.linkCount} date={i.date}
               onClick={onOpen ? () => onOpen(i) : undefined}
               actions={rowActions ? rowActions(i) : undefined} />
           ))}

@@ -4,6 +4,7 @@ import { Badge } from '../core/Badge';
 import type { Status } from '../../api';
 import { statusLabel, statusTone, isActedOn } from '../../lib/status';
 import { fluidRadius } from './fluidRadius';
+import { ProjectNameLine } from './ProjectNameLine';
 
 export { fluidRadius } from './fluidRadius';
 
@@ -19,6 +20,8 @@ export { fluidRadius } from './fluidRadius';
 export interface IdeaCardProps {
   /** `ideas.title` — required and non-empty. Also seeds the fluid shape. */
   title: string;
+  /** `ideas.project_name` — shown under the title when set. The title stays the headline. */
+  projectName?: string;
   /** `ideas.notes` — may be empty. Clamped to two lines. */
   notes?: string;
   /** Normalised lowercase tag names. */
@@ -70,7 +73,7 @@ function Bite({ background, border }: { background: string; border: string }) {
   );
 }
 
-export function IdeaCard({ title, notes, tags = [], status, linkCount = 0, date, archived = false, shape = 'fluid', bitten, biteBackground = 'var(--surface-page)', seed, onClick, actions, style }: IdeaCardProps) {
+export function IdeaCard({ title, projectName, notes, tags = [], status, linkCount = 0, date, archived = false, shape = 'fluid', bitten, biteBackground = 'var(--surface-page)', seed, onClick, actions, style }: IdeaCardProps) {
   const [hover, setHover] = React.useState(false);
   const radius = shape === 'fluid' ? fluidRadius(seed || title || '') : 'var(--radius-lg)';
   // Anything past raw is "acted on" — that is what the bite was reserved for.
@@ -97,6 +100,7 @@ export function IdeaCard({ title, notes, tags = [], status, linkCount = 0, date,
           </div>
         )}
         <h3 style={{ width: '100%', fontSize: 'var(--text-title-3)', fontWeight: 'var(--weight-bold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{truncate(title, 40)}</h3>
+        {projectName && <ProjectNameLine projectName={projectName} />}
         {notes && <p style={{ width: '100%', margin: 0, fontSize: 'var(--text-body-sm)', lineHeight: 'var(--leading-normal)', color: 'var(--nug-ink-700)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{clampSentences(notes, 2)}</p>}
         {tags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginTop: 1, paddingBottom: 2, scrollbarWidth: 'none' }}>

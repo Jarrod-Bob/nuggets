@@ -22,6 +22,7 @@ const idea: Idea = {
   id: 1,
   title: 'A loaded nugget',
   notes: '',
+  project_name: '',
   tags: [],
   status: 'raw',
   links: [],
@@ -74,6 +75,25 @@ const renderPage = () =>
       </TagsProvider>
     </LiveUpdatesProvider>,
   );
+
+describe('the project name', () => {
+  it('shows under the title when the nugget has one', async () => {
+    answer = async () => json({ ...idea, project_name: 'Ideanori' });
+    renderPage();
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('A loaded nugget');
+    // A pill: the name shows, and "Suggested project name" is its tooltip and accessible label.
+    const pill = screen.getByLabelText('Suggested project name: Ideanori');
+    expect(pill.textContent).toContain('Ideanori');
+    expect(pill.getAttribute('title')).toBe('Suggested project name');
+    expect(screen.queryByText(/Suggested project name/)).toBeNull();
+  });
+
+  it('is left out when the nugget has none', async () => {
+    renderPage();
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.queryByLabelText(/Suggested project name/)).toBeNull();
+  });
+});
 
 /** Showing the tab fires every live listener, so the page reloads its nugget. */
 const refresh = async () => {

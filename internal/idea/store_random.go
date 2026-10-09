@@ -16,7 +16,7 @@ func (s *Store) Random(ctx context.Context, tag string, exclude int64) (*Idea, e
 	// finished is noise, and the draw exists to hand back something you could
 	// start. This is an allow-list on purpose — a new status stays out of the
 	// draw until it is added here.
-	query := `SELECT i.id, i.title, i.notes, i.status, i.created_at, i.updated_at, i.archived_at, i.source, i.source_ref
+	query := `SELECT ` + ideaColumns + `
 	          FROM ideas i
 	          WHERE i.archived_at IS NULL AND i.status IN ('raw','exploring')`
 	var args []any
