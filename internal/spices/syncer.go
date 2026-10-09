@@ -136,12 +136,17 @@ func (s *Syncer) Reset(clear func() error) error {
 // id moves out of source_ref, so a reset spices reusing that id can never
 // match it — resets the cursor to 0 and clears the 409 state. Then it wakes
 // the loop to pull everything again. No nugget is deleted or edited. It
-// returns how many nuggets were detached.
+// returns how many nuggets were detached. The pull that follows reattaches
+// each idea that survived the reset to its detached nugget instead of
+// copying it (see Drain).
 func (s *Syncer) Resync(ctx context.Context) (int64, error) {
 	s.mu.Lock()
 	moved, err := s.ideas.DetachSource(ctx, idea.SourceSpices, idea.SourceSpicesDetached,
 		func(ctx context.Context, tx *sql.Tx) error {
 			if err := s.settings.SetTx(ctx, tx, KeyCursor, "0"); err != nil {
+				return err
+			}
+			if err := s.settings.SetTx(ctx, tx, KeyReattach, "1"); err != nil {
 				return err
 			}
 			if err := s.settings.DeleteTx(ctx, tx, KeyNeedsResync); err != nil {
@@ -172,6 +177,12 @@ func (s *Syncer) Resync(ctx context.Context) (int64, error) {
 // a 409, and otherwise whatever spices or the network said. However many
 // pages it saved, a pass that changed any nugget publishes IdeasChanged once,
 // even if a later page failed.
+//
+// The pass after a Re-sync is the exception to a page at a time: it holds
+// every page and saves them, the cursor and the end of the reattach flag in
+// one transaction, since whether an idea matches exactly one detached nugget
+// (and that nugget only it) can't be told from part of the feed. A failure
+// saves nothing and the next pass starts again from 0.
 func (s *Syncer) Drain(ctx context.Context) error {
 	cfg, err := LoadConfig(ctx, s.settings)
 	if err != nil {
@@ -193,6 +204,8 @@ func (s *Syncer) Drain(ctx context.Context) error {
 
 	client := NewClient(cfg.URL, cfg.token, s.httpClient)
 	cursor := cfg.Cursor
+	saved := cfg.Cursor // the stored cursor, which the held pass doesn't move
+	var held []Item     // the pass after a Re-sync, saved once it is all here
 	for {
 		reqCtx, cancel := context.WithTimeout(ctx, s.requestTimeout)
 		page, err := client.Items(reqCtx, cursor, []string{ItemType}, s.pageLimit)
@@ -200,7 +213,7 @@ func (s *Syncer) Drain(ctx context.Context) error {
 		if err != nil {
 			var apiErr *APIError
 			if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusConflict {
-				return s.markNeedsResync(ctx, cfg, cursor)
+				return s.markNeedsResync(ctx, cfg, saved)
 			}
 			return err
 		}
@@ -212,14 +225,24 @@ func (s *Syncer) Drain(ctx context.Context) error {
 			return fmt.Errorf("spices: next_cursor %d does not advance past %d", page.NextCursor, cursor)
 		}
 
-		pageChanged, err := s.apply(ctx, cfg, cursor, page)
-		changed = changed || pageChanged
-		if err != nil {
-			return err
+		if cfg.Reattach {
+			held = append(held, page.Items...)
+		} else {
+			pageChanged, err := s.apply(ctx, cfg, cursor, page.NextCursor, page.Items)
+			changed = changed || pageChanged
+			if err != nil {
+				return err
+			}
+			saved = page.NextCursor
 		}
 		cursor = page.NextCursor
 		if !page.HasMore {
 			break
+		}
+	}
+	if cfg.Reattach {
+		if changed, err = s.apply(ctx, cfg, cfg.Cursor, cursor, held); err != nil {
+			return err
 		}
 	}
 
@@ -227,10 +250,12 @@ func (s *Syncer) Drain(ctx context.Context) error {
 	return s.recordSync(ctx, cfg)
 }
 
-// apply saves one page and its cursor, unless the settings changed since the
-// page was requested, in which case the page is dropped unsaved and Drain
-// returns errSuperseded. It reports whether any nugget changed.
-func (s *Syncer) apply(ctx context.Context, cfg Config, since int64, page Page) (bool, error) {
+// apply saves the items fetched after cursor since and the cursor next they
+// end at — one page, or the whole pass after a Re-sync, which also ends the
+// reattach flag — unless the settings changed since they were requested, in
+// which case they are dropped unsaved and Drain returns errSuperseded. It
+// reports whether any nugget changed.
+func (s *Syncer) apply(ctx context.Context, cfg Config, since, next int64, fetched []Item) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -238,29 +263,40 @@ func (s *Syncer) apply(ctx context.Context, cfg Config, since int64, page Page) 
 	if err != nil {
 		return false, err
 	}
-	if !current.sameSource(cfg) || current.NeedsResync || current.Cursor != since {
+	if !current.sameSource(cfg) || current.NeedsResync || current.Cursor != since || current.Reattach != cfg.Reattach {
 		return false, errSuperseded
 	}
-	if len(page.Items) == 0 && page.NextCursor == since {
+	if len(fetched) == 0 && next == since && !cfg.Reattach {
 		return false, nil // caught up: nothing to write
 	}
 
-	items := make([]idea.SyncedItem, 0, len(page.Items))
-	for _, it := range page.Items {
+	items := make([]idea.SyncedItem, 0, len(fetched))
+	for _, it := range fetched {
 		if it.Type != "" && it.Type != ItemType {
 			continue // asked for ideas only; ignore anything else defensively
 		}
 		items = append(items, ToSynced(it))
 	}
-	result, err := s.ideas.ApplySynced(ctx, idea.SourceSpices, items, func(ctx context.Context, tx *sql.Tx) error {
-		return s.settings.SetTx(ctx, tx, KeyCursor, strconv.FormatInt(page.NextCursor, 10))
-	})
+	saveCursor := func(ctx context.Context, tx *sql.Tx) error {
+		return s.settings.SetTx(ctx, tx, KeyCursor, strconv.FormatInt(next, 10))
+	}
+	var result idea.SyncResult
+	if cfg.Reattach {
+		result, err = s.ideas.ReattachSynced(ctx, idea.SourceSpices, idea.SourceSpicesDetached, items, func(ctx context.Context, tx *sql.Tx) error {
+			if err := saveCursor(ctx, tx); err != nil {
+				return err
+			}
+			return s.settings.DeleteTx(ctx, tx, KeyReattach)
+		})
+	} else {
+		result, err = s.ideas.ApplySynced(ctx, idea.SourceSpices, items, saveCursor)
+	}
 	if err != nil {
 		return false, err
 	}
-	changed := result.Created+result.Updated+result.Archived > 0
+	changed := result.Created+result.Reattached+result.Updated+result.Archived > 0
 	if changed {
-		log.Printf("spices: pulled up to %d: %d new, %d refreshed, %d archived", page.NextCursor, result.Created, result.Updated, result.Archived)
+		log.Printf("spices: pulled up to %d: %d new, %d reattached, %d refreshed, %d archived", next, result.Created, result.Reattached, result.Updated, result.Archived)
 	}
 	return changed, nil
 }
