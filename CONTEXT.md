@@ -19,3 +19,15 @@ _Avoid_: body, details
 **Project name**:
 An optional, creative name for what a nugget would be called if built, kept alongside its title rather than replacing it (e.g. title "A bank for the little ideas I have while I'm out", project name "Ideanori").
 _Avoid_: name (too easily read as the title), project title, codename
+
+**Tag**:
+A short lowercase label on a nugget, used to group and filter nuggets. The set of tags in use is whatever the active nuggets currently carry; there is no separate tag list.
+_Avoid_: label, category, hashtag
+
+**Tag suggestion**:
+A tag already in use that Jev thinks a nugget is missing, offered for the captain to accept or dismiss. It is never applied on its own.
+_Avoid_: auto-tag, recommended tag, predicted tag
+
+**Dismissed suggestion**:
+A tag the captain turned down for one nugget, by dismissing its suggestion or by removing the tag from the nugget; that tag is never suggested for that nugget again.
+_Avoid_: rejected tag, ignored suggestion
