@@ -52,11 +52,22 @@ describe('TagSuggestions', () => {
     expect(onDismiss).toHaveBeenCalledWith('cooking');
   });
 
-  it('disables a suggestion while its Add or Dismiss is in flight', () => {
-    renderTray([cooking, weekend], 'cooking');
-    expect((addButton('cooking') as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole('button', { name: 'Dismiss the suggested tag cooking' }) as HTMLButtonElement).disabled).toBe(true);
-    expect((addButton('weekend') as HTMLButtonElement).disabled).toBe(false);
+  it('ignores a suggestion while its Add or Dismiss is in flight, keeping focus on it', () => {
+    const { rerender } = renderTray([cooking, weekend]);
+    const add = addButton('cooking');
+    act(() => add.focus());
+    rerender(<TagSuggestions suggestions={[cooking, weekend]} onAdd={onAdd} onDismiss={onDismiss} busy="cooking" />);
+    const dismiss = screen.getByRole('button', { name: 'Dismiss the suggested tag cooking' });
+    expect(add.getAttribute('aria-disabled')).toBe('true');
+    expect(dismiss.getAttribute('aria-disabled')).toBe('true');
+    // Still focusable: a disabled button would drop focus without a blur.
+    expect((add as HTMLButtonElement).disabled).toBe(false);
+    expect(document.activeElement).toBe(add);
+    fireEvent.click(add);
+    fireEvent.click(dismiss);
+    expect(onAdd).not.toHaveBeenCalled();
+    expect(onDismiss).not.toHaveBeenCalled();
+    expect(addButton('weekend').getAttribute('aria-disabled')).toBeNull();
   });
 
   it('shows the reason only after hovering for a moment', async () => {

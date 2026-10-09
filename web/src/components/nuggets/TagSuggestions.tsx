@@ -11,10 +11,14 @@ export interface TagSuggestionsProps {
 
 /** How long a pointer or focus rests on a suggestion before its reason shows. */
 export const REASON_DELAY_MS = 250;
-/** The reason popover's widest, as in its maxWidth below. */
+/** The reason popover's widest: this many px, and at most this share of the viewport. */
 const REASON_MAX_WIDTH = 300;
+const REASON_MAX_VW = 78;
 /** Keep the popover this far from the page's right edge, or open it leftwards. */
 const EDGE_GUTTER = 16;
+
+/** Which way the reason popover opens from its chip. */
+type Side = 'right' | 'left';
 
 /**
  * A nugget's tag suggestions (Jev tag-suggestions design §7): one dashed tray
@@ -29,13 +33,13 @@ export function TagSuggestions({ suggestions, onAdd, onDismiss, busy = null }: T
     <span
       role="group"
       aria-label="Suggested tags"
+      className="nug-suggestion-tray"
       style={{
         display: 'inline-flex',
         flexWrap: 'wrap',
         alignItems: 'center',
         gap: 6,
         padding: '3px 4px 3px 10px',
-        borderRadius: 'var(--radius-pill)',
         background: 'var(--nug-cream-200)',
         border: 'var(--border-regular) dashed var(--nug-golden-500)',
       }}
@@ -69,6 +73,11 @@ export function TagSuggestions({ suggestions, onAdd, onDismiss, busy = null }: T
   );
 }
 
+/**
+ * One suggestion's chip. While its add or dismiss is in flight it is
+ * aria-disabled rather than disabled, so a focused button keeps focus (and a
+ * blur) instead of dropping it silently and leaving the reason stuck open.
+ */
 function SuggestedTag({
   suggestion: { tag, examples },
   onAdd,
@@ -85,7 +94,7 @@ function SuggestedTag({
   const [hovered, setHovered] = React.useState(false);
   const [focused, setFocused] = React.useState(false);
   const [open, setOpen] = React.useState(false);
-  const [side, setSide] = React.useState<'right' | 'left'>('right');
+  const [side, setSide] = React.useState<Side>('right');
 
   // Hover or focus arms the reason; it shows after REASON_DELAY_MS and goes
   // the moment both have left. Escape closes it until the next arrival.
@@ -98,7 +107,7 @@ function SuggestedTag({
     const timer = setTimeout(() => {
       // Open leftwards when the popover would run off the right edge.
       const left = chip.current?.getBoundingClientRect().left ?? 0;
-      const width = Math.min(REASON_MAX_WIDTH, window.innerWidth * 0.78);
+      const width = Math.min(REASON_MAX_WIDTH, (window.innerWidth * REASON_MAX_VW) / 100);
       setSide(left + width > document.documentElement.clientWidth - EDGE_GUTTER ? 'left' : 'right');
       setOpen(true);
     }, REASON_DELAY_MS);
@@ -152,8 +161,8 @@ function SuggestedTag({
     >
       <button
         type="button"
-        onClick={() => onAdd(tag)}
-        disabled={busy}
+        onClick={() => busy || onAdd(tag)}
+        aria-disabled={busy || undefined}
         aria-label={`Add the suggested tag ${tag}`}
         aria-describedby={reasonId}
         style={{ ...button, gap: 5, height: '100%', padding: '0 3px 0 6px', fontWeight: 'var(--weight-bold)' }}
@@ -179,8 +188,8 @@ function SuggestedTag({
       </button>
       <button
         type="button"
-        onClick={() => onDismiss(tag)}
-        disabled={busy}
+        onClick={() => busy || onDismiss(tag)}
+        aria-disabled={busy || undefined}
         aria-label={`Dismiss the suggested tag ${tag}`}
         style={{ ...button, justifyContent: 'center', width: 22, height: 22, marginRight: 1, fontSize: 15, lineHeight: 1 }}
       >
@@ -198,8 +207,9 @@ function SuggestedTag({
  * the chip, so the pointer can move onto the popover without closing it. The
  * motion uses the duration tokens, which are 0 under prefers-reduced-motion.
  */
-function Reason({ id, tag, examples, open, side }: { id: string; tag: string; examples: string[]; open: boolean; side: 'right' | 'left' }) {
-  const anchor: React.CSSProperties = side === 'left' ? { right: 0 } : { left: 0 };
+function Reason({ id, tag, examples, open, side }: { id: string; tag: string; examples: string[]; open: boolean; side: Side }) {
+  // Pinned to the chip's left edge, or its right edge when opening leftwards.
+  const edge = (offset: number): React.CSSProperties => (side === 'left' ? { right: offset } : { left: offset });
   return (
     <span
       id={id}
@@ -208,7 +218,7 @@ function Reason({ id, tag, examples, open, side }: { id: string; tag: string; ex
       style={{
         position: 'absolute',
         top: '100%',
-        ...anchor,
+        ...edge(0),
         zIndex: 5,
         paddingTop: 10,
         visibility: open ? 'visible' : 'hidden',
@@ -223,7 +233,7 @@ function Reason({ id, tag, examples, open, side }: { id: string; tag: string; ex
         style={{
           position: 'absolute',
           top: 4,
-          ...(side === 'left' ? { right: 18 } : { left: 18 }),
+          ...edge(18),
           width: 12,
           height: 12,
           background: 'var(--surface-inverse)',
@@ -235,7 +245,7 @@ function Reason({ id, tag, examples, open, side }: { id: string; tag: string; ex
         style={{
           display: 'block',
           width: 'max-content',
-          maxWidth: `min(${REASON_MAX_WIDTH}px, 78vw)`,
+          maxWidth: `min(${REASON_MAX_WIDTH}px, ${REASON_MAX_VW}vw)`,
           whiteSpace: 'normal',
           background: 'var(--surface-inverse)',
           color: 'var(--nug-cream-50)',

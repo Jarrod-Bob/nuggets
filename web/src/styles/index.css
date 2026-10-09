@@ -17,3 +17,8 @@
 /* A tag suggestion's reason popover (components/nuggets/TagSuggestions.tsx):
    golden bullets, which inline styles can't reach. */
 .nug-reason li::marker{color:var(--nug-golden-400)}
+/* The suggestion tray is a pill, squared off on phones where it wraps. */
+.nug-suggestion-tray{border-radius:var(--radius-pill)}
+@media (max-width: 520px){
+  .nug-suggestion-tray{border-radius:var(--radius-md)}
+}
