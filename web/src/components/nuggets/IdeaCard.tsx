@@ -4,7 +4,7 @@ import { Badge } from '../core/Badge';
 import type { Status } from '../../api';
 import { statusLabel, statusTone, isActedOn } from '../../lib/status';
 import { fluidRadius } from './fluidRadius';
-import { ProjectNameLine } from './ProjectNameLine';
+import { SauceCorner } from './SauceCorner';
 
 export { fluidRadius } from './fluidRadius';
 
@@ -20,7 +20,7 @@ export { fluidRadius } from './fluidRadius';
 export interface IdeaCardProps {
   /** `ideas.title` — required and non-empty. Also seeds the fluid shape. */
   title: string;
-  /** `ideas.project_name` — shown under the title when set. The title stays the headline. */
+  /** `ideas.project_name` — when set, revealed by a curry-sauce corner (see SauceCorner). The title stays the headline. */
   projectName?: string;
   /** `ideas.notes` — may be empty. Clamped to two lines. */
   notes?: string;
@@ -64,7 +64,7 @@ function Bite({ background, border }: { background: string; border: string }) {
   // crumbs that fell off — reads as a bite, not an edge scallop.
   return (
     <svg width="76" height="76" viewBox="-12 -12 76 76" aria-hidden="true"
-      style={{ position: 'absolute', top: -12, right: -12, pointerEvents: 'none' }}>
+      style={{ position: 'absolute', top: -12, right: -12, pointerEvents: 'none', zIndex: 2 }}>
       <circle cx="52" cy="0" r="28" fill={background} />
       <path d="M24,0 A28,28 0 0,1 52,28" fill="none" stroke={border} strokeWidth="2" strokeLinecap="round" />
       <circle cx="64" cy="24" r="3.2" fill={border} opacity="0.55" />
@@ -76,6 +76,8 @@ function Bite({ background, border }: { background: string; border: string }) {
 export function IdeaCard({ title, projectName, notes, tags = [], status, linkCount = 0, date, archived = false, shape = 'fluid', bitten, biteBackground = 'var(--surface-page)', seed, onClick, actions, style }: IdeaCardProps) {
   const [hover, setHover] = React.useState(false);
   const radius = shape === 'fluid' ? fluidRadius(seed || title || '') : 'var(--radius-lg)';
+  // The first line steps right of the sauce's drips.
+  const sauceIndent = projectName ? 40 : 0;
   // Anything past raw is "acted on" — that is what the bite was reserved for.
   // An explicit bitten prop still wins when the caller sets one.
   const isBitten = bitten ?? (status ? isActedOn(status) : false);
@@ -92,15 +94,15 @@ export function IdeaCard({ title, projectName, notes, tags = [], status, linkCou
         transition: 'transform var(--dur-base) var(--ease-bounce), box-shadow var(--dur-base) var(--ease-out)',
         cursor: onClick ? 'pointer' : 'default', opacity: archived ? 0.85 : 1, ...style,
       }}>
+      {projectName && <SauceCorner projectName={projectName} seed={seed || title || ''} radius={radius} />}
       {isBitten && <Bite background={biteBackground} border="var(--nug-ink-200)" />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
         {status && (
-          <div>
+          <div style={{ paddingLeft: sauceIndent }}>
             <Badge tone={statusTone(status)}>{statusLabel(status)}</Badge>
           </div>
         )}
-        <h3 style={{ width: '100%', fontSize: 'var(--text-title-3)', fontWeight: 'var(--weight-bold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{truncate(title, 40)}</h3>
-        {projectName && <ProjectNameLine projectName={projectName} />}
+        <h3 style={{ width: '100%', boxSizing: 'border-box', paddingLeft: status ? 0 : sauceIndent, fontSize: 'var(--text-title-3)', fontWeight: 'var(--weight-bold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{truncate(title, 40)}</h3>
         {notes && <p style={{ width: '100%', margin: 0, fontSize: 'var(--text-body-sm)', lineHeight: 'var(--leading-normal)', color: 'var(--nug-ink-700)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{clampSentences(notes, 2)}</p>}
         {tags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 6, marginTop: 1, paddingBottom: 2, scrollbarWidth: 'none' }}>

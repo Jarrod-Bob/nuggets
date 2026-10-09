@@ -1,8 +1,8 @@
 import React from 'react';
 
 /**
- * A nugget's project name as shown under its title, on cards and the nugget
- * page: a small golden ✨ pill in DM Mono, set apart from the card's body
+ * A nugget's project name as shown under its title on the nugget page (cards
+ * reveal it with a curry-sauce corner instead, see SauceCorner): a small golden ✨ pill in DM Mono, set apart from the card's body
  * text. "Suggested project name" is its tooltip and accessible label rather
  * than visible text. The title stays the headline; the pill only appears when
  * there is a project name. Long names are cut with an ellipsis.
