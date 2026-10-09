@@ -107,7 +107,7 @@ func main() {
 	kimiClient := kimi.NewClient(settingsStore, nil)
 
 	server := &http.Server{
-		Handler:           httpapi.NewServer(ideaStore, settingsStore, syncer, sender, kimiClient, broker, frontend),
+		Handler:           httpapi.NewServer(ideaStore, settingsStore, syncer, sender, kimiClient, nil, broker, frontend),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	// Shutdown waits for handlers to return, and an event stream only

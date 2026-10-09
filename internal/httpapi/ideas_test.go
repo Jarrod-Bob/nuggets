@@ -45,7 +45,7 @@ func newTestServer(t *testing.T) http.Handler {
 	ideaStore := idea.NewStore(database, idea.WithTagsAdded(outbox.TagsAdded))
 	syncer := spices.NewSyncer(ideaStore, settingsStore)
 	sender := github.NewSender(outbox, ideaStore, settingsStore)
-	return NewServer(ideaStore, settingsStore, syncer, sender, nil, events.NewBroker(), stubFrontend)
+	return NewServer(ideaStore, settingsStore, syncer, sender, nil, nil, events.NewBroker(), stubFrontend)
 }
 
 func do(t *testing.T, srv http.Handler, method, target string, body any) *httptest.ResponseRecorder {
