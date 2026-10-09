@@ -9,22 +9,22 @@ Terms (**Nugget**, **Tag**, **Tag suggestion**, **Dismissed suggestion**) are de
 
 ## 1. Problem
 
-Tag suggestions ask TypeSafe's Jev. We don't know how Jev compares with Claude on this exact task: quality, speed, tokens and cost. `cmd/tagbench` is a developer command that puts the same inputs to both and reports them side by side. It is not part of the app and never runs in tests.
+Tag suggestions ask TypeSafe's Jev. We don't know how Jev compares with Claude on this exact task: quality, speed, tokens and cost. The developer command in [`docs/benchmarks/tag-suggestions/`](../../benchmarks/tag-suggestions/) (results in its README) that puts the same inputs to both and reports them side by side. It is not part of the app and never runs in tests.
 
 ## 2. Commands
 
 | Command | What it does |
 |---|---|
-| `tagbench fetch` | Caches the GitHub stand-in (§4) in `tagbench-data/github.json`, through `gh`. Free. |
-| `tagbench run` | Runs the benchmark and writes `tagbench-data/results-<timestamp>.json`: every raw check plus a summary without judgments. `-dry-run` calls nothing and prints a cost forecast. |
-| `tagbench judge` | Asks the captain about each pooled bank suggestion (§6), blind and shuffled, saving to `tagbench-data/judgments.json` after every answer. Resumable. |
+| `tagbench fetch` | Caches the GitHub stand-in (§4) in `docs/benchmarks/tag-suggestions/data/github.json`, through `gh`. Free. |
+| `tagbench run` | Runs the benchmark and writes `docs/benchmarks/tag-suggestions/data/results-<timestamp>.json`: every raw check plus a summary without judgments. `-dry-run` calls nothing and prints a cost forecast. |
+| `tagbench judge` | Asks the captain about each pooled bank suggestion (§6), blind and shuffled, saving to `docs/benchmarks/tag-suggestions/data/judgments.json` after every answer. Resumable. |
 | `tagbench report` | Prints Markdown tables for a results file (the latest by default) with the judgments, and writes `<results>.summary.json` for charting. |
 
-Run them from the repo root: `go run ./cmd/tagbench <command>`. `tagbench-data/` is gitignored.
+Run them from the repo root: `go run ./docs/benchmarks/tag-suggestions <command>`. `docs/benchmarks/tag-suggestions/data/` is gitignored.
 
 ## 3. Contenders
 
-Every contender implements one interface (`internal/tagbench.Contender`): given the nugget (title, notes, shown tags) and its candidate tags with their examples, it returns a score from 0 to 1 per candidate, plus latency and input and output tokens. Cost is computed from a price table in code (per million tokens):
+Every contender implements one interface (`tagbench.Contender`): given the nugget (title, notes, shown tags) and its candidate tags with their examples, it returns a score from 0 to 1 per candidate, plus latency and input and output tokens. Cost is computed from a price table in code (per million tokens):
 
 | Model | Input | Output |
 |---|---|---|

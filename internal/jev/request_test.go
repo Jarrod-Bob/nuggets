@@ -8,7 +8,7 @@ import (
 )
 
 // BuildCandidates is the pure half of a check's candidate list, shared with
-// cmd/tagbench so the benchmark asks Jev exactly what production asks.
+// docs/benchmarks/tag-suggestions so the benchmark asks Jev exactly what production asks.
 func TestBuildCandidatesOrdersExamplesByRecencyWhateverTheInputOrder(t *testing.T) {
 	day := func(d int) time.Time { return time.Date(2026, 10, d, 0, 0, 0, 0, time.UTC) }
 	uses := []TagUse{

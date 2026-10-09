@@ -74,7 +74,7 @@ func Open(path string) (*sql.DB, error) {
 }
 
 // OpenReadOnly connects to an existing database without migrating it or
-// allowing writes: for developer tools (cmd/tagbench) that read the bank
+// allowing writes: for developer tools (docs/benchmarks/tag-suggestions) that read the bank
 // while the app may be running. A missing file is an error, never created.
 func OpenReadOnly(path string) (*sql.DB, error) {
 	if _, err := os.Stat(path); err != nil {

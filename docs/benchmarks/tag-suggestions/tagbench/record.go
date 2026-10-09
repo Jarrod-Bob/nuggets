@@ -1,5 +1,5 @@
 // Package tagbench benchmarks TypeSafe's Jev against Claude on the tag
-// suggestion task (issue #40). It is a developer tool behind cmd/tagbench,
+// suggestion task (issue #40). It is a developer tool behind docs/benchmarks/tag-suggestions,
 // never part of the app. Design:
 // docs/superpowers/specs/2026-10-09-tagbench-design.md.
 package tagbench

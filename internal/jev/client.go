@@ -75,7 +75,7 @@ func (e *APIError) Error() string {
 // Client calls TypeSafe's System One API. The key travels only in the
 // Authorization header, never in a URL, so no transport error or log line
 // built from a request can carry it. The Suggester is its only caller in the
-// app; cmd/tagbench uses it to benchmark Jev.
+// app; docs/benchmarks/tag-suggestions uses it to benchmark Jev.
 type Client struct {
 	BaseURL    string
 	Key        string

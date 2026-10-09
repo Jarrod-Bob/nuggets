@@ -11,7 +11,7 @@ import (
 
 // The question every candidate tag is asked, and what yes and no mean
 // (design §6). Question keys aren't sent to the model, so these carry the
-// whole meaning. Exported so cmd/tagbench can give Claude the same wording.
+// whole meaning. Exported so docs/benchmarks/tag-suggestions can give Claude the same wording.
 const (
 	QuestionText  = "Does this tag belong on the nugget in `nugget`? Tags group a person's project ideas."
 	CriteriaTrue  = "The idea is about what the tag covers, judged by the tag's name and the example titles of other ideas carrying it."

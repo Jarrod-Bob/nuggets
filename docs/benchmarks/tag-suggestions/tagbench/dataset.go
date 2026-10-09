@@ -129,7 +129,7 @@ const maxNotes = 600
 // maxPages bounds how far back a repo's issues are read.
 const maxPages = 20
 
-// GitHubData is the cached stand-in dataset (tagbench-data/github.json).
+// GitHubData is the cached stand-in dataset (data/github.json).
 type GitHubData struct {
 	FetchedAt time.Time  `json:"fetched_at"`
 	Repos     []RepoInfo `json:"repos"`

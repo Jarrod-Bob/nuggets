@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/Jarrod-Bob/nuggets/internal/db"
-	"github.com/Jarrod-Bob/nuggets/internal/tagbench"
+	"github.com/Jarrod-Bob/nuggets/docs/benchmarks/tag-suggestions/tagbench"
 )
 
 func main() {
@@ -66,7 +66,7 @@ const githubFile = "github.json"
 
 func fetch(ctx context.Context, args []string) error {
 	fl := flag.NewFlagSet("fetch", flag.ExitOnError)
-	dataDir := fl.String("data", "tagbench-data", "folder for cached data and results (gitignored)")
+	dataDir := fl.String("data", "docs/benchmarks/tag-suggestions/data", "folder for cached data and results (gitignored)")
 	fl.Parse(args)
 	data, err := tagbench.Fetch(ctx, tagbench.RunGH, tagbench.DefaultRepos, func(line string) { fmt.Fprintln(os.Stderr, line) })
 	if err != nil {
@@ -83,7 +83,7 @@ func fetch(ctx context.Context, args []string) error {
 func run(ctx context.Context, args []string) error {
 	fl := flag.NewFlagSet("run", flag.ExitOnError)
 	dbPath := fl.String("db", "", "nuggets database, opened read-only (default: the app's)")
-	dataDir := fl.String("data", "tagbench-data", "folder for cached data and results (gitignored)")
+	dataDir := fl.String("data", "docs/benchmarks/tag-suggestions/data", "folder for cached data and results (gitignored)")
 	contenderList := fl.String("contenders", strings.Join(tagbench.PhaseOne, ","), "comma-separated: jev, claude:<model>:<low|medium|high|xhigh|max|nothink>")
 	datasets := fl.String("datasets", "bank,github", "comma-separated: bank, github")
 	tasks := fl.String("tasks", "hidden,open,scale", "comma-separated: hidden, open, scale")
@@ -220,7 +220,7 @@ func run(ctx context.Context, args []string) error {
 
 func judge(args []string) error {
 	fl := flag.NewFlagSet("judge", flag.ExitOnError)
-	dataDir := fl.String("data", "tagbench-data", "folder for cached data and results")
+	dataDir := fl.String("data", "docs/benchmarks/tag-suggestions/data", "folder for cached data and results")
 	resultsPath := fl.String("results", "", "results file (default: the latest in -data)")
 	judgmentsPath := fl.String("judgments", "", "judgments file (default: judgments.json in -data)")
 	fl.Parse(args)
@@ -250,7 +250,7 @@ func judge(args []string) error {
 
 func report(args []string) error {
 	fl := flag.NewFlagSet("report", flag.ExitOnError)
-	dataDir := fl.String("data", "tagbench-data", "folder for cached data and results")
+	dataDir := fl.String("data", "docs/benchmarks/tag-suggestions/data", "folder for cached data and results")
 	resultsPath := fl.String("results", "", "results file (default: the latest in -data)")
 	judgmentsPath := fl.String("judgments", "", "judgments file (default: judgments.json in -data)")
 	jsonOut := fl.String("json", "", "where to write the JSON summary (default: <results>.summary.json)")
