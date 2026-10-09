@@ -1,6 +1,6 @@
 // FNV-1a, same mixer as dipFor — a weak hash clusters the corners and the
 // variance disappears.
-function nugHash(s = ''): number {
+export function nugHash(s = ''): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
   return h >>> 0;
