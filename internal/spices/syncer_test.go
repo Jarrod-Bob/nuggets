@@ -729,6 +729,42 @@ func TestDisconnectDuringFetchDropsThePage(t *testing.T) {
 	}
 }
 
+// The settings handler writes a new address and its Re-sync flag one after
+// the other inside Reset (issue #35). A Drain starting between the two must
+// wait for both rather than pull the new spices from the old one's cursor.
+func TestDrainWaitsForAnAddressChangeInProgress(t *testing.T) {
+	h := newHarness(t, &fakeSpices{items: []fakeItem{ideaItem(1, 1, "Old one", ""), ideaItem(2, 2, "Old two", "")}})
+	h.connect(t, testToken)
+	ctx := context.Background()
+	if err := h.syncer.Drain(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	other := &fakeSpices{token: testToken, items: []fakeItem{
+		ideaItem(1, 5, "Unrelated one", ""), ideaItem(2, 6, "Unrelated two", ""), ideaItem(3, 7, "Unrelated three", ""),
+	}}
+	otherSrv := other.server(t)
+
+	done := make(chan error, 1)
+	err := h.syncer.Reset(func() error {
+		if err := h.settings.Set(ctx, KeyURL, otherSrv.URL); err != nil {
+			return err
+		}
+		go func() { done <- h.syncer.Drain(ctx) }()
+		time.Sleep(50 * time.Millisecond) // long enough for a Drain that doesn't wait to reach the new spices
+		return h.settings.Set(ctx, KeyNeedsResync, "1")
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; !errors.Is(err, ErrNeedsResync) {
+		t.Errorf("Drain = %v, want ErrNeedsResync", err)
+	}
+	if calls, _, _, sinces := other.snapshot(); calls != 0 {
+		t.Errorf("new spices pulled with sinces %v before Re-sync, want no call", sinces)
+	}
+}
+
 func TestNonNetworkFailureIsNotReportedAsUnreachable(t *testing.T) {
 	h := newHarness(t, &fakeSpices{})
 	h.connect(t, testToken)
