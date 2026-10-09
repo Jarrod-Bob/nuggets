@@ -74,7 +74,7 @@ func newKimiEnv(t *testing.T) *kimiEnv {
 		t.Fatal(err)
 	}
 	return &kimiEnv{
-		srv:      NewServer(idea.NewStore(database), settingsStore, nil, nil, kimi.NewClient(settingsStore, nil), nil, nil),
+		srv:      NewServer(idea.NewStore(database), settingsStore, nil, nil, kimi.NewClient(settingsStore, nil), nil, nil, nil),
 		settings: settingsStore,
 		fake:     fake,
 		fakeURL:  fakeSrv.URL,

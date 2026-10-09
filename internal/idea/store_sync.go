@@ -76,13 +76,15 @@ func (s *Store) applySyncedItem(ctx context.Context, tx *sql.Tx, source string, 
 	var (
 		id        int64
 		rev       sql.NullInt64
+		curTitle  string
+		curNotes  string
 		updatedAt time.Time
 		syncedAt  sql.NullTime
 	)
 	err := tx.QueryRowContext(ctx,
-		`SELECT id, source_rev, updated_at, source_synced_at FROM ideas
+		`SELECT id, source_rev, title, notes, updated_at, source_synced_at FROM ideas
 		 WHERE source = ? AND source_ref = ?`, source, item.Ref,
-	).Scan(&id, &rev, &updatedAt, &syncedAt)
+	).Scan(&id, &rev, &curTitle, &curNotes, &updatedAt, &syncedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		if item.DeletedAt != nil || title == "" {
@@ -106,7 +108,10 @@ func (s *Store) applySyncedItem(ctx context.Context, tx *sql.Tx, source string, 
 		if err := upsertTags(ctx, tx, newID, tags); err != nil {
 			return err
 		}
-		if err := s.notifyTagsAdded(ctx, tx, newID, nil, tags); err != nil {
+		if err := s.notifyTagsChanged(ctx, tx, newID, nil, tags); err != nil {
+			return err
+		}
+		if err := s.notifyContentChanged(ctx, tx, newID); err != nil {
 			return err
 		}
 		result.Created++
@@ -166,8 +171,13 @@ func (s *Store) applySyncedItem(ctx context.Context, tx *sql.Tx, source string, 
 	if err := upsertTags(ctx, tx, id, after); err != nil {
 		return err
 	}
-	if err := s.notifyTagsAdded(ctx, tx, id, before, after); err != nil {
+	if err := s.notifyTagsChanged(ctx, tx, id, before, after); err != nil {
 		return err
+	}
+	if title != curTitle || item.Notes != curNotes {
+		if err := s.notifyContentChanged(ctx, tx, id); err != nil {
+			return err
+		}
 	}
 	result.Updated++
 	return nil

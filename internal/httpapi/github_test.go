@@ -38,7 +38,7 @@ func newGitHubEnv(t *testing.T) *githubEnv {
 	// GitHub, fake or real.
 	sender := github.NewSender(outbox, ideaStore, settingsStore, github.WithBaseURL("http://127.0.0.1:1"))
 	return &githubEnv{
-		srv:      NewServer(ideaStore, settingsStore, nil, sender, nil, nil, nil),
+		srv:      NewServer(ideaStore, settingsStore, nil, sender, nil, nil, nil, nil),
 		settings: settingsStore,
 		sender:   sender,
 	}

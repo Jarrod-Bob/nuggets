@@ -59,7 +59,7 @@ func readUntil(t *testing.T, r *bufio.Reader, want string) {
 
 func TestEventsStreamSendsPublishedEvents(t *testing.T) {
 	broker := events.NewBroker()
-	srv := httptest.NewServer(NewServer(nil, nil, nil, nil, nil, broker, nil))
+	srv := httptest.NewServer(NewServer(nil, nil, nil, nil, nil, nil, broker, nil))
 	t.Cleanup(srv.Close)
 
 	resp, r := openStream(t, srv)
@@ -92,7 +92,7 @@ func TestEventsStreamHeartbeatsWhileIdle(t *testing.T) {
 
 func TestEventsStreamEndsWhenTheBrokerCloses(t *testing.T) {
 	broker := events.NewBroker()
-	srv := httptest.NewServer(NewServer(nil, nil, nil, nil, nil, broker, nil))
+	srv := httptest.NewServer(NewServer(nil, nil, nil, nil, nil, nil, broker, nil))
 	t.Cleanup(srv.Close)
 
 	_, r := openStream(t, srv)

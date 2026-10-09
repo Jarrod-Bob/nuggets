@@ -12,7 +12,8 @@ import { iconArrowLeft, iconPencil } from '../components/icons';
 import { FeatureRequests } from '../components/nuggets/FeatureRequests';
 import { PlanWithClaude } from '../components/nuggets/PlanWithClaude';
 import { ProjectNameLine } from '../components/nuggets/ProjectNameLine';
-import { api, ApiError, type FeatureRequest, type Idea } from '../api';
+import { TagSuggestions } from '../components/nuggets/TagSuggestions';
+import { api, ApiError, type FeatureRequest, type Idea, type TagSuggestion } from '../api';
 import { formatRelative } from '../lib/formatRelative';
 import { describeOrigin } from '../lib/origin';
 import { appendToNotes } from '../lib/planPrompt';
@@ -84,6 +85,30 @@ export function NuggetPage() {
     reloadRequests();
   });
 
+  // The nugget's tag suggestions, fetched alongside it. Like feature requests,
+  // a failed fetch keeps whatever was showing.
+  const [suggestions, setSuggestions] = React.useState<TagSuggestion[]>([]);
+  const [suggestionBusy, setSuggestionBusy] = React.useState<string | null>(null);
+  const reloadSuggestions = React.useCallback(() => {
+    if (id === null) return;
+    let live = true;
+    api.tagSuggestions
+      .list(id)
+      .then((list) => {
+        if (live && Array.isArray(list)) setSuggestions(list);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [id]);
+  React.useEffect(() => reloadSuggestions(), [reloadSuggestions]);
+  // A finished tag check says so; the event names no nugget, so every open
+  // nugget page refetches its own (one small GET).
+  useLiveRefresh('tag-suggestions-changed', () => {
+    reloadSuggestions();
+  });
+
   const [editing, setEditing] = React.useState(false);
   const [formError, setFormError] = React.useState<string | undefined>(undefined);
   const [formDirty, setFormDirty] = React.useState(false);
@@ -97,6 +122,8 @@ export function NuggetPage() {
       reload();
       // A spices import that tagged this nugget may have queued a request.
       reloadRequests();
+      // ...and a refresh that changed its tags may have cleared a suggestion.
+      reloadSuggestions();
     },
     { hold: editing && formDirty },
   );
@@ -118,8 +145,44 @@ export function NuggetPage() {
         reload();
         // Adding a mapped tag queues a feature request.
         reloadRequests();
+        // Adding a suggested tag by hand clears its suggestion.
+        reloadSuggestions();
       })
       .catch((err) => setFormError(describeError(err)));
+  };
+
+  // Accepting a suggestion is an ordinary tag save, with everything a tag save
+  // does (a mapped tag still queues a feature request). It adds to the tags as
+  // they are on the server right now, so a tag added elsewhere isn't lost.
+  const addSuggestedTag = async (tag: string) => {
+    if (!idea) return;
+    setSuggestionBusy(tag);
+    try {
+      const fresh = await api.get(idea.id);
+      await api.update(idea.id, { tags: fresh.tags.includes(tag) ? fresh.tags : [...fresh.tags, tag] });
+      setActionError(undefined);
+      refreshTags();
+      reload();
+      reloadRequests();
+      reloadSuggestions();
+    } catch (err) {
+      setActionError(describeError(err));
+    } finally {
+      setSuggestionBusy(null);
+    }
+  };
+
+  const dismissSuggestedTag = (tag: string) => {
+    if (!idea) return;
+    setSuggestionBusy(tag);
+    api.tagSuggestions
+      .dismiss(idea.id, tag)
+      .then(() => {
+        setActionError(undefined);
+        setSuggestions((prev) => prev.filter((s) => s.tag !== tag));
+      })
+      .catch((err) => setActionError(describeError(err)))
+      .finally(() => setSuggestionBusy(null));
   };
 
   // Appends to the notes as they are on the server right now, not as this page
@@ -188,6 +251,9 @@ export function NuggetPage() {
     </Button>
   );
   const archived = !!idea?.archived_at;
+  // Suggestions sit at the end of the tag row, hidden while editing (the form
+  // owns the tags then) and in the trash.
+  const showSuggestions = suggestions.length > 0 && !editing && !archived;
 
   return (
     <>
@@ -263,13 +329,16 @@ export function NuggetPage() {
             <h1 style={{ fontSize: 'var(--text-title-1)', fontWeight: 'var(--weight-bold)', textWrap: 'pretty', margin: 0 }}>{idea.title}</h1>
             {idea.project_name && <ProjectNameLine projectName={idea.project_name} style={{ marginTop: -4, fontSize: 'var(--text-body-md)' }} />}
 
-            {idea.tags.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {(idea.tags.length > 0 || showSuggestions) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
                 {idea.tags.map((t) => (
                   <Link key={t} to={tagFilterHref(t)} style={{ textDecoration: 'none' }}>
                     <Tag name={t} onClick={() => {}} />
                   </Link>
                 ))}
+                {showSuggestions && (
+                  <TagSuggestions suggestions={suggestions} onAdd={addSuggestedTag} onDismiss={dismissSuggestedTag} busy={suggestionBusy} />
+                )}
               </div>
             )}
 

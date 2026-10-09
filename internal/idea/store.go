@@ -13,9 +13,11 @@ import (
 // adding user accounts later is a WHERE clause in one file (spec §9.2).
 type Store struct {
 	db *sql.DB
-	// tagsAdded, when set, runs inside every transaction that adds tags to a
-	// nugget. See WithTagsAdded.
-	tagsAdded TagsAddedFunc
+	// Hooks that run inside the transaction of a write. See WithTagsAdded,
+	// WithTagsRemoved and WithContentChanged. Each runs in registration order.
+	tagsAdded      []TagsAddedFunc
+	tagsRemoved    []TagsRemovedFunc
+	contentChanged []ContentChangedFunc
 }
 
 // TagsAddedFunc is told, inside the transaction of the write, which tags a
@@ -26,14 +28,40 @@ type Store struct {
 // for the transaction forever.
 type TagsAddedFunc func(ctx context.Context, tx *sql.Tx, ideaID int64, added []string) error
 
+// TagsRemovedFunc is TagsAddedFunc's mirror: it is told which tags an edit or
+// a sync refresh removed from a nugget, never on create or import, and never
+// with an empty set. The same transaction rules apply.
+type TagsRemovedFunc func(ctx context.Context, tx *sql.Tx, ideaID int64, removed []string) error
+
+// ContentChangedFunc is told, inside the transaction of the write, that a
+// nugget's title or notes are new: on create, on import, and on an edit or a
+// sync refresh whose title or notes differ from before (values are compared,
+// since the edit form sends every field). The same transaction rules apply.
+type ContentChangedFunc func(ctx context.Context, tx *sql.Tx, ideaID int64) error
+
 // StoreOption configures a Store.
 type StoreOption func(*Store)
 
 // WithTagsAdded runs fn whenever a write adds tags to a nugget, in the same
 // transaction — how internal/github queues a feature request without a save
-// ever waiting on GitHub.
+// ever waiting on GitHub, and how internal/jev clears a tag suggestion the
+// captain added by hand. Each call adds a hook; they run in order.
 func WithTagsAdded(fn TagsAddedFunc) StoreOption {
-	return func(s *Store) { s.tagsAdded = fn }
+	return func(s *Store) { s.tagsAdded = append(s.tagsAdded, fn) }
+}
+
+// WithTagsRemoved runs fn whenever an edit or a sync refresh removes tags
+// from a nugget, in the same transaction — how internal/jev records a removed
+// tag as a dismissed suggestion. Each call adds a hook; they run in order.
+func WithTagsRemoved(fn TagsRemovedFunc) StoreOption {
+	return func(s *Store) { s.tagsRemoved = append(s.tagsRemoved, fn) }
+}
+
+// WithContentChanged runs fn whenever a nugget's title or notes are new, in
+// the same transaction — how internal/jev queues a tag check without a save
+// ever waiting on TypeSafe. Each call adds a hook; they run in order.
+func WithContentChanged(fn ContentChangedFunc) StoreOption {
+	return func(s *Store) { s.contentChanged = append(s.contentChanged, fn) }
 }
 
 func NewStore(database *sql.DB, opts ...StoreOption) *Store {
@@ -44,26 +72,51 @@ func NewStore(database *sql.DB, opts ...StoreOption) *Store {
 	return s
 }
 
-// notifyTagsAdded runs the TagsAddedFunc for the tags in after that were not
-// in before. Both sets are normalized.
-func (s *Store) notifyTagsAdded(ctx context.Context, tx *sql.Tx, ideaID int64, before, after []string) error {
-	if s.tagsAdded == nil {
-		return nil
-	}
-	had := make(map[string]bool, len(before))
-	for _, t := range before {
-		had[t] = true
-	}
-	var added []string
-	for _, t := range after {
-		if !had[t] {
-			added = append(added, t)
+// notifyTagsChanged runs the TagsAddedFuncs for the tags in after that were
+// not in before, then the TagsRemovedFuncs for the tags in before that are
+// not in after. Both sets are normalized.
+func (s *Store) notifyTagsChanged(ctx context.Context, tx *sql.Tx, ideaID int64, before, after []string) error {
+	if added := tagsMissingFrom(after, before); len(added) > 0 {
+		for _, fn := range s.tagsAdded {
+			if err := fn(ctx, tx, ideaID, added); err != nil {
+				return err
+			}
 		}
 	}
-	if len(added) == 0 {
-		return nil
+	if removed := tagsMissingFrom(before, after); len(removed) > 0 {
+		for _, fn := range s.tagsRemoved {
+			if err := fn(ctx, tx, ideaID, removed); err != nil {
+				return err
+			}
+		}
 	}
-	return s.tagsAdded(ctx, tx, ideaID, added)
+	return nil
+}
+
+// tagsMissingFrom returns the tags of set that other doesn't have, in set's
+// order.
+func tagsMissingFrom(set, other []string) []string {
+	had := make(map[string]bool, len(other))
+	for _, t := range other {
+		had[t] = true
+	}
+	var missing []string
+	for _, t := range set {
+		if !had[t] {
+			missing = append(missing, t)
+		}
+	}
+	return missing
+}
+
+// notifyContentChanged runs the ContentChangedFuncs for ideaID.
+func (s *Store) notifyContentChanged(ctx context.Context, tx *sql.Tx, ideaID int64) error {
+	for _, fn := range s.contentChanged {
+		if err := fn(ctx, tx, ideaID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Create inserts an idea and its tags in one transaction. Unlike Update, Create
@@ -131,7 +184,10 @@ func (s *Store) Create(ctx context.Context, draft Draft) (*Idea, error) {
 	if err := upsertTags(ctx, tx, id, tags); err != nil {
 		return nil, err
 	}
-	if err := s.notifyTagsAdded(ctx, tx, id, nil, tags); err != nil {
+	if err := s.notifyTagsChanged(ctx, tx, id, nil, tags); err != nil {
+		return nil, err
+	}
+	if err := s.notifyContentChanged(ctx, tx, id); err != nil {
 		return nil, err
 	}
 	if err := insertLinks(ctx, tx, id, links); err != nil {

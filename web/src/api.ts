@@ -166,6 +166,27 @@ export interface FeatureRequest {
   url?: string;
 }
 
+/** Mirrors internal/jev.Suggestion: a tag in use that the nugget seems to be missing. */
+export interface TagSuggestion {
+  tag: string;
+  /** How sure the suggestion is, 0 to 1. Not shown to the captain. */
+  probability: number;
+  /**
+   * The titles of other nuggets carrying the tag that Jev was shown when it
+   * made the suggestion (up to 3). Empty for a suggestion stored before they
+   * were kept.
+   */
+  examples: string[];
+}
+
+/** Mirrors internal/httpapi's jevStatus. The API key is write-only: the server never returns it. */
+export interface TagSuggestionStatus {
+  connected: boolean;
+  last_error?: string;
+  /** Nuggets waiting to be checked. */
+  pending: number;
+}
+
 /** GET/PUT /api/settings/kimi: where kimi-no-name-wa listens. */
 export interface KimiSettings {
   url: string;
@@ -233,6 +254,16 @@ export const api = {
         body: JSON.stringify({ notes, avoid }),
         signal,
       }).then((r) => r.names),
+  },
+  tagSuggestions: {
+    status: () => request<TagSuggestionStatus>('/api/settings/jev'),
+    connect: (apiKey: string) =>
+      request<TagSuggestionStatus>('/api/settings/jev', { method: 'PUT', body: JSON.stringify({ api_key: apiKey }) }),
+    disconnect: () => request<void>('/api/settings/jev', { method: 'DELETE' }),
+    /** A nugget's open tag suggestions, highest first; [] when it has none. */
+    list: (ideaId: number) => request<TagSuggestion[]>(`/api/ideas/${ideaId}/tag-suggestions`),
+    dismiss: (ideaId: number, tag: string) =>
+      request<void>(`/api/ideas/${ideaId}/tag-suggestions/${encodeURIComponent(tag)}/dismiss`, { method: 'POST' }),
   },
   github: {
     status: () => request<GitHubStatus>('/api/settings/github'),
