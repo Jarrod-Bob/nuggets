@@ -19,6 +19,7 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/github"
 	"github.com/Jarrod-Bob/nuggets/internal/httpapi"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
+	"github.com/Jarrod-Bob/nuggets/internal/jev"
 	"github.com/Jarrod-Bob/nuggets/internal/kimi"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 	"github.com/Jarrod-Bob/nuggets/internal/spices"
@@ -79,10 +80,20 @@ func main() {
 	// same transaction as the write that added it
 	// (docs/superpowers/specs/2026-09-28-tag-to-github-issue-design.md).
 	outbox := github.NewOutbox(database, settingsStore)
-	ideaStore := idea.NewStore(database, idea.WithTagsAdded(outbox.TagsAdded))
-	// The spices pull loop and the GitHub sender announce what they changed
-	// here, and GET /api/events passes it on to open pages so they refetch
-	// without a reload.
+	// A nugget whose title or notes change queues a tag check in the same
+	// transaction; a tag added by hand clears its suggestion and a tag removed
+	// is recorded as dismissed
+	// (docs/superpowers/specs/2026-10-09-jev-tag-suggestions-design.md).
+	tagChecks := jev.NewQueue(database, settingsStore)
+	ideaStore := idea.NewStore(database,
+		idea.WithTagsAdded(outbox.TagsAdded),
+		idea.WithTagsAdded(tagChecks.TagsAdded),
+		idea.WithTagsRemoved(tagChecks.TagsRemoved),
+		idea.WithContentChanged(tagChecks.ContentChanged),
+	)
+	// The spices pull loop, the GitHub sender and the jev suggester announce
+	// what they changed here, and GET /api/events passes it on to open pages
+	// so they refetch without a reload.
 	broker := events.NewBroker()
 
 	// The spices pull loop, the only way ideas arrive from outside the app
@@ -100,6 +111,12 @@ func main() {
 	sender := github.NewSender(outbox, ideaStore, settingsStore, github.WithEvents(broker))
 	go sender.Loop(ctx)
 
+	// The only caller of TypeSafe: runs queued tag checks at startup, whenever
+	// one is queued or the key changes, and when a backoff runs out. With no
+	// key it parks and nothing is queued.
+	suggester := jev.NewSuggester(tagChecks, ideaStore, settingsStore, jev.WithEvents(broker))
+	go suggester.Loop(ctx)
+
 	// The one kimi-no-name-wa client. Unlike spices and GitHub it has no loop:
 	// each call runs on the request of the click that asked for names, so
 	// closing the form cancels it. There is deliberately no WriteTimeout
@@ -107,7 +124,7 @@ func main() {
 	kimiClient := kimi.NewClient(settingsStore, nil)
 
 	server := &http.Server{
-		Handler:           httpapi.NewServer(ideaStore, settingsStore, syncer, sender, kimiClient, nil, broker, frontend),
+		Handler:           httpapi.NewServer(ideaStore, settingsStore, syncer, sender, kimiClient, suggester, broker, frontend),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	// Shutdown waits for handlers to return, and an event stream only
