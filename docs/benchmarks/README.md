@@ -7,4 +7,4 @@ Benchmark scripts are run by hand. They are not part of `npm test` or `go test` 
 | Folder | What it measures |
 |---|---|
 | [`sauce-corner/`](sauce-corner/) | The curry-sauce corner (#37), the first Motion animation: download size, frame timing and main-thread cost. |
-| [`tag-suggestions/`](tag-suggestions/) | Tag suggestions (#25, #40): Jev against Claude Haiku 5.5 on quality, speed, tokens and cost. |
+| [`tag-suggestions/`](tag-suggestions/) | Tag suggestions (#25, #40): Jev against Claude Haiku 5.5 on quality, speed, tokens and cost, and Jev up to 1,000 tags. Jev matches Haiku on quality and is about 10× faster and 3–4× cheaper; past about 500 tags it needs a shortlist step. |

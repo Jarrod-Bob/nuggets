@@ -3,32 +3,71 @@
 **Date:** 2026-10-09
 **Issue:** [#40](https://github.com/Jarrod-Bob/nuggets/issues/40), branch `feat/tagbench`. The feature it measures is [#25](https://github.com/Jarrod-Bob/nuggets/issues/25).
 **Design:** [`2026-10-09-tagbench-design.md`](../../superpowers/specs/2026-10-09-tagbench-design.md)
-**Measured:**
+**Measured:** 2026-10-09, all runs on the same day.
 - `jev-latest`, which is `jev-1.13.0`;
 - `claude-haiku-5-5` at `effort: low` with adaptive thinking;
 - `claude-haiku-5-5` with thinking off.
 
 Jev was asked exactly what production asks: one noul per candidate tag, with up to 3 example titles. Each Claude model got one call per check, with the same state and examples, and a structured-output answer of `{tag, applies, confidence}` per candidate. Phase 1 compared Jev with Haiku only, to keep the spend small. Sonnet 5.5 and Opus 5.5 are supported but not yet run.
 
-## Summary
+| Run | Contenders | Checks | Spend |
+|---|---|---|---|
+| Smoke tests | all three | 24 | $0.02 |
+| Phase 1: quality, speed, cost, scaling to 200 tags | all three | 2,682 | $1.15 |
+| Scaling to 500 and 1,000 tags | Jev only | 90 | $0.36 |
+| **Total** | | **2,796** | **$1.53** |
 
-- **Jev is about 10× faster.** p50 is 254 ms against 2.6–2.7 s for Haiku. At 200 tags it's 1.25 s against 15–20 s.
-- **Jev is 3–4× cheaper.** That holds per check ($0.13 per 1,000 against $0.43–0.44) and per correct suggestion.
-- **Quality is at least level.**
-  - On the GitHub stand-in, Jev finds more hidden tags (recall@3 0.48 against 0.37–0.39).
-  - Haiku at low effort is a little more precise (0.69 against 0.61).
-  - At each model's own best threshold, Jev and Haiku at low effort tie on F1 (0.534 against 0.531).
-- **Jev's best threshold is 0.70**, the one the feature ships with. Haiku's best is 0.45–0.55, so a Claude version would need its own tuning.
-- **Jev holds up as the vocabulary grows, with one catch.** Its recall stays at 0.50 from 10 all the way to 1,000 tags. Haiku's falls by 200 tags (thinking off: 0.57 → 0.29), and 7–13% of its 200-tag answers left tags out. The catch: past about 500 tags, wrong tags crowd into Jev's top 3, so a big vocabulary will need a shortlist step before Jev.
-- **Jev is steadier.** Its top 3 changed in 0–6% of repeated checks, against 16–29% for Haiku. Jev never returned a malformed answer; Haiku at low effort did 3–6 times per 100.
-- **On the real bank, Jev was never wrong but rarely spoke.** Blind judging found all 3 of its open suggestions right, against 14 of 18 for Haiku at low effort and 20 of 41 for Haiku with thinking off. Haiku surfaces more genuinely missing tags, at the cost of more noise.
-- **The whole run cost $1.15** for 2,682 checks, plus $0.02 of smoke tests.
+## Verdict
+
+**Jev is the right model for this job.** For suggesting tags a nugget is missing, it matches or beats Claude Haiku 5.5 on quality while being about 10× faster, 3–4× cheaper and far steadier. Its probabilities line up with the 0.70 threshold the feature ships with. It has two weaknesses: it's quiet on a small, sparsely tagged bank, and past about 500 tags its suggestions get noisy. Both are known and have a fix.
+
+## Key insights
+
+### 1. It is as accurate as Haiku, in a different way
+
+- **Jev finds more of the missing tags.** On 720 GitHub checks, it put the hidden tag in its top 3 47.5% of the time, against 37–39% for Haiku.
+- **Haiku at low effort is slightly more precise:** 0.69 against Jev's 0.61. At each model's own best threshold the two tie on F1 (0.534 against 0.531). Haiku with thinking off is worse than both.
+- **On the captain's real bank, Jev was never wrong.** Blind judging found all 3 of its open suggestions right. Haiku at low effort got 14 of 18 right, and with thinking off 20 of 41.
+- **Every model misses at least half of the hidden tags at 0.70.** That ceiling belongs to the task (sparse, inconsistent labels), not to Jev. Opus might raise it, at roughly 40× Haiku's cost per check.
+
+### 2. Its scores mean what they say
+
+- **Jev's best threshold on the GitHub stand-in is exactly 0.70**, the value #25 chose before any measurement. Haiku's best is 0.45–0.55, and on the bank Haiku's thinking-off best jumps to 0.80. A Claude version would need tuning per model, and probably per bank.
+- **Jev's probability is a trained output.** Claude's confidence is self-reported, since the API has no logprobs. Brier scores are similar (GitHub: Jev 0.044, Haiku 0.038–0.047), but Jev's ranking is the one that lines up with a fixed threshold.
+
+### 3. One question per tag is its biggest strength, and its scaling limit
+
+- **The right tag's score never depends on how many other tags there are**, because each tag is its own question. Jev's recall stayed at 0.50 from 10 tags to 1,000. Haiku has to weigh every tag in one answer. By 200 tags its recall fell (thinking off: 0.57 → 0.29), it took 15–20 s, and 7–13% of its answers left tags out.
+- **The same independence means wrong tags pile up.** More tags means more of them clear 0.70 by chance: 1.1 per check at 200 tags, 2.8 at 500, 6.6 at 1,000. At 1,000 tags, 2.4 of the 3 tags shown are wrong. Raising the threshold doesn't rescue it: 0.85 still shows 1.4 wrong tags and drops recall to 0.30.
+
+### 4. Speed, cost and reliability are not close
+
+| | Jev | Haiku 5.5 |
+|---|---|---|
+| Latency, p50 (typical vocabulary) | **~250 ms** | 2.0–2.7 s |
+| Latency at 200 tags | **1.3 s** | 15–20 s |
+| Cost per 1,000 checks (GitHub) | **$0.13** | $0.43–0.44 |
+| Cost per correct suggestion (GitHub) | **$0.00054** | $0.0022–0.0025 |
+| Top 3 changed when asked again | **0–6%** | 16–29% |
+| Malformed answers per 100 | **0** | 0–6 (up to 13 at 200 tags) |
+
+- **Cost and latency grow in a straight line with the vocabulary:** about 165 input tokens and 6 ms per tag per check.
+- **Jev reads about twice as many input tokens as Haiku**, because each question repeats the nugget. It's still cheaper: its input is about 2.4× cheaper per token ($0.042 against $0.10 per million) and its output is free.
+- **A worst case of 1,000 nuggets in a spices Re-sync at 200 tags** costs about $1.30 and 20 minutes with Jev, against about $4.40 and 5½ hours with Haiku. Both figures assume the feature's one-check-at-a-time queue.
+
+### 5. What it means for the feature
+
+- **Keep Jev, and keep 0.70 for now.** It's the measured best on realistic data. On the captain's bank the best was 0.60, but that's 28 cases; revisit only if suggestions feel too rare in real use.
+- **Expect Jev to get more useful as the bank grows.** Sparse tags mean thin examples, and that's what makes Jev quiet today. As tags gather nuggets, the bank looks more like the GitHub stand-in, where 0.70 was best.
+- **Past about 300–500 tags, add a shortlist step before Jev** (TypeSafe's hierarchical classification pattern) rather than raising the threshold. With 10 tags today, that's a long way off.
+- **If a check's latency ever matters, run its batches of 50 questions in parallel.** They run one after another today, which is about 6 s at 1,000 tags.
+- **Run Phase 2 (Sonnet and Opus) only to test the quality ceiling.** It costs roughly $5–8. Neither can match Jev's speed or cost, so it would only change the decision if they lifted recall a lot.
 
 ## Data
 
 - **Real bank.** The captain's nuggets database, read-only: 19 nuggets and 10 tags. Only 6 nuggets have two or more tags, so it gives 28 hidden-tag cases.
 - **GitHub stand-in.** 300 feature requests and their topical labels from 4 apps whose requests read like product ideas: Joplin, KOReader, AntennaPod and FlorisBoard. Housekeeping labels (triage, status, priority and the like) were dropped. 158 of the requests carry two or more labels.
-- **Scaling padding.** For the 200-tag vocabulary, labels from 4 more repos pad the candidate list: AppFlowy, Zed, Godot and VS Code.
+- **Scaling padding.** Labels from unrelated repos pad the candidate list. For Phase 1 (up to 200 tags) these were AppFlowy, Zed, Godot and VS Code. The 500- and 1,000-tag run added home-assistant/core, rust-lang/rust, kubernetes/kubernetes, flutter/flutter and elastic/kibana, for 1,052 distinct labels.
 
 Every case was asked 3 times.
 
