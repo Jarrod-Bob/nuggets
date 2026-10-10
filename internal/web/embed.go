@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"embed"
 	"io/fs"
+	"log"
 	"net/http"
 	"path"
 	"strings"
@@ -48,6 +49,7 @@ func Handler(files fs.FS, store *settings.Store) http.Handler {
 		chosen := r.URL.Query().Get("look")
 		if !look.Valid(chosen) {
 			if chosen, err = look.Load(r.Context(), store); err != nil {
+				log.Printf("reading look: %v", err)
 				chosen = look.Classic
 			}
 		}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { api, describeError } from '../api';
-import { applyLook, isLook, type Look } from '../looks/look';
+import { applyLook, isLook, readLook, type Look } from '../looks/look';
 
 /**
  * The Look picker's state, shared by every look (ADR 0002): the saved Look,
@@ -32,7 +32,10 @@ export function useLookSetting(open: boolean): LookSettingModel {
         setError(undefined);
       })
       .catch((err) => {
-        if (live) setError(describeError(err));
+        // Keep the picker usable: assume the Look the page is showing.
+        if (!live) return;
+        setLook(readLook() ?? 'classic');
+        setError(describeError(err));
       });
     return () => {
       live = false;
