@@ -1,14 +1,22 @@
 import React from 'react';
-import { api, ApiError } from '../api';
-
-const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
+import { api, describeError } from '../api';
 
 /**
  * The kimi settings, shared by every look (kimi project-name design §3,
  * ADR 0002): the address of kimi-no-name-wa, fetched each time `open` turns
  * true. There is no on/off switch: when kimi isn't running, the form says so.
  */
-export function useKimiSettings(open: boolean) {
+export interface KimiSettingsModel {
+  url: string;
+  /** Editing the address clears the last "Saved." */
+  changeUrl: (url: string) => void;
+  save: () => void;
+  notice: string | undefined;
+  error: string | undefined;
+  busy: boolean;
+}
+
+export function useKimiSettings(open: boolean): KimiSettingsModel {
   const [url, setUrl] = React.useState('');
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [notice, setNotice] = React.useState<string | undefined>(undefined);
@@ -47,7 +55,6 @@ export function useKimiSettings(open: boolean) {
       .finally(() => setBusy(false));
   };
 
-  /** Editing the address clears the last "Saved." */
   const changeUrl = (value: string) => {
     setUrl(value);
     setNotice(undefined);
@@ -55,5 +62,3 @@ export function useKimiSettings(open: boolean) {
 
   return { busy, error, notice, save, changeUrl, url };
 }
-
-export type KimiSettingsModel = ReturnType<typeof useKimiSettings>;

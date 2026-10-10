@@ -1,8 +1,6 @@
 import React from 'react';
-import { api, ApiError, type GitHubMapping, type GitHubSettingsUpdate, type GitHubStatus } from '../api';
+import { api, describeError, type GitHubMapping, type GitHubSettingsUpdate, type GitHubStatus } from '../api';
 import { useLiveRefresh } from '../live/LiveUpdates';
-
-const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
 /**
  * The GitHub settings, shared by every look (tag-to-issue design §7, ADR 0002):
@@ -12,7 +10,30 @@ const describeError = (err: unknown): string => (err instanceof ApiError ? err.m
  * and leaving it empty keeps the stored one. Status is fetched each time
  * `open` turns true.
  */
-export function useGitHubSettings(open: boolean) {
+export interface GitHubSettingsModel {
+  /** null until the first status arrives. */
+  status: GitHubStatus | null;
+  /** Whether the token and mapping fields are open on a connected GitHub. */
+  editing: boolean;
+  startEditing: () => void;
+  /** Puts the rows back as they were saved. */
+  cancelEditing: () => void;
+  /** Write-only: empty keeps the stored token. */
+  token: string;
+  setToken: (token: string) => void;
+  /** The tag → repository mappings being edited. */
+  rows: GitHubMapping[];
+  setRow: (index: number, patch: Partial<GitHubMapping>) => void;
+  addRow: () => void;
+  removeRow: (index: number) => void;
+  /** Connect, or save the changed fields; a completely blank row is dropped. */
+  save: () => void;
+  disconnect: () => void;
+  error: string | undefined;
+  busy: boolean;
+}
+
+export function useGitHubSettings(open: boolean): GitHubSettingsModel {
   const [status, setStatus] = React.useState<GitHubStatus | null>(null);
   const [editing, setEditing] = React.useState(false);
   const [token, setToken] = React.useState('');
@@ -97,7 +118,12 @@ export function useGitHubSettings(open: boolean) {
       .finally(() => setBusy(false));
   };
 
-  return { status, busy, cancelEditing, disconnect, editing, error, rows, save, setRow, setRows, setToken, startEditing, token };
+  return {
+    status, editing, startEditing, cancelEditing,
+    token, setToken,
+    rows, setRow,
+    addRow: () => setRows((prev) => [...prev, { tag: '', repo: '' }]),
+    removeRow: (index) => setRows((prev) => prev.filter((_, j) => j !== index)),
+    save, disconnect, error, busy,
+  };
 }
-
-export type GitHubSettingsModel = ReturnType<typeof useGitHubSettings>;

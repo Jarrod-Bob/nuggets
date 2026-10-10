@@ -9,11 +9,7 @@ import { ActionError } from '../../components/feedback/ActionError';
 import { iconArrowLeft } from '../../components/icons';
 import type { Trash } from '../../models/useTrash';
 
-/**
- * The trash in the Classic look: its own address, never mixed into the bank's
- * list. Restore maps to `POST /api/ideas/{id}/restore`, purge to
- * `DELETE /api/ideas/{id}`, newest binned first.
- */
+/** The trash in the Classic look: its own address, never mixed into the bank's list. */
 export function TrashView({ trash }: { trash: Trash }) {
   return (
     <>
@@ -31,7 +27,7 @@ export function TrashView({ trash }: { trash: Trash }) {
 
       <Main>
         <ActionError message={trash.actionError} onDismiss={trash.dismissActionError} />
-        {trash.items.length === 0 ? (
+        {trash.nuggets.length === 0 ? (
           <EmptyState variant="bucket" headline="Trash is empty" body="Archived nuggets land here. Nothing has been binned yet." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -39,7 +35,7 @@ export function TrashView({ trash }: { trash: Trash }) {
               Archived nuggets, newest binned first. Restoring puts one back in the bank; purging is permanent.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
-              {trash.items.map(i => (
+              {trash.nuggets.map(i => (
                 <IdeaCard key={i.id} archived title={i.title} notes={i.notes} tags={i.tags} date={i.archivedAt}
                   actions={<>
                     <Button size="sm" variant="secondary" onClick={() => trash.restore(i.id)}>Restore</Button>

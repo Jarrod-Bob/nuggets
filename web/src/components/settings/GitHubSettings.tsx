@@ -24,7 +24,7 @@ const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 'v
  * leaving it empty keeps the stored one.
  */
 export function GitHubSettings({ open }: GitHubSettingsProps) {
-  const { status, busy, cancelEditing, disconnect, editing, error, rows, save, setRow, setRows, setToken, startEditing, token } = useGitHubSettings(open);
+  const { status, busy, cancelEditing, disconnect, editing, error, rows, save, setRow, addRow, removeRow, setToken, startEditing, token } = useGitHubSettings(open);
 
   const form = status && (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -56,7 +56,7 @@ export function GitHubSettings({ open }: GitHubSettingsProps) {
           />
           <IconButton
             label={`Remove the ${row.tag.trim() || 'empty'} mapping`}
-            onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
+            onClick={() => removeRow(i)}
             style={{ marginBottom: 3, flexShrink: 0 }}
           >
             {iconTrash}
@@ -64,7 +64,7 @@ export function GitHubSettings({ open }: GitHubSettingsProps) {
         </div>
       ))}
       <div>
-        <Button variant="ghost" size="sm" iconLeft={iconPlus} onClick={() => setRows((prev) => [...prev, { tag: '', repo: '' }])}>
+        <Button variant="ghost" size="sm" iconLeft={iconPlus} onClick={addRow}>
           Add a tag
         </Button>
       </div>

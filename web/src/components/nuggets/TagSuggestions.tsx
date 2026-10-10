@@ -1,6 +1,6 @@
 import React from 'react';
 import type { TagSuggestion } from '../../api';
-import { REASON_DELAY_MS, REASON_MAX_VW, REASON_MAX_WIDTH, useSuggestionReason, type ReasonSide } from '../../models/useSuggestionReason';
+import { REASON_DELAY_MS, useSuggestionReason, type ReasonSide } from '../../models/useSuggestionReason';
 
 export interface TagSuggestionsProps {
   suggestions: TagSuggestion[];
@@ -12,6 +12,10 @@ export interface TagSuggestionsProps {
 
 /** Re-exported for the tests that wait it out. */
 export { REASON_DELAY_MS };
+
+/** The reason popover's widest: this many px, and at most this share of the viewport. */
+const REASON_MAX_WIDTH = 300;
+const REASON_MAX_VW = 78;
 
 /**
  * A nugget's tag suggestions (Jev tag-suggestions design §7): one dashed tray
@@ -83,7 +87,7 @@ function SuggestedTag({
   busy: boolean;
 }) {
   const reasonId = React.useId();
-  const { ref, handlers, hovered, open, side } = useSuggestionReason<HTMLSpanElement>();
+  const { ref, handlers, hovered, open, side } = useSuggestionReason<HTMLSpanElement>({ maxWidth: REASON_MAX_WIDTH, maxVw: REASON_MAX_VW });
 
   const button: React.CSSProperties = {
     border: 'none',

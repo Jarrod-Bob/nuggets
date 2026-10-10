@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, ApiError, type FeatureRequest, type Idea, type Tag, type TagSuggestion } from '../api';
+import { api, ApiError, describeError, type FeatureRequest, type Idea, type Tag, type TagSuggestion } from '../api';
 import { appendToNotes } from '../lib/planPrompt';
 import { parseNuggetId } from '../routing/nuggetPath';
 import { paramsFromFilter } from '../routing/listFilter';
@@ -67,8 +67,6 @@ export interface NuggetPageModel {
   confirmPurge: () => void;
   backToBank: () => void;
 }
-
-const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
 /** The URL that filters the bank to one tag — where each tag on the page links. */
 const tagFilterHref = (tag: string): string => `/?${paramsFromFilter({ tag }).toString()}`;
@@ -293,7 +291,6 @@ export function useNuggetPage(): NuggetPageModel {
   // Suggestions sit at the end of the tag row, hidden while editing (the form
   // owns the tags then) and in the trash.
   const showSuggestions = suggestions.length > 0 && !editing && !archived;
-
 
   return {
     load,

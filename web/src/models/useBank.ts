@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { api, ApiError, type Idea, type Status, type Tag } from '../api';
+import { api, describeError, type Idea, type Status, type Tag } from '../api';
 import { formatRelative } from '../lib/formatRelative';
 import { filterFromParams } from '../routing/listFilter';
 import { nuggetPath } from '../routing/nuggetPath';
@@ -9,8 +9,8 @@ import { useLiveRefresh } from '../live/LiveUpdates';
 import type { IdeaDraft } from './useIdeaDraft';
 import type { RandomIdea } from './useRandomDraw';
 
-/** One nugget as the bank lists it. */
-export interface BankItem {
+/** A nugget as the bank lists it. */
+export interface ListedNugget {
   id: number;
   title: string;
   projectName: string;
@@ -28,7 +28,7 @@ export interface BankItem {
  * create and edit dialogs that keep capture and quick edits over the list.
  */
 export interface Bank {
-  items: BankItem[];
+  nuggets: ListedNugget[];
   tags: Tag[];
   /** The search box's text, ahead of the URL while typing. */
   query: string;
@@ -58,8 +58,6 @@ export interface Bank {
   openNugget: (id: number) => void;
   openTrash: () => void;
 }
-
-const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
 // How long to wait after the last keystroke before writing the search text to the
 // URL. Short enough to feel immediate, long enough that a fast typist does not
@@ -269,7 +267,7 @@ export function useBank(): Bank {
       .catch((err) => setActionError(describeError(err)));
   };
 
-  const items: BankItem[] = ideas.map((i) => ({
+  const nuggets: ListedNugget[] = ideas.map((i) => ({
     id: i.id,
     title: i.title,
     projectName: i.project_name,
@@ -281,7 +279,7 @@ export function useBank(): Bank {
   }));
 
   return {
-    items,
+    nuggets,
     tags,
     query,
     setQuery: onQueryChange,

@@ -34,7 +34,7 @@ export function BankView({ bank }: { bank: Bank }) {
       <Main>
         <ActionError message={bank.actionError} onDismiss={bank.dismissActionError} />
         <IdeaList
-          ideas={bank.items}
+          ideas={bank.nuggets}
           tags={bank.tags}
           query={bank.query}
           showSearch={false}

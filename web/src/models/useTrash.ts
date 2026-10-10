@@ -1,12 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, ApiError, type Idea } from '../api';
+import { api, describeError, type Idea } from '../api';
 import { formatRelative } from '../lib/formatRelative';
 import { useTags } from '../tags/TagsProvider';
 import { useLiveRefresh } from '../live/LiveUpdates';
 
-/** One binned nugget as the trash lists it. */
-export interface BinnedItem {
+/** A binned nugget as the trash lists it. */
+export interface BinnedNugget {
   id: number;
   title: string;
   notes: string;
@@ -17,11 +17,12 @@ export interface BinnedItem {
 
 /**
  * The trash, shared by every look (ADR 0002): the archived nuggets, newest
- * binned first, each restorable, or purged for good after a confirmation.
+ * binned first, each restorable (`POST /api/ideas/{id}/restore`), or purged
+ * for good (`DELETE /api/ideas/{id}`) after a confirmation.
  * A nugget a spices tombstone archives in the background lands here too.
  */
 export interface Trash {
-  items: BinnedItem[];
+  nuggets: BinnedNugget[];
   actionError: string | undefined;
   dismissActionError: () => void;
   restore: (id: number) => void;
@@ -32,8 +33,6 @@ export interface Trash {
   confirmPurge: () => void;
   backToBank: () => void;
 }
-
-const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
 export function useTrash(): Trash {
   const navigate = useNavigate();
@@ -78,7 +77,7 @@ export function useTrash(): Trash {
   };
 
   return {
-    items: ideas.map((i) => ({
+    nuggets: ideas.map((i) => ({
       id: i.id,
       title: i.title,
       notes: i.notes,

@@ -81,8 +81,8 @@ function garnishFor(seed: string): { creeps: Creep[]; specks: Speck[] } {
 
 export function SauceCorner({ projectName, seed, radius }: { projectName: string; seed: string; radius: string }) {
   const sauce = useSauce();
+  const { open } = sauce;
   const reduce = useReducedMotion();
-  const open = sauce.open;
   const drip = DRIPS[nugHash(seed) % DRIPS.length];
   const { creeps, specks } = React.useMemo(() => garnishFor(seed), [seed]);
   const params = React.useMemo(() => oozeParams(seed), [seed]);

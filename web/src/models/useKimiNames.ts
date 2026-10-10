@@ -30,7 +30,8 @@ export interface KimiNames {
 
 export function useKimiNames({ notes, value }: { notes: string; value: string }): KimiNames {
   const [available, setAvailable] = React.useState<boolean | null>(null);
-  const [naming, setNaming] = React.useState<AbortController | null>(null);
+  // The request in flight, if any: what Cancel aborts.
+  const [request, setRequest] = React.useState<AbortController | null>(null);
   const [results, setResults] = React.useState<KimiNames['results']>({ state: 'none' });
   // Every name shown this form session, for Re-roll's avoid. A ref, not
   // state: nothing renders from it.
@@ -47,16 +48,16 @@ export function useKimiNames({ notes, value }: { notes: string; value: string })
       live = false;
       // Forget the request before aborting it, so its finally doesn't set
       // state on a field that is gone.
-      const request = inFlight.current;
+      const pending = inFlight.current;
       inFlight.current = null;
-      request?.abort();
+      pending?.abort();
     };
   }, []);
 
   const ask = (avoid: string[]) => {
     const controller = new AbortController();
     inFlight.current = controller;
-    setNaming(controller);
+    setRequest(controller);
     api.kimi
       .names(notes.trim(), avoid, controller.signal)
       .then((names) => {
@@ -70,7 +71,7 @@ export function useKimiNames({ notes, value }: { notes: string; value: string })
       .finally(() => {
         if (inFlight.current === controller) {
           inFlight.current = null;
-          setNaming(null);
+          setRequest(null);
         }
       });
   };
@@ -79,11 +80,11 @@ export function useKimiNames({ notes, value }: { notes: string; value: string })
   return {
     available,
     blocked: notesEmpty ? 'no-notes' : available === false ? 'unavailable' : null,
-    naming: naming !== null,
+    naming: request !== null,
     results,
     generate: () => ask([]),
     reroll: () => ask(shown.current),
-    cancel: () => naming?.abort(),
+    cancel: () => request?.abort(),
     point: setPointed,
     explanation: results.state === 'names' ? results.names.find((n) => n.name === (pointed ?? value))?.explanation : undefined,
   };

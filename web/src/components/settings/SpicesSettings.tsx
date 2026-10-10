@@ -22,7 +22,7 @@ const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 'v
  * leaving it empty keeps the stored one.
  */
 export function SpicesSettings({ open }: SpicesSettingsProps) {
-  const { status, busy, confirmingResync, disconnect, editing, error, interval, notice, resync, save, setConfirmingResync, setEditing, setIntervalText, setToken, setUrl, startEditing, syncNow, token, url } = useSpicesSettings(open);
+  const { status, busy, confirmingResync, disconnect, editing, error, interval, notice, resync, save, askResync, cancelResync, cancelEditing, setIntervalText, setToken, setUrl, startEditing, syncNow, token, url } = useSpicesSettings(open);
 
   const form = status && (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -104,7 +104,7 @@ export function SpicesSettings({ open }: SpicesSettingsProps) {
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {editing ? (
                 <>
-                  <Button variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
+                  <Button variant="ghost" onClick={cancelEditing} disabled={busy}>
                     Cancel
                   </Button>
                   <Button onClick={save} disabled={busy}>
@@ -113,7 +113,7 @@ export function SpicesSettings({ open }: SpicesSettingsProps) {
                 </>
               ) : confirmingResync ? (
                 <>
-                  <Button variant="ghost" onClick={() => setConfirmingResync(false)} disabled={busy}>
+                  <Button variant="ghost" onClick={cancelResync} disabled={busy}>
                     Not yet
                   </Button>
                   <Button onClick={resync} disabled={busy}>
@@ -126,7 +126,7 @@ export function SpicesSettings({ open }: SpicesSettingsProps) {
                     Change
                   </Button>
                   {status.needs_resync ? (
-                    <Button onClick={() => setConfirmingResync(true)} disabled={busy}>
+                    <Button onClick={askResync} disabled={busy}>
                       Re-sync
                     </Button>
                   ) : (

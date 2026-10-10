@@ -3,7 +3,7 @@ import { Button } from '../core/Button';
 import { Badge } from '../core/Badge';
 import { Input } from '../forms/Input';
 import { SettingsSection } from './SettingsSection';
-import { useJevSettings } from '../../models/useJevSettings';
+import { useTagSuggestionSettings } from '../../models/useTagSuggestionSettings';
 
 export interface TagSuggestionSettingsProps {
   /** Whether the settings dialog is showing: status is fetched each time it opens. */
@@ -29,7 +29,7 @@ function describePending(pending: number): string | null {
  * is never shown back, so the field is always empty.
  */
 export function TagSuggestionSettings({ open }: TagSuggestionSettingsProps) {
-  const { status, busy, disconnect, editing, error, key, save, setEditing, setError, setKey } = useJevSettings(open);
+  const { status, busy, disconnect, editing, error, key, save, startEditing, cancelEditing, setKey } = useTagSuggestionSettings(open);
 
   const waiting = status ? describePending(status.pending) : null;
   const showForm = status && (editing || !status.connected);
@@ -93,7 +93,7 @@ export function TagSuggestionSettings({ open }: TagSuggestionSettingsProps) {
             )}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {status.connected && !editing ? (
-                <Button variant="ghost" onClick={() => setEditing(true)} disabled={busy}>
+                <Button variant="ghost" onClick={startEditing} disabled={busy}>
                   Change key
                 </Button>
               ) : (
@@ -101,11 +101,7 @@ export function TagSuggestionSettings({ open }: TagSuggestionSettingsProps) {
                   {editing && (
                     <Button
                       variant="ghost"
-                      onClick={() => {
-                        setKey('');
-                        setError(undefined);
-                        setEditing(false);
-                      }}
+                      onClick={cancelEditing}
                       disabled={busy}
                     >
                       Cancel

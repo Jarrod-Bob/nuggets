@@ -1,8 +1,6 @@
 import React from 'react';
-import { api, ApiError, type SpicesStatus, type SpicesSettingsUpdate } from '../api';
+import { api, describeError, type SpicesStatus, type SpicesSettingsUpdate } from '../api';
 import { useLiveRefresh } from '../live/LiveUpdates';
-
-const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
 /**
  * The spices settings, shared by every look (spices pull design §7, ADR 0002):
@@ -11,7 +9,35 @@ const describeError = (err: unknown): string => (err instanceof ApiError ? err.m
  * write-only: it is never shown back, so the field is always empty and leaving
  * it empty keeps the stored one. Status is fetched each time `open` turns true.
  */
-export function useSpicesSettings(open: boolean) {
+export interface SpicesSettingsModel {
+  /** null until the first status arrives. */
+  status: SpicesStatus | null;
+  /** Whether the address/token/interval fields are open on a connected spices. */
+  editing: boolean;
+  startEditing: () => void;
+  cancelEditing: () => void;
+  url: string;
+  setUrl: (url: string) => void;
+  /** Write-only: empty keeps the stored token. */
+  token: string;
+  setToken: (token: string) => void;
+  interval: string;
+  setIntervalText: (seconds: string) => void;
+  /** Connect, or save the changed fields. */
+  save: () => void;
+  disconnect: () => void;
+  syncNow: () => void;
+  /** Whether Re-sync is waiting for a second press. */
+  confirmingResync: boolean;
+  askResync: () => void;
+  cancelResync: () => void;
+  resync: () => void;
+  notice: string | undefined;
+  error: string | undefined;
+  busy: boolean;
+}
+
+export function useSpicesSettings(open: boolean): SpicesSettingsModel {
   const [status, setStatus] = React.useState<SpicesStatus | null>(null);
   const [editing, setEditing] = React.useState(false);
   const [url, setUrl] = React.useState('');
@@ -115,7 +141,11 @@ export function useSpicesSettings(open: boolean) {
       .finally(() => setBusy(false));
   };
 
-  return { status, busy, confirmingResync, disconnect, editing, error, interval, notice, resync, save, setConfirmingResync, setEditing, setIntervalText, setToken, setUrl, startEditing, syncNow, token, url };
+  return {
+    status, editing, startEditing, cancelEditing: () => setEditing(false),
+    url, setUrl, token, setToken, interval, setIntervalText,
+    save, disconnect, syncNow,
+    confirmingResync, askResync: () => setConfirmingResync(true), cancelResync: () => setConfirmingResync(false), resync,
+    notice, error, busy,
+  };
 }
-
-export type SpicesSettingsModel = ReturnType<typeof useSpicesSettings>;

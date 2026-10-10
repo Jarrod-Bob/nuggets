@@ -1,8 +1,6 @@
 import React from 'react';
-import { api, ApiError, type TagSuggestionStatus } from '../api';
+import { api, describeError, type TagSuggestionStatus } from '../api';
 import { useLiveRefresh } from '../live/LiveUpdates';
-
-const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
 /**
  * The tag-suggestion settings, shared by every look (Jev tag-suggestions design
@@ -10,7 +8,24 @@ const describeError = (err: unknown): string => (err instanceof ApiError ? err.m
  * connection's status. The key is write-only: it is never shown back, so the
  * field is always empty. Status is fetched each time `open` turns true.
  */
-export function useJevSettings(open: boolean) {
+export interface TagSuggestionSettingsModel {
+  /** null until the first status arrives. */
+  status: TagSuggestionStatus | null;
+  /** Whether the key field is open on a connected TypeSafe. */
+  editing: boolean;
+  startEditing: () => void;
+  /** Closes the key field and forgets what was typed. */
+  cancelEditing: () => void;
+  /** Write-only: never shown back. */
+  key: string;
+  setKey: (key: string) => void;
+  save: () => void;
+  disconnect: () => void;
+  error: string | undefined;
+  busy: boolean;
+}
+
+export function useTagSuggestionSettings(open: boolean): TagSuggestionSettingsModel {
   const [status, setStatus] = React.useState<TagSuggestionStatus | null>(null);
   const [editing, setEditing] = React.useState(false);
   const [key, setKey] = React.useState('');
@@ -66,7 +81,14 @@ export function useJevSettings(open: boolean) {
       .finally(() => setBusy(false));
   };
 
-  return { status, busy, disconnect, editing, error, key, save, setEditing, setError, setKey };
+  return {
+    status, editing,
+    startEditing: () => setEditing(true),
+    cancelEditing: () => {
+      setKey('');
+      setError(undefined);
+      setEditing(false);
+    },
+    key, setKey, save, disconnect, error, busy,
+  };
 }
-
-export type JevSettingsModel = ReturnType<typeof useJevSettings>;
