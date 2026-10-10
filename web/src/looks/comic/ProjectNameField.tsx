@@ -84,7 +84,7 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
             </Button>
           </div>
           {/* A fixed two-line box, the same size empty or full, so hovering names never shifts the dialog. */}
-          <p data-testid="kimi-explanation" className="comic-field-hint comic-namefield-why" style={{ height: 'calc(2 * 1.4em)', lineHeight: 1.4 }}>
+          <p data-testid="kimi-explanation" className="comic-field-hint comic-namefield-why" style={{ height: 'calc(2 * 1.4em)' }}>
             {kimi.explanation}
           </p>
         </div>

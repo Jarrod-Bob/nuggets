@@ -20,14 +20,19 @@ type Row = string | { create: string };
 
 const normalise = (s: string) => s.trim().toLowerCase();
 
+/** Close the list a beat after blur, so a click on an option still lands before it unmounts. */
+const BLUR_CLOSE_MS = 120;
+
 export function TagField({ value, options, onChange }: TagFieldProps) {
   const id = React.useId();
+  const blurTimer = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+  React.useEffect(() => () => clearTimeout(blurTimer.current), []);
   const [q, setQ] = React.useState('');
   const [open, setOpen] = React.useState(false);
   const [cursor, setCursor] = React.useState(0);
   const norm = normalise(q);
   const matches = options.filter((o) => o.includes(norm) && !value.includes(o)).slice(0, 6);
-  const isNew = norm.length > 0 && !options.includes(norm) && !value.includes(norm);
+  const isNew = norm.length > 0 && !options.includes(norm);
   const rows: Row[] = isNew ? [...matches, { create: norm }] : matches;
 
   const add = (name: string) => {
@@ -81,7 +86,10 @@ export function TagField({ value, options, onChange }: TagFieldProps) {
             setCursor(0);
           }}
           onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onBlur={() => {
+            clearTimeout(blurTimer.current);
+            blurTimer.current = setTimeout(() => setOpen(false), BLUR_CLOSE_MS);
+          }}
           onKeyDown={onKeyDown}
         />
       </div>

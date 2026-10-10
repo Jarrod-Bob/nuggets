@@ -69,6 +69,7 @@
   outline-offset: 3px;
 }
 .comic-namefield-why {
+  line-height: 1.4;
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
