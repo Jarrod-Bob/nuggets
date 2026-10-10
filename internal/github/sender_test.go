@@ -173,7 +173,10 @@ func TestASendingRowWhosePostNeverLandedIsSentOnce(t *testing.T) {
 }
 
 func TestServerErrorsBackOffThenSend(t *testing.T) {
-	e := newTestEnv(t)
+	// A fake clock: the pause is judged against it, not the wall clock, so no
+	// amount of scheduling delay can end it early.
+	clock := time.Now()
+	e := newTestEnv(t, WithClock(func() time.Time { return clock }))
 	e.setToken(t, testToken)
 	n := e.createIdea(t, "Sorting", "", "nuggets")
 	e.fake.script(func(w http.ResponseWriter, r *http.Request) {
@@ -202,7 +205,7 @@ func TestServerErrorsBackOffThenSend(t *testing.T) {
 		t.Fatalf("POSTs during the pause = %d, want 1", got)
 	}
 
-	time.Sleep(15 * time.Millisecond) // past the 1ms backoff for the sender and the row
+	clock = clock.Add(time.Minute) // past the 1ms backoff for the sender and the row
 	if err := e.sender.Pass(context.Background()); err != nil {
 		t.Fatal(err)
 	}
