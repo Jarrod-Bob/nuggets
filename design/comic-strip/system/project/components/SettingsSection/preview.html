@@ -1,0 +1,20 @@
+<!-- @dsCard group="Screens" height=900 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>SettingsSection — preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var C = window.Comic, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{padding:'20px 34px 34px 20px'}},h(C.Dialog,{title:'Settings',description:"Where nuggets arrive from, and where they're sent.",width:600,onClose:()=>{}},
+  h(C.LookPicker,{value:'comic',comicInProgress:true}),
+  h(C.SettingsSection,{title:'spices',description:'Pull ideas from your spices capture bot.',status:h(C.StatePill,{tone:'attention'},'Needs re-sync'),detail:'http://127.0.0.1:8080 · synced 3 days ago · every 60s',dangerAction:h(C.Pill,{size:'sm',variant:'danger'},'Disconnect'),actions:[h(C.Pill,{key:'c',size:'sm'},'Change'),h(C.Pill,{key:'r',size:'sm'},'Re-sync')]},h('p',{className:'body',style:{margin:0}},'The spices on the other end may hand out the same ids for different ideas, so nothing is pulled until you re-sync. Your nuggets are untouched.')),
+  h(C.SettingsSection,{title:'GitHub',description:'Open a feature-request issue for each nugget that gets one of these tags.',status:h(C.StatePill,{tone:'error'},'Error'),detail:'2 queued · 1 failed',error:'GitHub refused the token.',dangerAction:h(C.Pill,{size:'sm',variant:'danger'},'Disconnect'),actions:[h(C.Pill,{key:'x',size:'sm'},'Cancel'),h(C.Pill,{key:'s',size:'sm'},'Save')]},h(C.Field,{label:'Personal access token',type:'password',placeholder:'Leave empty to keep the current token'}),h('div',{style:{display:'grid',gridTemplateColumns:'2fr 3fr',gap:10}},h(C.Field,{label:'Tag',defaultValue:'nuggets'}),h(C.Field,{label:'Repository',defaultValue:'Jarrod-Bob/nuggets'}))),
+  h(C.SettingsSection,{title:'kimi',description:'Suggest project names for nuggets with kimi-no-name-wa, running on this machine.',actions:h(C.Pill,{size:'sm'},'Save')},h(C.Field,{label:'kimi address',type:'url',defaultValue:'http://127.0.0.1:7799'})),
+  h(C.SettingsSection,{title:'Tag suggestions',description:'Suggest tags you already use that a nugget seems to be missing. Nothing is tagged until you add it.',status:h(C.StatePill,{tone:'ok'},'Connected'),detail:'3 nuggets waiting to be checked',dangerAction:h(C.Pill,{size:'sm',variant:'danger'},'Disconnect'),actions:h(C.Pill,{size:'sm'},'Change key')}))));
+</script>
+</body>
+</html>

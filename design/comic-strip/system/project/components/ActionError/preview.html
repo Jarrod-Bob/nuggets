@@ -1,0 +1,15 @@
+<!-- @dsCard group="Feedback" height=150 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>ActionError — preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var C = window.Comic, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'grid',gap:14,padding:20,maxWidth:560}},h(C.ActionError,{message:'The nugget could not be restored: it is already in the bank.',onDismiss:()=>{}}),h(C.ActionError,{message:'Something went wrong.'})));
+</script>
+</body>
+</html>

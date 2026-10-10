@@ -20,12 +20,14 @@ export interface StripProps extends React.HTMLAttributes<HTMLElement> {
 }
 export declare function Strip(props: StripProps): React.ReactElement;
 
-/** The only button shape. */
+/** The only button shape. With an href it renders as a link. */
 export interface PillProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  /** paper (default), tomato for the page's primary action, ink for a selected state. */
-  variant?: 'paper' | 'tomato' | 'ink';
-  /** lg for the single call to action on a page. */
-  size?: 'md' | 'lg';
+  /** paper (default), tomato for the page's primary action, ink for a selected state, danger (red-ink outline) for what can't be undone. */
+  variant?: 'paper' | 'tomato' | 'ink' | 'danger';
+  /** lg for the single call to action on a page; sm inside cards, caption boxes and settings sections. */
+  size?: 'sm' | 'md' | 'lg';
+  /** Render as a link to this address (a deep link that must be a real href). */
+  href?: string;
   /** Icon before the label. */
   icon?: 'search' | 'arrow-right' | 'arrow-left' | 'plus' | 'close' | 'check' | 'pencil' | 'dice';
   /** Icon after the label. */
@@ -118,8 +120,8 @@ export declare function Burst(props: BurstProps): React.ReactElement;
 
 /** A narration box: a notice about the page, in the strip's caption style. */
 export interface CaptionBoxProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Fill. Default 'nugget'; use 'mayo' or 'paper' on a nugget-gold ground. */
-  tone?: 'nugget' | 'mayo' | 'paper';
+  /** Fill. Default 'nugget'; use 'mayo' or 'paper' on a nugget-gold ground; 'error' is paper with a red-ink line (use ActionError). */
+  tone?: 'nugget' | 'mayo' | 'paper' | 'error';
   /** The narrator's lead-in, e.g. "Meanwhile, on the tray…". */
   eyebrow?: React.ReactNode;
 }
@@ -128,6 +130,8 @@ export declare function CaptionBox(props: CaptionBoxProps): React.ReactElement;
 /** A dialog panel with a sticker shadow. Presentational: the host owns the overlay, focus trap and Escape. */
 export interface DialogProps extends Omit<React.HTMLAttributes<HTMLElement>, 'title'> {
   title: React.ReactNode;
+  /** One line under the title, wired with aria-describedby. */
+  description?: React.ReactNode;
   /** Shows the round close button when set. */
   onClose?: () => void;
   /** Pills for the mayo footer: Cancel, then the one tomato pill. */
@@ -195,6 +199,160 @@ export interface ThoughtBubbleProps extends React.HTMLAttributes<HTMLSpanElement
 }
 export declare function ThoughtBubble(props: ThoughtBubbleProps): React.ReactElement;
 
+/** The state of a connection or a queued job. StatusPill is a nugget's status; this is everything else. Children are the word. */
+export interface StatePillProps {
+  /** ok (pickle) "Connected"/"Sent", off (dashed) "Not connected", wait (raw) "Queued", attention (tomato) "Needs re-sync", error (red-ink line) "Failed"/"Error". */
+  tone: 'ok' | 'off' | 'wait' | 'attention' | 'error';
+  children: React.ReactNode;
+  className?: string;
+}
+export declare function StatePill(props: StatePillProps): React.ReactElement;
+
+/** A failed action in plain words: a red-ink caption box with role="alert". Renders nothing without a message. */
+export interface ActionErrorProps {
+  message?: string;
+  /** Shows a small "Dismiss" pill when set. */
+  onDismiss?: () => void;
+  className?: string;
+}
+export declare function ActionError(props: ActionErrorProps): React.ReactElement | null;
+
+/** Nothing to show, in the narrator's voice: a caption box with a heading, a line of help and one action. */
+export interface EmptyStateProps {
+  /** The heading; the same words as the Classic look. */
+  headline: string;
+  body?: string;
+  action?: React.ReactNode;
+  /** Where we are, in the narrator's voice. Default "Meanwhile…". */
+  eyebrow?: React.ReactNode;
+  tone?: 'nugget' | 'mayo' | 'paper';
+  className?: string;
+  style?: React.CSSProperties;
+}
+export declare function EmptyState(props: EmptyStateProps): React.ReactElement;
+
+/** A binned nugget in the Classic TrashView's shape. */
+export interface ArchivedIdea { id: number | string; title: string; tags?: string[]; archivedAt?: string }
+
+/** A binned nugget: greyed, tipped over, with Restore and Purge. Renders an li; put it in a list. */
+export interface BinCardProps {
+  title: string;
+  tags?: string[];
+  /** When it was binned, e.g. "2d ago". */
+  archivedAt?: string;
+  /** Which of the 8 outlines to draw (0–7). */
+  shape?: number;
+  /** Rotation in degrees, about ±5 to ±8. Default -6. */
+  tilt?: number;
+  onRestore?: () => void;
+  onPurge?: () => void;
+  className?: string;
+  style?: React.CSSProperties;
+}
+export declare function BinCard(props: BinCardProps): React.ReactElement;
+
+/** The bin (Trash): binned nuggets as greyed cards, or "Trash is empty". Props follow the Classic TrashView. */
+export interface BinProps {
+  /** Newest binned first. */
+  ideas?: ArchivedIdea[];
+  onRestore?: (id: number | string) => void;
+  onPurge?: (id: number | string) => void;
+  className?: string;
+  style?: React.CSSProperties;
+}
+export declare function Bin(props: BinProps): React.ReactElement;
+
+export type Look = 'classic' | 'comic';
+/** The Look picker: Classic and Comic as two sticker tiles in a radio group legended "Look". */
+export interface LookPickerProps {
+  value: Look;
+  onChange?: (look: Look) => void;
+  /** Tag the Comic tile "In progress" while some screens fall back to Classic. */
+  comicInProgress?: boolean;
+  /** A line under the tiles. */
+  hint?: React.ReactNode;
+  className?: string;
+}
+export declare function LookPicker(props: LookPickerProps): React.ReactElement;
+
+/** One integration in the Settings dialog. */
+export interface SettingsSectionProps {
+  /** The integration's name: "spices", "GitHub", "kimi", "Tag suggestions". */
+  title: string;
+  description?: string;
+  /** A StatePill. */
+  status?: React.ReactNode;
+  /** Mono facts on the right of the status line: address, last sync, queue counts. */
+  detail?: React.ReactNode;
+  /** Shown as an ActionError without Dismiss. */
+  error?: string;
+  /** Left of the action row: "Disconnect" as a small danger Pill. */
+  dangerAction?: React.ReactNode;
+  /** Right of the action row, the commit last. */
+  actions?: React.ReactNode;
+  /** The Fields and any notes. */
+  children?: React.ReactNode;
+  className?: string;
+}
+export declare function SettingsSection(props: SettingsSectionProps): React.ReactElement;
+
+/** Plan with Claude: the prompt in a speech bubble, the ways to send it, and the answer field. Presentational. */
+export interface PlanWithClaudeProps {
+  /** The full planning prompt. */
+  prompt: string;
+  /** The claude:// deep link for "Open in Claude Desktop". */
+  desktopUrl: string;
+  /** The deep link carries trimmed notes. */
+  trimmed?: boolean;
+  /** The result of the last copy. */
+  copyNote?: string;
+  answer?: string;
+  onAnswerChange?: (answer: string) => void;
+  onCopy?: () => void;
+  onCopyAndOpen?: () => void;
+  onSave?: () => void;
+  saving?: boolean;
+  saveError?: string;
+  onClose?: () => void;
+  className?: string;
+}
+export declare function PlanWithClaude(props: PlanWithClaudeProps): React.ReactElement;
+
+/** A drawn nugget, as the Classic RandomNugget's RandomIdea plus an optional status for its fill. */
+export interface RandomIdea { id?: number; title: string; notes?: string; tags?: string[]; status?: NuggetStatus }
+/** Draw a nugget's result: the drawn card with a PICK ME stamp, and the dealt challenge. Presentational. */
+export interface RandomNuggetProps {
+  /** null: nothing to draw. */
+  idea?: RandomIdea | null;
+  loading?: boolean;
+  /** The tag the draw was narrowed to. */
+  tag?: string | null;
+  /** The timebox's label, e.g. "One evening". */
+  timebox?: string;
+  /** The track as its display label. */
+  stack?: { language: string; framework: string; track?: string };
+  /** Where the stack weights come from. */
+  source?: { label: string; url: string; retrieved?: string };
+  onReroll?: () => void;
+  onRerollTimebox?: () => void;
+  onRerollStack?: () => void;
+  onClose?: () => void;
+  className?: string;
+}
+export declare function RandomNugget(props: RandomNuggetProps): React.ReactElement;
+
+/** A GitHub feature request, as the API sends it. */
+export interface FeatureRequest { id: number; repo: string; state: 'pending' | 'sending' | 'created' | 'failed'; number?: number; url?: string; last_error?: string }
+/** A nugget's feature requests as a strip of small panels. Renders nothing when empty. */
+export interface FeatureRequestsProps {
+  requests: FeatureRequest[];
+  onRetry?: (id: number) => void;
+  /** The request whose Retry is in flight. */
+  retrying?: number | null;
+  className?: string;
+}
+export declare function FeatureRequests(props: FeatureRequestsProps): React.ReactElement | null;
+
 declare global {
   interface Window {
     Comic: {
@@ -203,6 +361,9 @@ declare global {
       SpeechBubble: typeof SpeechBubble; Sfx: typeof Sfx; Burst: typeof Burst;
       CaptionBox: typeof CaptionBox; Dialog: typeof Dialog; Field: typeof Field; NameSuggestions: typeof NameSuggestions;
       SuggestedTags: typeof SuggestedTags; ThoughtBubble: typeof ThoughtBubble;
+      StatePill: typeof StatePill; ActionError: typeof ActionError; EmptyState: typeof EmptyState; BinCard: typeof BinCard; Bin: typeof Bin;
+      LookPicker: typeof LookPicker; SettingsSection: typeof SettingsSection; PlanWithClaude: typeof PlanWithClaude;
+      RandomNugget: typeof RandomNugget; FeatureRequests: typeof FeatureRequests;
     };
   }
 }

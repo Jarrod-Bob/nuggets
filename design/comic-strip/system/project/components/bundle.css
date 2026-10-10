@@ -152,3 +152,103 @@ textarea.cs-field-input{height:auto;min-height:110px;padding:10px 14px;line-heig
 .cs-burst>*:not(.cs-burst-rays){position:relative}
 
 @media (prefers-reduced-motion:reduce){.cs-pill,.cs-card{transition:none}.cs-pill:hover,.cs-card:hover{transform:rotate(var(--cs-tilt,0deg))}}
+
+/* Pill: the small size, the red-ink danger outline, and links dressed as pills */
+.cs-pill--sm{height:34px;padding:0 14px;gap:8px;font-size:14px}
+.cs-pill--danger{border-color:var(--tomato)}
+a.cs-pill{box-sizing:border-box;text-decoration:none}
+.cs-dialog-desc{margin:8px 28px 0;font-family:var(--font-body);font-size:15px;line-height:1.5;color:var(--ink-soft);text-wrap:pretty}
+
+/* State pill: connections and queued jobs */
+.cs-state{display:inline-flex;align-items:center;height:28px;padding:0 12px;border:var(--line-thin) solid var(--ink);border-radius:var(--radius-pill);background:var(--paper);color:var(--ink);font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.cs-state--ok{background:var(--pickle)}
+.cs-state--off{border-style:dashed;border-color:var(--ink-soft);color:var(--ink-soft)}
+.cs-state--wait{background:var(--raw)}
+.cs-state--attention{background:var(--tomato);color:var(--on-tomato)}
+.cs-state--error{border-color:var(--tomato)}
+
+/* Errors and empty states: caption boxes */
+.cs-caption--error{background:var(--paper);border-color:var(--tomato)}
+.cs-error .cs-caption-text{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cs-error-text{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+.cs-empty{max-width:520px}
+.cs-empty-title{margin:2px 0 0;font-family:var(--font-display);font-weight:800;font-size:24px;line-height:1.05;letter-spacing:-0.03em;text-wrap:balance}
+.cs-empty-body{margin:6px 0 0;text-wrap:pretty}
+.cs-empty-action{margin-top:12px}
+
+/* The bin */
+.cs-bin{display:flex;flex-direction:column;gap:28px}
+.cs-bin>.cs-caption{max-width:620px}
+.cs-bin-grid{list-style:none;margin:0;padding:8px 6px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:30px 36px}
+.cs-bin-card{display:flex;flex-direction:column;align-items:center;gap:14px;min-width:0;color:var(--ink)}
+.cs-bin-shape{position:relative;width:100%;aspect-ratio:372/272;transform:rotate(var(--cs-tilt,-6deg))}
+.cs-bin-shape>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:grayscale(1)}
+.cs-bin-shape .cs-card-title{margin:0;font-size:clamp(17px,1.5vw,21px)}
+.cs-bin-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+/* The Look picker */
+.cs-look{min-width:0;margin:0;padding:0;border:0}
+.cs-look-legend{margin-bottom:10px;padding:0;font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+.cs-look-tiles{display:flex;gap:18px;flex-wrap:wrap;padding:4px 4px 6px}
+.cs-look-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;width:150px;box-sizing:border-box;padding:14px 12px 12px;border:var(--line) solid var(--ink);border-radius:var(--radius-sticker);background:var(--paper);box-shadow:var(--shadow-stamp);transform:rotate(var(--cs-tilt,0deg));cursor:pointer;transition:transform .14s cubic-bezier(.34,1.56,.64,1)}
+.cs-look-tile:hover{transform:rotate(0) translate(-1px,-2px)}
+.cs-look-tile:focus-within{outline:3px solid var(--focus);outline-offset:3px}
+.cs-look-tile--on{background:var(--nugget);box-shadow:var(--shadow-sticker)}
+.cs-look-radio{position:absolute;width:1px;height:1px;margin:0;opacity:0;pointer-events:none}
+.cs-look-art{display:grid;place-items:center;height:58px}
+.cs-look-name{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-weight:800;font-size:18px;letter-spacing:-0.01em}
+.cs-look>.cs-field-hint{margin-top:10px}
+.cs-look-note{position:absolute;top:-12px;right:-10px;padding:2px 8px;border:var(--line-thin) solid var(--ink);border-radius:var(--radius-pill);background:var(--paper);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;transform:rotate(6deg)}
+
+/* Settings sections */
+.cs-settings{display:flex;flex-direction:column;gap:14px}
+.cs-settings+.cs-settings,.cs-look+.cs-settings{margin-top:10px;padding-top:24px;border-top:var(--line) solid var(--ink)}
+.cs-settings-title{margin:0;font-family:var(--font-display);font-weight:800;font-size:22px;line-height:1.05;letter-spacing:-0.03em}
+.cs-settings-desc{margin:4px 0 0;font-size:14px;text-wrap:pretty}
+.cs-settings-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cs-settings-detail{min-width:0;margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);overflow-wrap:anywhere}
+.cs-settings-actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:4px}
+.cs-settings-actions-end{display:flex;gap:10px;flex-wrap:wrap}
+
+/* Plan with Claude */
+.cs-plan-bubble{margin-bottom:22px;padding:18px 20px}
+.cs-plan-prompt{max-height:220px;margin:0;overflow:auto;font-family:var(--font-mono);font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
+.cs-plan-prompt:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.cs-plan-send{display:flex;flex-direction:column;gap:8px}
+.cs-plan-pills{display:flex;flex-wrap:wrap;gap:10px}
+.cs-plan-note{margin:0;font-family:var(--font-body);font-size:13px;line-height:1.45;color:var(--ink-soft);text-wrap:pretty}
+.cs-plan-note[role="status"]{color:var(--ink)}
+.cs-plan-save{display:flex;justify-content:flex-end}
+
+/* Random nugget: the drawn card drops in with a PICK ME stamp */
+.cs-drawn{position:relative;width:min(100%,340px);aspect-ratio:372/272;margin:6px auto 4px;color:var(--ink);transform:rotate(var(--cs-tilt,-4deg));animation:cs-drop .62s cubic-bezier(.34,1.56,.64,1) both}
+.cs-drawn>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.cs-drawn .cs-card-title{margin:0}
+.cs-stamp{position:absolute;top:-4%;right:-6%;padding:6px 12px;border:var(--line) solid var(--tomato);outline:2px solid var(--tomato);outline-offset:-8px;border-radius:4px;background:var(--paper);color:var(--tomato);font-family:var(--font-display);font-weight:800;font-size:26px;line-height:1;letter-spacing:.02em;white-space:nowrap;transform:rotate(14deg);animation:cs-stamp .3s cubic-bezier(.34,1.56,.64,1) .5s both}
+@keyframes cs-drop{0%{opacity:0;transform:translateY(-120%) rotate(calc(var(--cs-tilt,-4deg) - 24deg))}40%{opacity:1}100%{transform:rotate(var(--cs-tilt,-4deg))}}
+@keyframes cs-stamp{0%{opacity:0;transform:rotate(14deg) scale(1.8)}100%{opacity:1;transform:rotate(14deg) scale(1)}}
+.cs-random-wait{margin:0;color:var(--ink-soft)}
+.cs-random-notes{margin:0;font-size:15px;line-height:1.5;text-wrap:pretty}
+.cs-challenge{display:flex;flex-direction:column;gap:12px;padding:14px 16px;border:var(--line-thin) solid var(--ink);border-radius:var(--radius-field);background:var(--mayo)}
+.cs-challenge-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cs-challenge-text{display:flex;flex:1 1 180px;flex-direction:column;gap:2px;min-width:0}
+.cs-challenge-label{font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.cs-challenge-value{font-size:15px;font-weight:700}
+.cs-challenge-track{margin-left:8px;font-weight:400;color:var(--ink-soft)}
+.cs-challenge-source{align-self:flex-end;font-family:var(--font-mono);font-size:12px;color:var(--ink-soft)}
+
+/* Feature requests: a strip of small panels */
+.cs-requests{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--gutter);margin:0;padding:0;list-style:none}
+.cs-request{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:14px 16px}
+.cs-request-head{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;flex-wrap:wrap}
+.cs-request-title{font-family:var(--font-display);font-weight:800;font-size:17px;letter-spacing:-0.01em}
+.cs-request-title a{color:var(--ink)}
+.cs-request-repo{font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);overflow-wrap:anywhere}
+.cs-request-error{margin:0;font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.cs-request--failed{border-color:var(--tomato)}
+
+@media (prefers-reduced-motion:reduce){
+  .cs-drawn,.cs-stamp{animation:none}
+  .cs-look-tile{transition:none}
+  .cs-look-tile:hover{transform:rotate(var(--cs-tilt,0deg))}
+}
