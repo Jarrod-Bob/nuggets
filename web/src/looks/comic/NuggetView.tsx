@@ -7,6 +7,7 @@ import { formatRelative } from '../../lib/formatRelative';
 import { describeOrigin } from '../../lib/origin';
 import type { NuggetPageModel } from '../../models/useNuggetPage';
 import { FeatureRequests } from './FeatureRequests';
+import { PlanWithClaude } from './PlanWithClaude';
 import { ActionError, Button, CardArt, CaptionBox, Dialog, EmptyState, shapeSeed, StatusPill, Tag } from './ui';
 
 /**
@@ -135,6 +136,8 @@ export function NuggetView({ page }: { page: NuggetPageModel }) {
       </main>
 
       {idea && <EditDialog page={page} idea={idea} tags={tags} />}
+
+      {idea && <PlanWithClaude open={page.planning} idea={idea} onClose={page.closePlan} onSave={page.savePlan} />}
 
       {page.purging && (
         <Dialog

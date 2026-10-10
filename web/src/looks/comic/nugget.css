@@ -212,3 +212,76 @@
   font-size: 14px;
   overflow-wrap: anywhere;
 }
+
+/* A speech bubble: something said. Plan with Claude's prompt is what you will say to Claude. */
+.comic-bubble {
+  position: relative;
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-bubble);
+  background: var(--comic-paper);
+}
+.comic-bubble--prompt {
+  margin-bottom: 22px;
+}
+.comic-bubble--prompt::after {
+  content: '';
+  position: absolute;
+  right: 44px;
+  bottom: -17px;
+  width: 24px;
+  height: 24px;
+  background: var(--comic-paper);
+  border-right: var(--comic-line) solid var(--comic-ink);
+  border-bottom: var(--comic-line) solid var(--comic-ink);
+  transform: skewX(-24deg) rotate(45deg);
+  border-bottom-right-radius: 4px;
+}
+
+/* Plan with Claude */
+.comic-plan-prompt {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  padding: 16px 20px;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.comic-plan-prompt:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: -6px;
+  border-radius: var(--comic-radius-bubble);
+}
+.comic-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.comic-plan-actions a {
+  text-decoration: none;
+}
+.comic-plan-note {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--comic-ink-soft);
+  text-wrap: pretty;
+}
+.comic-plan-note--strong {
+  color: var(--comic-ink);
+}
+.comic-plan-answer {
+  margin-top: 20px;
+}
+.comic-plan-error {
+  margin: 8px 0 0;
+  padding-left: 10px;
+  border-left: var(--comic-line) solid var(--comic-tomato);
+  font-size: 14px;
+}
+.comic-plan-save {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
