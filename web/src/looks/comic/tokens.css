@@ -1,0 +1,55 @@
+/* Comic look tokens, from design/comic-strip/system/project/tokens.json.
+   Scoped to the Comic look and prefixed --comic-*: they never reuse Classic's
+   --nug-* names, and the bundle's bare --ink / --paper are prefixed too. */
+[data-look="comic"] {
+  /* Colour */
+  --comic-paper: #ffffff;
+  --comic-mayo: #fff3d6;
+  --comic-toast: #f2c9a8;
+  --comic-ink: #141210;
+  --comic-ink-soft: #5a534c;
+  --comic-nugget: #ffb21e;
+  --comic-nugget-deep: #e08a00;
+  --comic-raw: #ffe3a3;
+  --comic-burnt: #8a4512;
+  --comic-tomato: #e8452c;
+  --comic-curry: #956a0a;
+  --comic-curry-gloss: #d9a53a;
+  --comic-pickle: #9fcf7f;
+  --comic-on-tomato: var(--comic-ink);
+  --comic-on-burnt: var(--comic-paper);
+  --comic-on-curry: var(--comic-paper);
+  --comic-focus: var(--comic-ink);
+
+  /* Type families */
+  --comic-font-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --comic-font-body: "Instrument Sans", system-ui, sans-serif;
+  --comic-font-mono: "Space Mono", ui-monospace, Menlo, monospace;
+  --comic-font-sfx: Bangers, Impact, "Arial Black", sans-serif;
+
+  /* Spacing */
+  --comic-space-1: 4px;
+  --comic-space-2: 8px;
+  --comic-gutter: 14px;
+  --comic-space-4: 16px;
+  --comic-page: 24px;
+  --comic-panel-pad: 32px;
+  --comic-card-gap: 40px;
+
+  /* Radius */
+  --comic-radius-panel: 6px;
+  --comic-radius-field: 10px;
+  --comic-radius-bubble: 26px;
+  --comic-radius-sticker: 4px;
+  --comic-radius-pill: 9999px;
+
+  /* Stroke */
+  --comic-line: 3px;
+  --comic-line-thin: 2.5px;
+
+  /* Shadow: solid ink offsets, never blurred */
+  --comic-shadow-lift: 3px 3px 0 var(--comic-ink);
+  --comic-shadow-sticker: 10px 10px 0 var(--comic-ink);
+  --comic-shadow-stamp: 3px 3px 0 var(--comic-ink);
+  --comic-shadow-thought: 4px 4px 0 var(--comic-ink);
+}

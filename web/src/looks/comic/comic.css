@@ -1,0 +1,59 @@
+/* The Comic shell and its top bar (the design's Strip). Values come from tokens.css. */
+.comic-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--comic-paper);
+  color: var(--comic-ink);
+  font-family: var(--comic-font-body);
+}
+
+.comic-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  min-height: 66px;
+  padding: 10px 12px 10px 24px;
+  background: var(--comic-nugget);
+  border-bottom: var(--comic-line) solid var(--comic-ink);
+}
+
+.comic-wordmark {
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  color: var(--comic-ink);
+  text-decoration: none;
+}
+.comic-wordmark:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 3px;
+}
+
+.comic-strip-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.comic-strip-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.comic-footer {
+  padding: 0 var(--comic-page) 72px;
+  display: flex;
+  justify-content: center;
+}
+.comic-footer span {
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--comic-ink-soft);
+}
