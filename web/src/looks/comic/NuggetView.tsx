@@ -2,22 +2,19 @@ import './nugget.css';
 import { Link } from 'react-router-dom';
 import type { Idea, Tag as TagRecord } from '../../api';
 import { TopBar } from '../../components/navigation/TopBar';
-import { IdeaForm } from '../../components/nuggets/IdeaForm';
 import { formatRelative } from '../../lib/formatRelative';
 import { describeOrigin } from '../../lib/origin';
 import type { NuggetPageModel } from '../../models/useNuggetPage';
 import { FeatureRequests } from './FeatureRequests';
+import { IdeaDialog } from './IdeaDialog';
 import { PlanWithClaude } from './PlanWithClaude';
 import { TagSuggestions } from './TagSuggestions';
 import { ActionError, Button, CardArt, CaptionBox, Dialog, EmptyState, shapeSeed, StatusPill, Tag } from './ui';
 
-/**
- * The Edit nugget dialog. The one place the page names its form: today
- * Classic's IdeaForm (the Comic dialog is #54), so swapping it is a change here.
- */
+/** The Edit nugget dialog: the Comic IdeaDialog, fed by the page model. */
 function EditDialog({ page, idea, tags }: { page: NuggetPageModel; idea: Idea; tags: TagRecord[] }) {
   return (
-    <IdeaForm
+    <IdeaDialog
       open={page.editing}
       mode="edit"
       idea={idea}
