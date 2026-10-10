@@ -22,6 +22,9 @@ export interface DialogProps {
   children?: React.ReactNode;
 }
 
+/** The open Comic dialogs, oldest first: Escape closes only the last. */
+const open: symbol[] = [];
+
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function Dialog({ title, description, onClose, footer, width = 560, className, children }: DialogProps) {
@@ -35,13 +38,18 @@ export function Dialog({ title, description, onClose, footer, width = 560, class
   });
 
   React.useEffect(() => {
+    const token = Symbol('dialog');
     const before = document.activeElement as HTMLElement | null;
     const el = panel.current;
     // Take focus: the first control in the body, else the panel itself.
     (el?.querySelector('.comic-dialog-body')?.querySelector<HTMLElement>(FOCUSABLE) ?? el)?.focus();
+    open.push(token);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        e.stopPropagation();
+        // Only the topmost Comic dialog answers; a key something else already
+        // handled (the curry corner draining) is left alone.
+        if (open[open.length - 1] !== token || e.defaultPrevented) return;
+        e.preventDefault();
         onCloseRef.current?.();
       } else if (e.key === 'Tab' && el) {
         const items = [...el.querySelectorAll<HTMLElement>(FOCUSABLE)];
@@ -60,6 +68,7 @@ export function Dialog({ title, description, onClose, footer, width = 560, class
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
+      open.splice(open.indexOf(token), 1);
       before?.focus?.();
     };
   }, []);

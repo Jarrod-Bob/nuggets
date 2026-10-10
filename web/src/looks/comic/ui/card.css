@@ -183,7 +183,7 @@
   .comic-curry-flood[data-open='true'] {
     clip-path: none;
     opacity: 0;
-    transition: opacity var(--dur-base);
+    transition: opacity 200ms; /* the design's fade; the house tokens are zero under reduced motion */
   }
   .comic-curry-flood[data-open='true'] {
     opacity: 1;
@@ -194,6 +194,6 @@
     transition: none;
   }
   .comic-curry-name[data-open='true'] {
-    transition: opacity var(--dur-base);
+    transition: opacity 200ms; /* the design's fade; the house tokens are zero under reduced motion */
   }
 }

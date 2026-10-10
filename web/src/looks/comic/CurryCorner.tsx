@@ -87,7 +87,10 @@ export function CurryCorner({ projectName, title, shape, status }: { projectName
           sauce.press();
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Escape' && sauce.escape()) e.stopPropagation();
+          if (e.key === 'Escape' && sauce.escape()) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
         }}
       />
     </>
