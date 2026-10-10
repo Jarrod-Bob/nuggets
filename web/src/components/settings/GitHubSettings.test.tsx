@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LiveUpdatesProvider } from '../../live/LiveUpdates';
 import { GitHubSettings } from './GitHubSettings';
+import { GitHubSettings as ComicGitHubSettings } from '../../looks/comic/settings/GitHubSettings';
 import type { GitHubStatus } from '../../api';
 
 class QuietEventSource {
@@ -57,10 +58,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** The section under test: Classic's, or the Comic look's drawing of it (same model, same accessible names). */
+let Section: typeof GitHubSettings = GitHubSettings;
+
 const renderSection = () =>
   render(
     <LiveUpdatesProvider>
-      <GitHubSettings open />
+      <Section open />
     </LiveUpdatesProvider>,
   );
 
@@ -69,7 +73,14 @@ const putBodies = () =>
     .filter(([path, init]) => path === '/api/settings/github' && (init as RequestInit | undefined)?.method === 'PUT')
     .map(([, init]) => JSON.parse(String((init as RequestInit).body)));
 
-describe('GitHubSettings', () => {
+describe.each([
+  ['classic', GitHubSettings],
+  ['comic', ComicGitHubSettings],
+] as const)('GitHubSettings under the %s look', (_look, Impl) => {
+  beforeEach(() => {
+    Section = Impl;
+  });
+
   it('explains the token scope and shows the queue while not connected', async () => {
     renderSection();
     expect(await screen.findByText('Not connected')).toBeTruthy();
