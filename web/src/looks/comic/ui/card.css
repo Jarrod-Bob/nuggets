@@ -9,7 +9,7 @@
   aspect-ratio: 372 / 272;
   color: var(--comic-ink);
   transform: rotate(var(--comic-tilt, 0deg));
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform var(--dur-base) var(--ease-bounce);
 }
 .comic-card:hover {
   transform: rotate(calc(var(--comic-tilt, 0deg) * -1)) translateY(-6px) scale(1.03);
@@ -108,21 +108,21 @@
   z-index: 3;
   pointer-events: none;
   clip-path: circle(0% at 93% 6%);
-  transition: clip-path 0.8s cubic-bezier(0.65, 0, 0.35, 1);
+  transition: clip-path var(--comic-drain) var(--comic-ease-pour);
 }
 .comic-curry-flood[data-open='true'] {
   clip-path: circle(150% at 93% 6%);
-  transition-duration: 2s;
+  transition-duration: var(--comic-pour);
 }
 .comic-curry-drips {
   transform-box: fill-box;
   transform-origin: 50% 0;
   transform: scaleY(0);
-  transition: transform 0.2s ease-in;
+  transition: transform var(--dur-base) ease-in;
 }
 .comic-curry-flood[data-open='true'] .comic-curry-drips {
   transform: scaleY(1);
-  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1.5s;
+  transition: transform var(--dur-lazy) var(--ease-bounce) var(--comic-drip-delay);
 }
 .comic-curry-name {
   position: absolute;
@@ -136,11 +136,11 @@
   color: var(--comic-on-curry);
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--dur-base);
 }
 .comic-curry-name[data-open='true'] {
   opacity: 1;
-  transition: opacity 0.3s 1.1s;
+  transition: opacity var(--dur-slow) var(--comic-name-delay);
 }
 .comic-curry-label {
   font-family: var(--comic-font-mono);
@@ -183,7 +183,7 @@
   .comic-curry-flood[data-open='true'] {
     clip-path: none;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity var(--dur-base);
   }
   .comic-curry-flood[data-open='true'] {
     opacity: 1;
@@ -194,6 +194,6 @@
     transition: none;
   }
   .comic-curry-name[data-open='true'] {
-    transition: opacity 0.2s;
+    transition: opacity var(--dur-base);
   }
 }
