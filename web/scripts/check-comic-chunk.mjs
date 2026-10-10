@@ -22,7 +22,9 @@ check(comicFiles.some((f) => f.endsWith('.css')), 'no separate Comic CSS chunk (
 
 // What only the Comic chunk may contain.
 const FONTS = ['Bricolage Grotesque', 'Bangers', 'Instrument Sans', 'Space Mono'];
-const comicOnly = [...FONTS, '--comic-', 'comic-strip', 'comic-shell'];
+// Class names and copy from the Comic views (#52): the tray, its cards, the curry corner, the dialog.
+const VIEW_MARKERS = ['comic-tray', 'comic-card', 'comic-curry', 'comic-dialog', 'comic-pill', 'PICK ME'];
+const comicOnly = [...FONTS, '--comic-', 'comic-strip', 'comic-shell', ...VIEW_MARKERS];
 
 for (const file of entryFiles) {
   check(!/ComicShell/.test(file), `index.html loads the Comic chunk eagerly: ${file}`);
@@ -40,6 +42,16 @@ for (const needle of [...FONTS, '--comic-ink', 'comic-strip']) {
   check(comicCss.includes(needle), `Comic CSS chunk is missing "${needle}"`);
 }
 check(comicJs.includes('comic-strip'), 'Comic JS chunk is missing the shell (comic-strip)');
+
+// The Comic views are lazy chunks of their own (not the entry's): they hold the
+// markers above, and no file the entry loads does. Lazy chunks are every
+// asset .js that is neither the entry nor the shell.
+const entrySet = new Set(entryFiles.map((f) => path.basename(f)));
+const viewJs = readdirSync(assets).filter((f) => f.endsWith('.js') && !entrySet.has(f) && !comicFiles.includes(f));
+const viewText = viewJs.map((f) => readFileSync(path.join(assets, f), 'utf8')).join('\n');
+for (const needle of ['comic-tray', 'comic-curry', 'comic-card', 'PICK ME']) {
+  check(viewText.includes(needle), `no lazy Comic view chunk contains "${needle}" (is the Comic bank still lazy?)`);
+}
 
 if (failures.length > 0) {
   console.error('Comic chunk check FAILED:\n - ' + failures.join('\n - '));

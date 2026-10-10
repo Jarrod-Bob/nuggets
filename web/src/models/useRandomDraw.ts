@@ -1,8 +1,9 @@
 import React from 'react';
 import { drawConstraint, drawTimebox, type Constraint, type Rng } from '../lib/challenge';
 import type { TimeboxPreset } from '../lib/challengeCatalog';
+import type { Status } from '../api';
 
-export interface RandomIdea { id?: number; title: string; notes?: string; tags?: string[] }
+export interface RandomIdea { id?: number; title: string; notes?: string; tags?: string[]; status?: Status }
 
 /**
  * The Draw-a-nugget challenge, shared by every look (ADR 0002): opening deals

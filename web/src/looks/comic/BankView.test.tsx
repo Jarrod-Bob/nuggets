@@ -106,7 +106,7 @@ describe('the bank under the Comic look', () => {
 
   it('narrows the tray by status and by tag from the chips', async () => {
     renderBank();
-    await screen.findByText('Named idea');
+    await screen.findByRole('button', { name: /Named idea/ });
     const status = screen.getByRole('group', { name: 'Filter by status' });
     fireEvent.click(within(status).getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(requested.some((p) => p.includes('status=done'))).toBe(true));

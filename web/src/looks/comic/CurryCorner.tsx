@@ -2,7 +2,7 @@ import React from 'react';
 import type { Status } from '../../api';
 import { useSauce } from '../../models/useSauce';
 import { blob } from './ui/blob';
-import { CARD_BOX, cardShape, outlineDash } from './ui/CardArt';
+import { CARD_BOX, cardShape, outlineDash } from './ui/cardGeometry';
 
 const DAB = blob(350, 12, 128, 104, 11, 22, 0.07);
 const FLOOD = blob(250, 90, 420, 320, 37, 30, 0.04);
