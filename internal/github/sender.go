@@ -62,6 +62,7 @@ type Sender struct {
 	baseBackoff    time.Duration
 	maxBackoff     time.Duration
 	requestTimeout time.Duration
+	now            func() time.Time
 
 	// mu guards the fields below and is held by Reset and while recording
 	// the status, so a settings change can't interleave with a status write
@@ -96,6 +97,10 @@ func WithBackoff(base, max time.Duration) Option {
 }
 func WithRequestTimeout(d time.Duration) Option { return func(s *Sender) { s.requestTimeout = d } }
 
+// WithClock replaces the clock that decides when a pause or a retry is over,
+// so tests don't depend on timer resolution.
+func WithClock(now func() time.Time) Option { return func(s *Sender) { s.now = now } }
+
 func NewSender(outbox *Outbox, ideas *idea.Store, settingsStore *settings.Store, opts ...Option) *Sender {
 	s := &Sender{
 		outbox:         outbox,
@@ -107,6 +112,7 @@ func NewSender(outbox *Outbox, ideas *idea.Store, settingsStore *settings.Store,
 		baseBackoff:    5 * time.Second,
 		maxBackoff:     30 * time.Minute,
 		requestTimeout: DefaultRequestTimeout,
+		now:            time.Now,
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -180,13 +186,13 @@ func (s *Sender) Pass(ctx context.Context) error {
 	if rejected {
 		return errRejected
 	}
-	if time.Now().Before(pause) {
+	if s.now().Before(pause) {
 		return &pausedError{until: pause}
 	}
 
 	client := NewClient(s.baseURL, cfg.token, s.httpClient)
 	for ctx.Err() == nil {
-		row, ok, err := s.outbox.nextDue(ctx, time.Now().UTC())
+		row, ok, err := s.outbox.nextDue(ctx, s.now().UTC())
 		if err != nil {
 			return err
 		}
@@ -277,7 +283,7 @@ func (s *Sender) created(ctx context.Context, cfg Config, row Issue, issue Creat
 func (s *Sender) failed(ctx context.Context, cfg Config, row Issue, err error) error {
 	var apiErr *APIError
 	isAPI := errors.As(err, &apiErr)
-	now := time.Now().UTC()
+	now := s.now().UTC()
 
 	switch {
 	case isAPI && apiErr.StatusCode == http.StatusUnauthorized:
