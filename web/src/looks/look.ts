@@ -62,7 +62,7 @@ export function useLook(): Look {
   return look ?? 'classic';
 }
 
-/** What a page draws per Look. Comic is optional: a view not drawn yet falls back to Classic. */
+/** What a page draws per Look (elements, not components). Comic is optional: a view not drawn yet falls back to Classic. */
 export type LookViews<C> = { classic: C; comic?: C };
 
 export function viewFor<C>(look: Look, views: LookViews<C>): C {
