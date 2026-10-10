@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LiveUpdatesProvider } from '../../live/LiveUpdates';
 import { TagSuggestionSettings } from './TagSuggestionSettings';
+import { TagSuggestionSettings as ComicTagSuggestionSettings } from '../../looks/comic/settings/TagSuggestionSettings';
 import type { TagSuggestionStatus } from '../../api';
 
 class QuietEventSource {
@@ -43,10 +44,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** The section under test: Classic's, or the Comic look's drawing of it (same model, same accessible names). */
+let Section: typeof TagSuggestionSettings = TagSuggestionSettings;
+
 const renderSection = () =>
   render(
     <LiveUpdatesProvider>
-      <TagSuggestionSettings open />
+      <Section open />
     </LiveUpdatesProvider>,
   );
 
@@ -55,7 +59,14 @@ const putBodies = () =>
     .filter(([path, init]) => path === '/api/settings/jev' && (init as RequestInit | undefined)?.method === 'PUT')
     .map(([, init]) => JSON.parse(String((init as RequestInit).body)));
 
-describe('TagSuggestionSettings', () => {
+describe.each([
+  ['classic', TagSuggestionSettings],
+  ['comic', ComicTagSuggestionSettings],
+] as const)('TagSuggestionSettings under the %s look', (_look, Impl) => {
+  beforeEach(() => {
+    Section = Impl;
+  });
+
   it('names TypeSafe, links to its keys and asks for a key while not connected', async () => {
     renderSection();
     expect(await screen.findByRole('heading', { name: 'Tag suggestions' })).toBeTruthy();

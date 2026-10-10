@@ -121,6 +121,14 @@ describe.each(LOOKS)('under the %s look', (look) => {
       expect(await screen.findByText('Trash is empty')).toBeTruthy();
     });
 
+    it("opens Settings in this Look's own dialog", async () => {
+      renderTrash();
+      await screen.findByText('First binned');
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+      await screen.findByRole('dialog', { name: 'Settings' });
+      expect(document.querySelector('.comic-dialog') !== null).toBe(look === 'comic');
+    });
+
     it('shows the binned nuggets', async () => {
       renderTrash();
       expect(await screen.findByText('First binned')).toBeTruthy();

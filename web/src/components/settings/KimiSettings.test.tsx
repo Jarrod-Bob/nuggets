@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KimiSettings } from './KimiSettings';
+import { KimiSettings as ComicKimiSettings } from '../../looks/comic/settings/KimiSettings';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
@@ -33,9 +34,12 @@ afterEach(() => {
 
 const urlInput = () => screen.getByLabelText(/^kimi address/) as HTMLInputElement;
 
-describe('KimiSettings', () => {
+describe.each([
+  ['classic', KimiSettings],
+  ['comic', ComicKimiSettings],
+] as const)('KimiSettings under the %s look', (_look, Section) => {
   it('shows the saved address and saves a new one', async () => {
-    render(<KimiSettings open />);
+    render(<Section open />);
     await waitFor(() => expect(urlInput().value).toBe('http://127.0.0.1:7799'));
 
     fireEvent.change(urlInput(), { target: { value: 'http://127.0.0.1:7800/' } });
@@ -47,7 +51,7 @@ describe('KimiSettings', () => {
   });
 
   it("shows the server's message for a bad address", async () => {
-    render(<KimiSettings open />);
+    render(<Section open />);
     await waitFor(() => expect(urlInput().value).toBe('http://127.0.0.1:7799'));
 
     fireEvent.change(urlInput(), { target: { value: 'localhost:7799' } });
