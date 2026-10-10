@@ -83,8 +83,7 @@ function SuggestedTag({
   busy: boolean;
 }) {
   const reasonId = React.useId();
-  const reason = useSuggestionReason<HTMLSpanElement>();
-  const { hovered, open, side } = reason;
+  const { ref, handlers, hovered, open, side } = useSuggestionReason<HTMLSpanElement>();
 
   const button: React.CSSProperties = {
     border: 'none',
@@ -99,8 +98,8 @@ function SuggestedTag({
 
   return (
     <span
-      ref={reason.ref}
-      {...reason.handlers}
+      ref={ref}
+      {...handlers}
       style={{
         position: 'relative',
         display: 'inline-flex',
