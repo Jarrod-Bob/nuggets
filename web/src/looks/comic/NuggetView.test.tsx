@@ -143,6 +143,22 @@ describe("a nugget's page under the Comic look", () => {
     expect(screen.getAllByRole('button', { name: 'Back to the bank' }).length).toBeGreaterThan(0);
   });
 
+  it('plans with Claude in a Comic dialog: the prompt in a speech bubble, Claude Desktop as the tomato pill', async () => {
+    renderPage();
+    await waitFor(() => expect(document.querySelector('.comic-nugget')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Plan with Claude' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Plan with Claude' });
+    expect(dialog.className).toContain('comic-dialog');
+    const prompt = within(dialog).getByLabelText('Planning prompt');
+    expect(prompt.closest('.comic-bubble')).toBeTruthy();
+    expect(prompt.textContent).toContain('Title: A loaded nugget');
+    const desktop = within(dialog).getByRole('link', { name: 'Open in Claude Desktop' });
+    expect(desktop.className).toContain('comic-pill--tomato');
+    expect((within(dialog).getByRole('button', { name: 'Save to notes' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
   it('draws each feature request as its own small panel with a state pill, red-ink when it failed', async () => {
     requests = [
       { id: 7, idea_id: 1, repo: 'Jarrod-Bob/nuggets', tag: 'web', state: 'failed', attempts: 1, last_error: 'GitHub answered 404.' },
