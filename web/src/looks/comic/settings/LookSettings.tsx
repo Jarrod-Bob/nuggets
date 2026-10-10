@@ -3,9 +3,9 @@ import type { Look } from '../../look';
 import { useLookSetting } from '../../../models/useLookSetting';
 import { ActionError, CardArt, Icon } from '../ui';
 
-const OPTIONS: ReadonlyArray<{ look: Look; label: string; tilt: number }> = [
-  { look: 'classic', label: 'Classic', tilt: -2 },
-  { look: 'comic', label: 'Comic (in progress)', tilt: 2 },
+const OPTIONS: ReadonlyArray<{ look: Look; name: string; label: string; tilt: number; inProgress?: boolean }> = [
+  { look: 'classic', name: 'Classic', label: 'Classic', tilt: -2 },
+  { look: 'comic', name: 'Comic', label: 'Comic (in progress)', tilt: 2, inProgress: true },
 ];
 
 /** What each tile shows of its Look: a plain grey-lined card for Classic, a drawn nugget for Comic. */
@@ -51,20 +51,21 @@ export function LookSettings({ open }: { open: boolean }) {
                 className="comic-look-radio"
                 aria-label={option.label}
                 checked={on}
-                disabled={look === undefined || busy}
-                onChange={() => choose(option.look)}
+                disabled={look === undefined}
+                // Stay enabled while saving so keyboard focus isn't dropped; a second choice waits for the first.
+                onChange={() => !busy && choose(option.look)}
               />
               <LookArt look={option.look} />
               <span className="comic-look-name">
-                {option.look === 'comic' ? 'Comic' : 'Classic'}
+                {option.name}
                 {on && <Icon name="check" size={16} />}
               </span>
-              {option.look === 'comic' && <span className="comic-look-note">In progress</span>}
+              {option.inProgress && <span className="comic-look-note">In progress</span>}
             </label>
           );
         })}
       </div>
-      <p className="comic-look-hint">How nuggets looks. It applies at once. Comic is still being drawn, so some screens still show Classic.</p>
+      <p className="comic-look-hint">How nuggets look. It applies at once. Comic is still being drawn, so some screens still show Classic.</p>
     </section>
   );
 }

@@ -1,15 +1,7 @@
+import { describePending, TYPESAFE_KEYS_URL } from '../../../lib/tagSuggestions';
 import { useTagSuggestionSettings } from '../../../models/useTagSuggestionSettings';
 import { ActionError, Button, Field } from '../ui';
 import { SettingsSection } from './SettingsSection';
-
-/** Where TypeSafe issues API keys. */
-const KEYS_URL = 'https://console.typesafe.ai/keys';
-
-/** "N nuggets waiting to be checked", or null when none are. */
-function describePending(pending: number): string | null {
-  if (pending <= 0) return null;
-  return `${pending} ${pending === 1 ? 'nugget' : 'nuggets'} waiting to be checked`;
-}
 
 /**
  * The "Tag suggestions" section of the Comic Settings dialog: the TypeSafe API
@@ -69,7 +61,7 @@ export function TagSuggestionSettings({ open }: { open: boolean }) {
       {!status.connected && (
         <p className="comic-settings-note">
           Suggestions come from{' '}
-          <a href={KEYS_URL} target="_blank" rel="noreferrer">
+          <a href={TYPESAFE_KEYS_URL} target="_blank" rel="noreferrer">
             TypeSafe — get an API key
           </a>
           . Each nugget whose title or notes change is checked once against the tags in use; nuggets saved before a key is added aren't checked until they next
