@@ -108,6 +108,13 @@ describe.each(LOOKS)('under the %s look', (look) => {
   };
 
   describe('the trash', () => {
+    it("draws the bin in this Look's own view, not another's", async () => {
+      renderTrash();
+      await screen.findByText('First binned');
+      // The Comic bin is the lazy view's marker; Classic must never show it.
+      expect(document.querySelector('.comic-bin') !== null).toBe(look === 'comic');
+    });
+
     it('says so when nothing has been binned', async () => {
       trash = [];
       renderTrash();
