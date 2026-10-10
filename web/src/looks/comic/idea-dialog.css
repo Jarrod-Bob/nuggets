@@ -1,0 +1,168 @@
+/* The Comic idea dialog (#54): the pieces the kit's Field doesn't cover. */
+.comic-idea-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.comic-idea-link {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.comic-idea-link .comic-field-input:first-child {
+  flex: 2;
+}
+.comic-idea-link .comic-field-input:nth-child(2) {
+  flex: 1;
+}
+
+/* Project name + kimi */
+.comic-namefield {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comic-namefield-busy {
+  animation: comic-namefield-pulse 1s ease-in-out infinite alternate;
+}
+@keyframes comic-namefield-pulse {
+  from {
+    box-shadow: 0 0 0 0 var(--comic-nugget);
+  }
+  to {
+    box-shadow: 0 0 0 5px var(--comic-nugget);
+  }
+}
+.comic-namefield-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.comic-namefield-names {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.comic-namefield-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.comic-namefield-name {
+  cursor: pointer;
+  padding: 4px 12px;
+  border: var(--comic-line-thin) solid var(--comic-ink);
+  border-radius: var(--comic-radius-pill);
+  background: var(--comic-paper);
+  font-size: 14px;
+  font-weight: 600;
+}
+.comic-namefield-name[aria-selected='true'] {
+  background: var(--comic-nugget);
+}
+.comic-namefield-name:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 3px;
+}
+.comic-namefield-why {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Tags */
+.comic-tagfield {
+  position: relative;
+}
+.comic-tagfield-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  border: var(--comic-line-thin) solid var(--comic-ink);
+  border-radius: var(--comic-radius-field);
+  background: var(--comic-paper);
+}
+.comic-tagfield-box:focus-within {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 3px;
+}
+.comic-tagfield-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border: var(--comic-line-thin) solid var(--comic-ink);
+  border-radius: var(--comic-radius-pill);
+  background: var(--comic-mayo);
+  font-family: var(--comic-font-mono);
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.comic-tagfield-remove {
+  display: inline-flex;
+  padding: 3px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--comic-ink);
+  cursor: pointer;
+}
+.comic-tagfield-remove:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 1px;
+}
+.comic-tagfield-input {
+  flex: 1;
+  min-width: 90px;
+  height: 28px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  color: var(--comic-ink);
+}
+.comic-tagfield-list {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  padding: 4px;
+  border: var(--comic-line-thin) solid var(--comic-ink);
+  border-radius: var(--comic-radius-field);
+  background: var(--comic-paper);
+  box-shadow: var(--comic-shadow-lift);
+}
+.comic-tagfield-option {
+  display: flex;
+  align-items: center;
+  padding: 7px 9px;
+  border-radius: var(--comic-radius-sticker);
+  cursor: pointer;
+}
+.comic-tagfield-option[aria-selected='true'] {
+  background: var(--comic-mayo);
+}
+.comic-tagfield-new {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--comic-ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comic-namefield-busy {
+    animation: none;
+    box-shadow: 0 0 0 4px var(--comic-nugget);
+  }
+}
