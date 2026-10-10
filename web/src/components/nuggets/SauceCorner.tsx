@@ -3,6 +3,7 @@ import { m, useMotionValue, useMotionValueEvent, useReducedMotion } from 'motion
 import { dur, ease } from '../../lib/motion';
 import { nugHash } from './fluidRadius';
 import { oozeParams, oozePath } from './oozePath';
+import { useSauce } from '../../models/useSauce';
 
 /**
  * A curry-sauce drip on a named nugget's top-left corner (issue #37). The
@@ -79,12 +80,9 @@ function garnishFor(seed: string): { creeps: Creep[]; specks: Speck[] } {
 }
 
 export function SauceCorner({ projectName, seed, radius }: { projectName: string; seed: string; radius: string }) {
-  const [pinned, setPinned] = React.useState(false);
-  const [previewing, setPreviewing] = React.useState(false);
-  // After a click drains the flood, the pointer is still on the sauce; don't let it preview again until it leaves.
-  const holdPreview = React.useRef(false);
+  const sauce = useSauce();
   const reduce = useReducedMotion();
-  const open = pinned || previewing;
+  const open = sauce.open;
   const drip = DRIPS[nugHash(seed) % DRIPS.length];
   const { creeps, specks } = React.useMemo(() => garnishFor(seed), [seed]);
   const params = React.useMemo(() => oozeParams(seed), [seed]);
@@ -192,16 +190,14 @@ export function SauceCorner({ projectName, seed, radius }: { projectName: string
           }}>{projectName}</span>
         </m.div>
         <m.button type="button" aria-label={`Project name: ${projectName}`} aria-expanded={open}
-          onHoverStart={() => { if (!holdPreview.current) setPreviewing(true); }}
-          onHoverEnd={() => { holdPreview.current = false; setPreviewing(false); }}
+          onHoverStart={sauce.hoverStart}
+          onHoverEnd={sauce.hoverEnd}
           onClick={e => {
             e.stopPropagation();
-            // Unpinning drains straight away, even with the pointer still on the sauce.
-            if (pinned) { holdPreview.current = true; setPreviewing(false); }
-            setPinned(!pinned);
+            sauce.press();
           }}
           onKeyDown={e => {
-            if (e.key === 'Escape' && open) { e.stopPropagation(); setPinned(false); setPreviewing(false); }
+            if (e.key === 'Escape' && sauce.escape()) e.stopPropagation();
           }}
           whileHover={{ scaleY: 1.1 }}
           style={{

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { TagSuggestion } from '../../api';
+import { REASON_DELAY_MS, REASON_MAX_VW, REASON_MAX_WIDTH, useSuggestionReason, type ReasonSide } from '../../models/useSuggestionReason';
 
 export interface TagSuggestionsProps {
   suggestions: TagSuggestion[];
@@ -9,16 +10,8 @@ export interface TagSuggestionsProps {
   busy?: string | null;
 }
 
-/** How long a pointer or focus rests on a suggestion before its reason shows. */
-export const REASON_DELAY_MS = 250;
-/** The reason popover's widest: this many px, and at most this share of the viewport. */
-const REASON_MAX_WIDTH = 300;
-const REASON_MAX_VW = 78;
-/** Keep the popover this far from the page's right edge, or open it leftwards. */
-const EDGE_GUTTER = 16;
-
-/** Which way the reason popover opens from its chip. */
-type Side = 'right' | 'left';
+/** Re-exported for the tests that wait it out. */
+export { REASON_DELAY_MS };
 
 /**
  * A nugget's tag suggestions (Jev tag-suggestions design §7): one dashed tray
@@ -90,38 +83,8 @@ function SuggestedTag({
   busy: boolean;
 }) {
   const reasonId = React.useId();
-  const chip = React.useRef<HTMLSpanElement>(null);
-  const [hovered, setHovered] = React.useState(false);
-  const [focused, setFocused] = React.useState(false);
-  const [open, setOpen] = React.useState(false);
-  const [side, setSide] = React.useState<Side>('right');
-
-  // Hover or focus arms the reason; it shows after REASON_DELAY_MS and goes
-  // the moment both have left. Escape closes it until the next arrival.
-  const engaged = hovered || focused;
-  React.useEffect(() => {
-    if (!engaged) {
-      setOpen(false);
-      return;
-    }
-    const timer = setTimeout(() => {
-      // Open leftwards when the popover would run off the right edge.
-      const left = chip.current?.getBoundingClientRect().left ?? 0;
-      const width = Math.min(REASON_MAX_WIDTH, (window.innerWidth * REASON_MAX_VW) / 100);
-      setSide(left + width > document.documentElement.clientWidth - EDGE_GUTTER ? 'left' : 'right');
-      setOpen(true);
-    }, REASON_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [engaged]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open]);
+  const reason = useSuggestionReason<HTMLSpanElement>();
+  const { hovered, open, side } = reason;
 
   const button: React.CSSProperties = {
     border: 'none',
@@ -136,13 +99,8 @@ function SuggestedTag({
 
   return (
     <span
-      ref={chip}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocus={() => setFocused(true)}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
-      }}
+      ref={reason.ref}
+      {...reason.handlers}
       style={{
         position: 'relative',
         display: 'inline-flex',
@@ -207,7 +165,7 @@ function SuggestedTag({
  * the chip, so the pointer can move onto the popover without closing it. The
  * motion uses the duration tokens, which are 0 under prefers-reduced-motion.
  */
-function Reason({ id, tag, examples, open, side }: { id: string; tag: string; examples: string[]; open: boolean; side: Side }) {
+function Reason({ id, tag, examples, open, side }: { id: string; tag: string; examples: string[]; open: boolean; side: ReasonSide }) {
   // Pinned to the chip's left edge, or its right edge when opening leftwards.
   const edge = (offset: number): React.CSSProperties => (side === 'left' ? { right: offset } : { left: offset });
   return (
