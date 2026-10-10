@@ -35,12 +35,14 @@ It wraps under 700px. Make the wordmark a link back to the bucket on every page 
     group: 'Actions', height: 110,
     readme: `The only button shape: a 3px ink pill in \`button\` type.
 
-**Variants:** \`paper\` (default) for everything; \`tomato\` for the one primary action on a screen ("Drop a nugget", "Drop it in"); \`ink\` for a pressed or selected state. \`size="lg"\` (58px tall, 20px label) for the single call to action on a page, such as "Tip the bucket".
+**Variants:** \`paper\` (default) for everything; \`tomato\` for the one primary action on a screen ("Drop a nugget", "Drop it in"); \`ink\` for a pressed or selected state; \`danger\` for an action that cannot be undone ("Purge", "Disconnect"): paper, ink text, outlined in red ink (\`tomato\`), never filled. \`size="lg"\` (58px tall, 20px label) for the single call to action on a page, such as "Tip the bucket"; \`size="sm"\` (34px, 14px label) for pills inside a card, a caption box or a settings section.
+
+Pass \`href\` and the pill renders as a link, for a deep link that must be a real \`href\` ("Open in Claude Desktop").
 
 **Provide** a sentence-case verb phrase as children, and optionally \`icon\` / \`iconAfter\` (\`arrow-right\` after "Tip the bucket", \`arrow-left\` before "Back to the tray", \`plus\` before "Drop a nugget").
 
 Hover lifts 2px up-left onto \`shadow-lift\`; press drops 1px and loses the shadow. **Don't** put sound-effect lettering on a pill, and don't put two tomato pills side by side.`,
-    body: `h('div',{style:{display:'flex',gap:14,flexWrap:'wrap',alignItems:'center',padding:20}},h(C.Pill,{size:'lg',iconAfter:'arrow-right'},'Tip the bucket'),h(C.Pill,{variant:'tomato',icon:'plus'},'Drop a nugget'),h(C.Pill,{icon:'arrow-left'},'Back to the tray'),h(C.Pill,{variant:'ink'},'Selected'),h(C.Pill,{disabled:true},'Disabled'))`
+    body: `h('div',{style:{display:'flex',gap:14,flexWrap:'wrap',alignItems:'center',padding:20}},h(C.Pill,{size:'lg',iconAfter:'arrow-right'},'Tip the bucket'),h(C.Pill,{variant:'tomato',icon:'plus'},'Drop a nugget'),h(C.Pill,{icon:'arrow-left'},'Back to the tray'),h(C.Pill,{variant:'ink'},'Selected'),h(C.Pill,{variant:'danger'},'Purge'),h(C.Pill,{size:'sm'},'Restore'),h(C.Pill,{disabled:true},'Disabled'))`
   },
   Chip: {
     group: 'Actions', height: 80,
@@ -122,19 +124,21 @@ Use it for the "FIG. 1" sketch beside a caption, empty states and favicons. **Do
     body: `h('div',{style:{padding:14}},h(C.Burst,{className:'cs-panel',style:{height:220,display:'flex',alignItems:'center',justifyContent:'center'}},h(C.NuggetMark,{size:180,seed:19})))`
   },
   CaptionBox: {
-    group: 'Feedback', height: 130,
+    group: 'Feedback', height: 200,
     readme: `A narration box: the strip's yellow caption in the corner of a panel. It talks about the page rather than being part of it.
 
 **Use it for** notices: "Meanwhile, on the tray… 3 new nuggets landed. The tray catches up when you save or cancel." while a dialog is open over a live tray. \`tone="mayo"\` or \`"paper"\` when it sits on a nugget-gold strip.
 
-**Provide** an \`eyebrow\` in the narrator's voice ("Meanwhile, on the tray…", "Previously…") and the plain sentence as children. Give it \`role="status"\` when it appears in response to something. **Don't** use it for errors; errors are literal text under the field they belong to.`,
-    body: `h('div',{style:{display:'grid',gap:14,padding:20,maxWidth:560}},h(C.CaptionBox,{eyebrow:'Meanwhile, on the tray…',role:'status'},'3 new nuggets landed. The tray catches up when you save or cancel.'),h(C.CaptionBox,{tone:'mayo',eyebrow:'Previously, in your notes app…'},'Twenty half-formed thoughts, kept warm.'))`
+**Provide** an \`eyebrow\` in the narrator's voice ("Meanwhile, on the tray…", "Previously…") and the plain sentence as children. Give it \`role="status"\` when it appears in response to something.
+
+\`tone="error"\` is paper with a red-ink (\`tomato\`) line, for a failed action; use it through \`ActionError\`, which says the error in plain words with no eyebrow. A field's own error stays literal text under that field. \`EmptyState\` is a caption box too.`,
+    body: `h('div',{style:{display:'grid',gap:14,padding:20,maxWidth:560}},h(C.CaptionBox,{eyebrow:'Meanwhile, on the tray…',role:'status'},'3 new nuggets landed. The tray catches up when you save or cancel.'),h(C.CaptionBox,{tone:'mayo',eyebrow:'Previously, in your notes app…'},'Twenty half-formed thoughts, kept warm.'),h(C.CaptionBox,{tone:'error'},'GitHub refused the token.'))`
   },
   Dialog: {
     group: 'Layout', height: 330,
     readme: `A panel that sits on the page like a sticker: \`shadow-sticker\` behind it, a \`title\` heading, a round close button, and a \`mayo\` footer for its pills.
 
-**Provide** \`title\` (sentence case with a full stop, "Edit nugget."), \`onClose\`, the body as children (a \`CaptionBox\` first if the page changed underneath, then \`Field\`s), and a \`footer\` with "Cancel" (paper) then the one \`tomato\` pill ("Save").
+**Provide** \`title\` (sentence case with a full stop, "Edit nugget."), an optional \`description\` (one \`ink-soft\` line under the title, wired with \`aria-describedby\`), \`onClose\`, the body as children (a \`CaptionBox\` first if the page changed underneath, then \`Field\`s), and a \`footer\` with "Cancel" (paper) then the one \`tomato\` pill ("Save").
 
 It is presentational: the host renders the dimmed overlay (\`ink\` at 40%), traps focus, closes on Escape and returns focus to what opened it. 560px wide by default; it goes full width with the \`page\` margin under 700px.`,
     body: `h('div',{style:{padding:'20px 34px 34px 20px'}},h(C.Dialog,{title:'Edit nugget.',onClose:()=>{},footer:[h(C.Pill,{key:'c'},'Cancel'),h(C.Pill,{key:'s',variant:'tomato'},'Save')]},h(C.Field,{label:'Title',defaultValue:'A receipt scanner that argues back'})))`
@@ -178,6 +182,115 @@ Fields use \`line-thin\` and \`radius-field\`, never the pill shape: the pill sh
 
 **Use it for** why a tag or name was suggested, anchored under the chip. \`side="left"\` when it would run off the right edge. Keep it to a sentence, a short list and a mono footer (\`thought-foot\`) of what you can do. **Don't** put buttons in it; it vanishes when the pointer leaves.`,
     body: `h('div',{style:{display:'flex',gap:40,padding:20}},h(C.ThoughtBubble,null,'Suggested because it reads like these nuggets tagged ',h('b',null,'#animation'),':',h('ul',null,h('li',null,'nuggets site animation'),h('li',null,'website animation idea 1')),h('span',{className:'cs-thought-foot'},'click to ink it in · × to rub it out')),h(C.ThoughtBubble,{side:'left'},'Suggested from nuggets already tagged ',h('b',null,'#website'),'.'))`
+  },
+  StatePill: {
+    group: 'Status', height: 80,
+    readme: `The state of a connection or a queued job, as a word on a fill: what Settings says about spices, GitHub, kimi and Jev, and what a feature request says about GitHub. \`StatusPill\` is a nugget's status; this is everything else.
+
+**Tones** (\`tone\`), each with its word as children so colour is never the only signal:
+- \`ok\` (\`pickle\`): "Connected", "Sent".
+- \`off\` (paper, dashed \`ink-soft\` line): "Not connected".
+- \`wait\` (\`raw\`): "Queued".
+- \`attention\` (\`tomato\`, ink text): "Needs re-sync", when the captain has to act before anything moves.
+- \`error\` (paper, red-ink line): "Failed", or "Error" beside a connection's last error.
+
+Uppercase bold mono, \`line-thin\`, like \`StatusPill\`. **Don't** use it for a nugget's status.`,
+    body: `h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',padding:20}},h(C.StatePill,{tone:'ok'},'Connected'),h(C.StatePill,{tone:'off'},'Not connected'),h(C.StatePill,{tone:'wait'},'Queued'),h(C.StatePill,{tone:'attention'},'Needs re-sync'),h(C.StatePill,{tone:'error'},'Failed'))`
+  },
+  ActionError: {
+    group: 'Feedback', height: 150,
+    readme: `A failed action, said plainly: a \`CaptionBox\` with \`tone="error"\` (paper, red-ink line), \`role="alert"\`, the message, and a small "Dismiss" pill. Each screen shows its own at the top; there are no toasts.
+
+**Provide** \`message\` (it renders nothing without one) and \`onDismiss\`. Leave \`onDismiss\` out where the error clears itself on the next try, as in a settings section or Plan with Claude.
+
+**Errors are literal.** Say what failed in the server's own words ("GitHub refused the token."), no eyebrow, no apology, and **never** a "POW!" or any other sound effect or burst.`,
+    body: `h('div',{style:{display:'grid',gap:14,padding:20,maxWidth:560}},h(C.ActionError,{message:'The nugget could not be restored: it is already in the bank.',onDismiss:()=>{}}),h(C.ActionError,{message:'Something went wrong.'}))`
+  },
+  EmptyState: {
+    group: 'Feedback', height: 170,
+    readme: `Nothing to show, said by the narrator: a \`CaptionBox\` with a "Meanwhile…" eyebrow, the headline as a heading, a line of help and at most one action.
+
+**Provide** \`headline\` (the same words the Classic look uses, since both looks share their headings: "Trash is empty"), an optional \`body\` and \`action\` (one \`Pill\`), and an \`eyebrow\` that says where we are: "Meanwhile, in the bin…", "Meanwhile, on the tray…". It defaults to "Meanwhile…".
+
+Keep the joke in the eyebrow and keep it small; the headline and body stay plain. **No** illustration: the voice does the work.`,
+    body: `h('div',{style:{display:'grid',gap:14,padding:20,maxWidth:560}},h(C.EmptyState,{eyebrow:'Meanwhile, in the bin…',headline:'Trash is empty',body:'Archived nuggets land here. Nothing has been binned yet.'}),h(C.EmptyState,{eyebrow:'Meanwhile, on the tray…',headline:'Nothing on the tray matches',body:'Try another word.',action:h(C.Pill,{size:'sm'},'Clear the search')}))`
+  },
+  BinCard: {
+    group: 'Nuggets', height: 300,
+    readme: `A binned nugget: its card greyed out and tipped further over than on the tray, with "Restore" and "Purge" under it. A binned card doesn't open and doesn't lift on hover.
+
+**Provide** \`title\`, \`tags\`, \`archivedAt\` (when it was binned, "2d ago"), \`shape\`, \`tilt\` (about ±5° to ±8°, more than a tray card) and \`onRestore\` / \`onPurge\`. It renders an \`li\`; \`Bin\` lays them out in a list.
+
+"Restore" is a small paper pill; "Purge" is a small \`danger\` pill, outlined in red ink, not filled. Purge always asks first: a \`Dialog\` titled "Purge this nugget?" saying "It's gone for good — restoring won't be an option.", with "Keep it" and a \`danger\` "Purge".`,
+    body: `h('div',{style:{display:'flex',flexWrap:'wrap',gap:'24px 48px',padding:'24px 28px',alignItems:'flex-start'}},h('ul',{style:{listStyle:'none',margin:0,padding:0,width:260}},h(C.BinCard,{title:'A receipt scanner that argues back',tags:['saas'],archivedAt:'2d ago',shape:0,tilt:-7})),h(C.Dialog,{title:'Purge this nugget?',description:"It's gone for good — restoring won't be an option.",width:400,onClose:()=>{},footer:[h(C.Pill,{key:'k'},'Keep it'),h(C.Pill,{key:'p',variant:'danger'},'Purge')]}))`
+  },
+  Bin: {
+    group: 'Screens', height: 520,
+    readme: `The bin (Trash): binned nuggets, newest binned first, as greyed \`BinCard\`s under a caption that says what Restore and Purge do. Empty, it is an \`EmptyState\`: "Meanwhile, in the bin…" / "Trash is empty".
+
+**Provide** \`ideas\` (\`{id, title, tags, archivedAt}\`, newest first), \`onRestore(id)\` and \`onPurge(id)\`. Each card's shape and tilt come from its id, so a nugget looks the same every visit. Cards sit straight on the page in an auto-filling grid (230px minimum), not on the tray: the bin is not the tray.
+
+The page around it is a \`Strip\` with "Back to the bank" and Settings, then an \`ActionError\` if Restore or Purge failed, then the bin.`,
+    body: `h('div',{style:{display:'grid',gap:28,padding:'20px 24px'}},h(C.Bin,{ideas:[{id:1,title:'A receipt scanner that argues back',tags:['saas','writing'],archivedAt:'2d ago'},{id:2,title:'Commit messages as haiku',tags:['tooling'],archivedAt:'1w ago'},{id:3,title:'A board game about queueing at the post office',tags:['games'],archivedAt:'3w ago'}]}),h(C.Bin,{ideas:[]}))`
+  },
+  LookPicker: {
+    group: 'Forms', height: 180,
+    readme: `The Look picker at the top of Settings: Classic and Comic as two tilted sticker tiles in a radio group legended "Look". Each tile is a real radio, named "Classic" or "Comic", with a picture of its look: a plain grey-lined card for Classic, a \`NuggetMark\` for Comic.
+
+The picked tile fills \`nugget\`, gains a check and lifts onto \`shadow-sticker\`; the other sits flat on \`shadow-stamp\`. Arrow keys move between them, as in any radio group.
+
+**Provide** \`value\` (\`'classic'\` or \`'comic'\`) and \`onChange\`. Set \`comicInProgress\` while some screens still fall back to Classic: the Comic tile wears an "In progress" tag, which describes it rather than renaming it. \`hint\` adds a line under the tiles. The look applies at once; there is no Save.`,
+    body: `h('div',{style:{padding:'24px 20px'}},h(C.LookPicker,{value:'comic',comicInProgress:true,hint:'Only how nuggets looks changes. Your nuggets stay as they are.'}))`
+  },
+  SettingsSection: {
+    group: 'Screens', height: 900,
+    readme: `One integration in the Settings dialog: a \`mayo\` caption-box heading (the integration's name as an \`h3\` plus a line on what it does), a status line, a literal error, its \`Field\`s and its pills. Sections stack in the comic \`Dialog\` titled "Settings", under the \`LookPicker\`, divided by an ink line.
+
+**Provide** \`title\` and \`description\` (the Classic look's words: "spices", "GitHub", "kimi", "Tag suggestions"), then:
+- \`status\`: a \`StatePill\`: \`ok\` "Connected", \`off\` "Not connected", \`attention\` "Needs re-sync" or \`error\` "Error"; and \`detail\`, mono \`ink-soft\` facts on the right ("every 60s · synced 2 min ago", "2 queued · 1 failed").
+- \`error\`: the message, shown as an \`ActionError\` without Dismiss.
+- children: the \`Field\`s and any notes.
+- \`dangerAction\`: "Disconnect" as a small \`danger\` pill, on the left.
+- \`actions\`: the rest on the right, the commit last: "Change" / "Sync now", "Cancel" / "Save", "Not yet" / "Re-sync", "Connect", "Change key". All paper: with four sections in one dialog, a tomato pill in each would make four primaries.
+
+There is no Test pill: the Classic look has none, and a connection proves itself on Save. kimi has no status pill; it says "Saved." in a status line instead.`,
+    body: `h('div',{style:{padding:'20px 34px 34px 20px'}},h(C.Dialog,{title:'Settings',description:"Where nuggets arrive from, and where they're sent.",width:600,onClose:()=>{}},
+  h(C.LookPicker,{value:'comic',comicInProgress:true}),
+  h(C.SettingsSection,{title:'spices',description:'Pull ideas from your spices capture bot.',status:h(C.StatePill,{tone:'attention'},'Needs re-sync'),detail:'http://127.0.0.1:8080 · synced 3 days ago · every 60s',dangerAction:h(C.Pill,{size:'sm',variant:'danger'},'Disconnect'),actions:[h(C.Pill,{key:'c',size:'sm'},'Change'),h(C.Pill,{key:'r',size:'sm'},'Re-sync')]},h('p',{className:'body',style:{margin:0}},'The spices on the other end may hand out the same ids for different ideas, so nothing is pulled until you re-sync. Your nuggets are untouched.')),
+  h(C.SettingsSection,{title:'GitHub',description:'Open a feature-request issue for each nugget that gets one of these tags.',status:h(C.StatePill,{tone:'error'},'Error'),detail:'2 queued · 1 failed',error:'GitHub refused the token.',dangerAction:h(C.Pill,{size:'sm',variant:'danger'},'Disconnect'),actions:[h(C.Pill,{key:'x',size:'sm'},'Cancel'),h(C.Pill,{key:'s',size:'sm'},'Save')]},h(C.Field,{label:'Personal access token',type:'password',placeholder:'Leave empty to keep the current token'}),h('div',{style:{display:'grid',gridTemplateColumns:'2fr 3fr',gap:10}},h(C.Field,{label:'Tag',defaultValue:'nuggets'}),h(C.Field,{label:'Repository',defaultValue:'Jarrod-Bob/nuggets'}))),
+  h(C.SettingsSection,{title:'kimi',description:'Suggest project names for nuggets with kimi-no-name-wa, running on this machine.',actions:h(C.Pill,{size:'sm'},'Save')},h(C.Field,{label:'kimi address',type:'url',defaultValue:'http://127.0.0.1:7799'})),
+  h(C.SettingsSection,{title:'Tag suggestions',description:'Suggest tags you already use that a nugget seems to be missing. Nothing is tagged until you add it.',status:h(C.StatePill,{tone:'ok'},'Connected'),detail:'3 nuggets waiting to be checked',dangerAction:h(C.Pill,{size:'sm',variant:'danger'},'Disconnect'),actions:h(C.Pill,{size:'sm'},'Change key')})))`
+  },
+  PlanWithClaude: {
+    group: 'Screens', height: 820,
+    readme: `Plan with Claude: a \`Dialog\` holding the planning prompt in a \`SpeechBubble\` (it is what you will say to Claude), set in Space Mono and scrollable, then the ways to send it, then a field to bring Claude's answer back into the notes.
+
+**Pills:** "Open in Claude Desktop" (the \`tomato\` one, a link to the \`claude://\` deep link), "Copy & open claude.ai" and "Copy prompt", then "Save to notes" under the answer, disabled until there is one. The footer has "Close".
+
+**Provide** \`prompt\`, \`desktopUrl\`, \`trimmed\` (the deep link carries trimmed notes; a status line says so), \`copyNote\` (the result of a copy, "Copied the full prompt."), \`answer\` / \`onAnswerChange\`, \`onCopy\`, \`onCopyAndOpen\`, \`onSave\`, \`saving\`, \`saveError\` and \`onClose\`. The prompt is focusable and named "Planning prompt" so it can be scrolled and selected by keyboard.`,
+    body: `h('div',{style:{padding:'20px 34px 34px 20px'}},h(C.PlanWithClaude,{onClose:()=>{},desktopUrl:'#',copyNote:'Copied the full prompt.',prompt:'Help me plan this idea from my idea bank.\\n\\nTitle: A receipt scanner that argues back\\nNotes: Photograph a receipt, get a one-line roast of the purchase. The roast needs a dial: gentle, honest, ruthless.\\nTags: saas, writing\\n\\nAsk me three questions first, then propose the smallest version I could build this weekend.'}))`
+  },
+  RandomNugget: {
+    group: 'Screens', height: 600,
+    readme: `Draw a nugget's result: a \`Dialog\` titled "Your challenge" with the drawn nugget's card dropped in from above at a tilt (620ms, the house bounce) and a red-ink "PICK ME" rubber stamp thumped onto its corner after it lands. Under the card: its notes, then the dealt challenge in a \`mayo\` box, a "Timebox" and a "Build it with" row, each with its own small reroll pill, and the survey the stacks are weighted by.
+
+**Pills:** "Reroll timebox", "Reroll stack", and in the footer "Close" and the \`tomato\` "Reroll nugget", which drops a fresh card (the card is keyed by the nugget, so a new draw replays the drop).
+
+**States:** \`loading\` titles it "Drawing…" and says "Drawing a nugget…"; no \`idea\` titles it "Nothing to draw" with a caption: "Meanwhile, on the tray… No active nuggets match that tag. Drop one in first."
+
+**Provide** \`idea\` (\`{id, title, notes, tags, status}\`), \`tag\` (shown on the card as "narrowed to …"), \`timebox\` (its label), \`stack\` (\`{language, framework, track}\`, the track as its label), \`source\` (\`{label, url, retrieved}\`), \`loading\`, and \`onReroll\`, \`onRerollTimebox\`, \`onRerollStack\`, \`onClose\`.
+
+The stamp is a stamp, not a sound effect: display type, not Bangers, and hidden from assistive tech. Under reduced motion the card is simply there with its stamp.`,
+    body: `h('div',{style:{padding:'20px 34px 34px 20px'}},h(C.RandomNugget,{onClose:()=>{},tag:'saas',idea:{id:14,title:'A receipt scanner that argues back',notes:'Photograph a receipt, get a one-line roast of the purchase.',tags:['saas','writing'],status:'building'},timebox:'One evening',stack:{language:'TypeScript',framework:'React',track:'Web'},source:{label:'Stack Overflow 2025',url:'#',retrieved:'2026-08-01'}}))`
+  },
+  FeatureRequests: {
+    group: 'Nuggets', height: 230,
+    readme: `A nugget's GitHub feature requests as a strip of small panels, one per request: what it is ("Feature request #42", a link to the issue; "Feature request queued"; "Feature request failed"), the repo in mono, a \`StatePill\` (\`ok\` "Sent", \`wait\` "Queued", \`error\` "Failed"), GitHub's last error when it has one, and a small "Retry" pill on a failed one. A failed panel's line turns red ink.
+
+**Provide** \`requests\` (\`{id, repo, state, number, url, last_error}\`), \`onRetry(id)\` and \`retrying\` (the id whose Retry is in flight; its pill is disabled). It renders nothing for a nugget with none.
+
+Lay it as its own row of the nugget page's panel grid, under the action panel, never inside another panel. The panels auto-fill at 220px minimum and stack to one column on a phone.`,
+    body: `h('div',{style:{padding:20}},h(C.FeatureRequests,{requests:[{id:1,repo:'Jarrod-Bob/nuggets',state:'created',number:42,url:'#'},{id:2,repo:'Jarrod-Bob/spices',state:'pending'},{id:3,repo:'Jarrod-Bob/typesafe',state:'failed',last_error:'GitHub refused the token.'}]}))`
   }
 };
 

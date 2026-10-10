@@ -1,0 +1,15 @@
+<!-- @dsCard group="Screens" height=820 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>PlanWithClaude — preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var C = window.Comic, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{padding:'20px 34px 34px 20px'}},h(C.PlanWithClaude,{onClose:()=>{},desktopUrl:'#',copyNote:'Copied the full prompt.',prompt:'Help me plan this idea from my idea bank.\n\nTitle: A receipt scanner that argues back\nNotes: Photograph a receipt, get a one-line roast of the purchase. The roast needs a dial: gentle, honest, ruthless.\nTags: saas, writing\n\nAsk me three questions first, then propose the smallest version I could build this weekend.'})));
+</script>
+</body>
+</html>

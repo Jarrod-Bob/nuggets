@@ -109,8 +109,8 @@
   },
   "lastChange": {
     "by": "Jarrod",
-    "at": "2026-10-10T03:40:00Z",
+    "at": "2026-10-10T04:30:00Z",
     "via": "Claude Code",
-    "note": "Curry, pickle (Done) and six components for the name generator, tag suggestions and dialogs: CaptionBox, Dialog, Field, NameSuggestions, SuggestedTags, ThoughtBubble. NuggetCard gains the curry corner."
+    "note": "The rest of the app (#48): the bin (Bin, BinCard), Settings (SettingsSection, LookPicker, StatePill), Plan with Claude, Random nugget's PICK ME draw, feature requests, ActionError and EmptyState. Pill gains sm, danger (red-ink outline) and href; CaptionBox gains an error tone; Dialog gains a description."
   }
 }

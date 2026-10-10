@@ -20,7 +20,7 @@ Build every screen out of panels. If something is not inside a panel, it is in t
 ### Colour
 - `paper` is the page and the default panel. `mayo` marks the one feature panel per screen (the bucket, a nugget's hero). `nugget` is the single fill colour: nuggets themselves and the top strip.
 - `ink` draws every line and sets all primary text. `ink-soft` is for captions and dates on `paper` or `mayo` only.
-- `tomato` is the second voice: bucket stripes, the action panel, the primary pill and sound-effect lettering. Text on it is `on-tomato` (ink); white on tomato does not pass contrast.
+- `tomato` is the second voice: bucket stripes, the action panel, the primary pill and sound-effect lettering. As a line it is **red ink**: the outline of a `danger` pill and the border of an error caption, never a fill there. Text on it is `on-tomato` (ink); white on tomato does not pass contrast.
 - Status has its own fills: `raw` for raw, `nugget` for exploring and building, `mayo` with a dashed line for parked, `burnt` with `on-burnt` text for killed, `pickle` for done. Every status also carries its word in a `StatusPill`, so colour is never the only signal.
 - `curry` is the sauce, and it means one thing: **this nugget has a project name.** It marks the dab on a named card, the flood that reveals the name, and the picked name sticker in the generator. Text on it is `on-curry` (white, 4.8:1), so keep that text 15px+ bold or 18px+. `curry-gloss` is its highlight, decoration only.
 - `toast` and `nugget-deep` are decoration only (halftone, floor shadows, crumbs). Never text.
@@ -41,7 +41,7 @@ Build every screen out of panels. If something is not inside a panel, it is in t
 
 ### Lines, shadows and corners
 - **Lines carry the design.** `line` (3px `ink`) on panels, strips, pills and fields; `line-thin` (2.5px) on chips and status pills.
-- **Shadows are solid ink offsets, never blurred.** A nugget's shadow is its own outline repeated in `ink` 7px right and 8px down. A hovered pill gets `shadow-lift`; a dialog gets `shadow-sticker`. Nothing else casts a shadow.
+- **Shadows are solid ink offsets, never blurred.** A nugget's shadow is its own outline repeated in `ink` 7px right and 8px down. A hovered pill gets `shadow-lift`; a dialog and the picked Look tile get `shadow-sticker`; name stickers and the unpicked Look tile get `shadow-stamp`. Nothing else casts a shadow.
 - **Shading is halftone:** `ink` dots at about 30% opacity that grow toward the shaded edge, as on the bucket.
 - Corners: `radius-panel` on panels, `radius-pill` on anything you press, `radius-field` on inputs.
 
@@ -70,6 +70,20 @@ Two features suggest things the user didn't write: **kimi-no-name-wa** names a n
 - **Names are stickers.** kimi's five names are tilted `nugget` stickers you peel off and stick on (`NameSuggestions`). The dice re-rolls them; there is no sparkle emoji. The picked one turns `curry`, and from then on the nugget wears a curry dab on the tray (`NuggetCard` `projectName`).
 - **Say what happened, literally,** when a model is unavailable: "kimi is not available at the moment", "Write some notes and kimi will name it".
 - While a dialog is open over a tray that changes underneath it, say so in a `CaptionBox`: "Meanwhile, on the tray… 3 new nuggets landed. The tray catches up when you save or cancel."
+
+## The bin, Settings and the rest
+
+The screens beyond the bank and a nugget's page are built from the same parts. Each comic component takes the props of the Classic component it stands in for, and uses the Classic look's button labels, headings and accessible names, because both looks share their behaviour tests.
+
+- **Red ink means "can't be undone" or "went wrong".** It is `tomato` used as a line, never as a fill: the `danger` `Pill` ("Purge", "Disconnect") is paper with ink text and a red-ink outline; an error is a `CaptionBox` with a red-ink line (`ActionError`); a failed feature request's panel turns its line red. A red-ink line passes 3.9:1 on paper, enough for a line, not for text, so the words stay ink.
+- **Errors are plain words in a caption box.** `ActionError` says what failed, with a "Dismiss" pill where the error doesn't clear itself. Never a "POW!", never a burst, never a pun.
+- **Empty states are the narrator's.** `EmptyState` is a caption box whose eyebrow says where we are ("Meanwhile, in the bin…", "Meanwhile, on the tray…") over the plain heading and a line of help.
+- **The bin is not the tray.** `Bin` lays binned nuggets out as `BinCard`s: greyed (the card in grayscale) and tipped further over (±5° to ±8°) than on the tray, sitting on the page rather than a liner, each with "Restore" and a `danger` "Purge" under it. Purge always asks first in a `Dialog`.
+- **Settings is a stack of sections in the comic `Dialog`.** The `LookPicker` comes first: Classic and Comic as two sticker tiles, the picked one `nugget` with a check. Then one `SettingsSection` per integration (spices, GitHub, kimi, Tag suggestions), each headed by a `mayo` caption box, with a `StatePill` saying how the connection stands, its `Field`s, "Disconnect" on the left and the rest of its pills on the right.
+- **States other than a nugget's** use `StatePill`: `ok` (pickle) connected or sent, `off` (dashed) not connected, `wait` (raw) queued, `attention` (tomato) needs re-sync, `error` (red-ink line) failed. `StatusPill` stays for a nugget's status alone.
+- **Plan with Claude puts the prompt in a speech bubble**, set in Space Mono: it is what you will say to Claude. "Open in Claude Desktop" is the tomato pill; "Copy & open claude.ai", "Copy prompt" and "Save to notes" are paper.
+- **A drawn nugget lands with a stamp.** `RandomNugget` drops the card in from above at a tilt and thumps a red-ink "PICK ME" rubber stamp on its corner. A stamp is display type in a double red-ink box, not a sound effect, so it doesn't count against the one-sound-effect rule; it is hidden from assistive tech.
+- **Feature requests are a strip.** `FeatureRequests` is a row of small panels on the nugget's page, one per request, each with a `StatePill` and, when GitHub refused it, a "Retry" pill.
 
 ## Iconography
 - Icons are inline SVG line drawings: 24px grid, 3px stroke in `currentColor`, round caps and joins, at 18–20px. The set in use: search, arrow-right, arrow-left, plus, close, check, pencil (suggestions) and dice (the name generator). Draw new ones the same way.

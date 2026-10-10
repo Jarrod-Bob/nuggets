@@ -9,7 +9,7 @@
 <div id="root"></div>
 <script>
   var C = window.Comic, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'flex',gap:14,flexWrap:'wrap',alignItems:'center',padding:20}},h(C.Pill,{size:'lg',iconAfter:'arrow-right'},'Tip the bucket'),h(C.Pill,{variant:'tomato',icon:'plus'},'Drop a nugget'),h(C.Pill,{icon:'arrow-left'},'Back to the tray'),h(C.Pill,{variant:'ink'},'Selected'),h(C.Pill,{disabled:true},'Disabled')));
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'flex',gap:14,flexWrap:'wrap',alignItems:'center',padding:20}},h(C.Pill,{size:'lg',iconAfter:'arrow-right'},'Tip the bucket'),h(C.Pill,{variant:'tomato',icon:'plus'},'Drop a nugget'),h(C.Pill,{icon:'arrow-left'},'Back to the tray'),h(C.Pill,{variant:'ink'},'Selected'),h(C.Pill,{variant:'danger'},'Purge'),h(C.Pill,{size:'sm'},'Restore'),h(C.Pill,{disabled:true},'Disabled')));
 </script>
 </body>
 </html>

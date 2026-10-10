@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Comic","components":[{"name":"Panel"},{"name":"Strip"},{"name":"Pill"},{"name":"Chip"},{"name":"SearchField"},{"name":"StatusPill"},{"name":"NuggetCard"},{"name":"NuggetMark"},{"name":"SpeechBubble"},{"name":"Sfx"},{"name":"Burst"},{"name":"CaptionBox"},{"name":"Dialog"},{"name":"Field"},{"name":"NameSuggestions"},{"name":"SuggestedTags"},{"name":"ThoughtBubble"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Comic","components":[{"name":"Panel"},{"name":"Strip"},{"name":"Pill"},{"name":"Chip"},{"name":"SearchField"},{"name":"StatusPill"},{"name":"NuggetCard"},{"name":"NuggetMark"},{"name":"SpeechBubble"},{"name":"Sfx"},{"name":"Burst"},{"name":"CaptionBox"},{"name":"Dialog"},{"name":"Field"},{"name":"NameSuggestions"},{"name":"SuggestedTags"},{"name":"ThoughtBubble"},{"name":"StatePill"},{"name":"ActionError"},{"name":"EmptyState"},{"name":"BinCard"},{"name":"Bin"},{"name":"LookPicker"},{"name":"SettingsSection"},{"name":"PlanWithClaude"},{"name":"RandomNugget"},{"name":"FeatureRequests"}]} */
 (function () {
   var React = window.React, h = React.createElement;
   function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }
@@ -26,6 +26,20 @@
   }
 
   var STATUS_FILL = { raw: 'var(--raw)', exploring: 'var(--nugget)', building: 'var(--nugget)', parked: 'var(--mayo)', killed: 'var(--burnt)', done: 'var(--pickle)' };
+  var CARD_BOX = '-8 -4 372 272';
+  function cardShape(n) { return SHAPES[(n || 0) % SHAPES.length]; }
+  /* A nugget's id as a number for picking its shape and tilt, so it looks the same on every visit. */
+  function idSeed(id, fallback) { var n = Math.abs(Number(id)); return isNaN(n) ? fallback : n; }
+  function tagLine(tags) { return (tags || []).map(function (t) { return '#' + String(t).toLowerCase(); }).join(' '); }
+  /* A card's drawing: the outline repeated in ink as its shadow, the status fill, the shine and the crumbs. */
+  function cardArt(d, s) {
+    return [
+      h('path', { key: 'shadow', d: d, fill: 'var(--ink)', transform: 'translate(7 8)' }),
+      h('path', { key: 'fill', className: 'cs-card-fill', d: d, fill: STATUS_FILL[s], stroke: 'var(--ink)', strokeWidth: 3.5, strokeLinejoin: 'round', strokeDasharray: s === 'parked' ? '10 8' : null }),
+      h('path', { key: 'shine', d: 'M38 96C46 64 74 44 112 36M126 33h8', stroke: 'var(--paper)', strokeWidth: 7, strokeLinecap: 'round', fill: 'none' }),
+      h('path', { key: 'crumbs', d: 'M300 110l4 6M292 180l6 2M70 186l-3 6M250 222l5 2M318 140l2 6', stroke: 'var(--nugget-deep)', strokeWidth: 3, strokeLinecap: 'round' })
+    ];
+  }
 
   function Panel(p) {
     var tone = p.tone || 'paper', El = p.as || 'div';
@@ -37,9 +51,10 @@
       p.wordmark === false ? null : h('span', { className: 'cs-wordmark' }, 'nuggets.'), p.children);
   }
 
+  /* A pill is a button, or a link when it has an href (a deep link must be a real href). */
   function Pill(p) {
-    var v = p.variant || 'paper';
-    return h('button', Object.assign({ type: 'button' }, omit(p, ['variant', 'size', 'icon', 'iconAfter', 'className', 'children']), { className: cx('cs-pill', 'cs-pill--' + v, p.size === 'lg' ? 'cs-pill--lg' : null, p.className) }),
+    var v = p.variant || 'paper', size = p.size && p.size !== 'md' ? 'cs-pill--' + p.size : null;
+    return h(p.href ? 'a' : 'button', Object.assign(p.href ? {} : { type: 'button' }, omit(p, ['variant', 'size', 'icon', 'iconAfter', 'className', 'children']), { className: cx('cs-pill', 'cs-pill--' + v, size, p.className) }),
       p.icon ? h(Icon, { name: p.icon }) : null, p.children, p.iconAfter ? h(Icon, { name: p.iconAfter }) : null);
   }
 
@@ -83,8 +98,8 @@
      previews the sauce flooding the card to show the project name; a click, tap or Enter pins it; a second press
      or Escape drains it. Clicks anywhere else, the flood included, still open the nugget. */
   function NuggetCard(p) {
-    var d = SHAPES[(p.shape || 0) % SHAPES.length], s = p.status || 'raw', tilt = p.tilt == null ? 0 : p.tilt, name = p.projectName;
-    var tags = (p.tags || []).map(function (t) { return '#' + String(t).toLowerCase(); }).join(' ');
+    var d = cardShape(p.shape), s = p.status || 'raw', tilt = p.tilt == null ? 0 : p.tilt, name = p.projectName;
+    var tags = tagLine(p.tags);
     var clip = 'cs-clip-' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
     var hv = React.useState(false), pin = React.useState(!!p.sauceOpen);
     var open = !!name && (hv[0] || pin[0]);
@@ -95,12 +110,9 @@
       return function () { document.removeEventListener('keydown', onKey); };
     }, [pin[0]]);
     return h('div', { className: cx('cs-card', 'cs-card--' + s, name ? 'cs-card--named' : null, open ? 'cs-card--sauced' : null, p.className), style: Object.assign({ '--cs-tilt': tilt + 'deg' }, p.style) },
-      h('svg', { viewBox: '-8 -4 372 272', 'aria-hidden': true },
+      h('svg', { viewBox: CARD_BOX, 'aria-hidden': true },
         h('defs', null, h('clipPath', { id: clip }, h('path', { d: d }))),
-        h('path', { d: d, fill: 'var(--ink)', transform: 'translate(7 8)' }),
-        h('path', { className: 'cs-card-fill', d: d, fill: STATUS_FILL[s], stroke: 'var(--ink)', strokeWidth: 3.5, strokeLinejoin: 'round', strokeDasharray: s === 'parked' ? '10 8' : null }),
-        h('path', { d: 'M38 96C46 64 74 44 112 36M126 33h8', stroke: 'var(--paper)', strokeWidth: 7, strokeLinecap: 'round', fill: 'none' }),
-        h('path', { d: 'M300 110l4 6M292 180l6 2M70 186l-3 6M250 222l5 2M318 140l2 6', stroke: 'var(--nugget-deep)', strokeWidth: 3, strokeLinecap: 'round' }),
+        cardArt(d, s),
         name ? h('g', { className: 'cs-curry-dab' },
           h('g', { clipPath: 'url(#' + clip + ')' }, h('path', { d: DAB, fill: 'var(--curry)', stroke: 'var(--ink)', strokeWidth: 3.5 }), h('path', { d: 'M282 34c14-8 34-8 48 2', stroke: 'var(--curry-gloss)', strokeWidth: 5, strokeLinecap: 'round', fill: 'none' })),
           h('path', { d: d, stroke: 'var(--ink)', strokeWidth: 3.5, strokeLinejoin: 'round', fill: 'none', strokeDasharray: s === 'parked' ? '10 8' : null }),
@@ -110,7 +122,7 @@
           h('span', { className: 'cs-card-meta' }, name ? h('b', null, s + (p.age ? ' · ' + p.age : '')) : h(React.Fragment, null, h('b', null, s), h('span', null, p.age || ''))),
           h('span', { className: 'cs-card-title' }, p.title),
           tags ? h('span', { className: 'cs-card-tags' }, tags) : null)),
-      name ? h('svg', { className: 'cs-curry-flood', viewBox: '-8 -4 372 272', 'aria-hidden': true },
+      name ? h('svg', { className: 'cs-curry-flood', viewBox: CARD_BOX, 'aria-hidden': true },
         h('g', { clipPath: 'url(#' + clip + ')' }, h('path', { d: FLOOD, fill: 'var(--curry)' }), h('path', { d: 'M120 52c40-18 100-20 150-6M60 150c10-20 24-32 40-38', stroke: 'var(--curry-gloss)', strokeWidth: 5, strokeLinecap: 'round', fill: 'none' })),
         h('path', { d: d, stroke: 'var(--ink)', strokeWidth: 3.5, strokeLinejoin: 'round', fill: 'none' }),
         h('g', { className: 'cs-curry-drips' }, drip(150, 228, 34, 9, 8, 'a'), drip(209, 226, 20, 8, 0, 'b'), drip(266, 216, 44, 10, 0, 'c'))) : null,
@@ -152,19 +164,21 @@
       p.children);
   }
 
-  /* A narration box: the strip's yellow caption, for notices that are about the page rather than in it. */
+  /* A narration box: the strip's yellow caption, for notices that are about the page rather than in it.
+     tone "error" swaps the fill for paper and the ink line for red ink (tomato). */
   function CaptionBox(p) {
     return h('div', Object.assign(omit(p, ['tone', 'eyebrow', 'className', 'children']), { className: cx('cs-caption', 'cs-caption--' + (p.tone || 'nugget'), p.className) }),
       p.eyebrow ? h('span', { className: 'cs-caption-eyebrow' }, p.eyebrow) : null,
-      h('span', { className: 'cs-caption-text' }, p.children));
+      h('div', { className: 'cs-caption-text' }, p.children));
   }
 
   /* A dialog panel that sits on the page like a sticker. Presentational: the host owns the overlay, focus trap and Escape. */
   function Dialog(p) {
-    var id = 'cs-dlg-' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
-    return h('section', Object.assign({ role: 'dialog', 'aria-modal': true, 'aria-labelledby': id }, omit(p, ['title', 'onClose', 'footer', 'className', 'children', 'width', 'style']), { className: cx('cs-panel', 'cs-dialog', p.className), style: Object.assign({ width: p.width || 560 }, p.style) }),
+    var id = 'cs-dlg-' + useId().replace(/[^a-zA-Z0-9_-]/g, ''), descId = p.description ? id + '-desc' : null;
+    return h('section', Object.assign({ role: 'dialog', 'aria-modal': true, 'aria-labelledby': id, 'aria-describedby': descId }, omit(p, ['title', 'description', 'onClose', 'footer', 'className', 'children', 'width', 'style']), { className: cx('cs-panel', 'cs-dialog', p.className), style: Object.assign({ width: p.width || 560 }, p.style) }),
       h('header', { className: 'cs-dialog-head' }, h('h2', { id: id, className: 'cs-dialog-title' }, p.title),
         p.onClose ? h('button', { type: 'button', className: 'cs-round', 'aria-label': 'Close', onClick: p.onClose }, h(Icon, { name: 'close', size: 16 })) : null),
+      p.description ? h('p', { id: descId, className: 'cs-dialog-desc' }, p.description) : null,
       h('div', { className: 'cs-dialog-body' }, p.children),
       p.footer ? h('footer', { className: 'cs-dialog-foot' }, p.footer) : null);
   }
@@ -257,5 +271,170 @@
         h('span', { className: 'cs-thought-foot' }, 'click to ink it in · × to rub it out')));
   }
 
-  window.Comic = Object.assign(window.Comic || {}, { Panel: Panel, Strip: Strip, Pill: Pill, Chip: Chip, SearchField: SearchField, StatusPill: StatusPill, NuggetCard: NuggetCard, NuggetMark: NuggetMark, SpeechBubble: SpeechBubble, Sfx: Sfx, Burst: Burst, CaptionBox: CaptionBox, Dialog: Dialog, Field: Field, NameSuggestions: NameSuggestions, SuggestedTags: SuggestedTags, ThoughtBubble: ThoughtBubble, Icon: Icon, nuggetPath: blob });
+  /* The state of a connection or a queued job, as a word on a fill. StatusPill is for a nugget's status; this is for everything else. */
+  function StatePill(p) {
+    return h('span', { className: cx('cs-state', 'cs-state--' + (p.tone || 'off'), p.className) }, p.children);
+  }
+
+  /* A failed action, said plainly: a caption box with a red-ink line. Renders nothing without a message. */
+  function ActionError(p) {
+    if (!p.message) return null;
+    return h(CaptionBox, { tone: 'error', role: 'alert', className: cx('cs-error', p.className) },
+      h('span', { className: 'cs-error-text' }, p.message),
+      p.onDismiss ? h(Pill, { size: 'sm', onClick: p.onDismiss }, 'Dismiss') : null);
+  }
+
+  /* Nothing to show, in the narrator's voice: a caption box holding the headline, a line of help and at most one action. */
+  function EmptyState(p) {
+    return h(CaptionBox, { eyebrow: p.eyebrow || 'Meanwhile…', tone: p.tone, className: cx('cs-empty', p.className), style: p.style },
+      h('h3', { className: 'cs-empty-title' }, p.headline),
+      p.body ? h('p', { className: 'cs-empty-body' }, p.body) : null,
+      p.action ? h('div', { className: 'cs-empty-action' }, p.action) : null);
+  }
+
+  /* A binned nugget: its card greyed and tipped further over, with Restore and Purge under it. It does not open. */
+  function BinCard(p) {
+    var tags = tagLine(p.tags);
+    return h('li', { className: cx('cs-bin-card', p.className), style: Object.assign({ '--cs-tilt': (p.tilt == null ? -6 : p.tilt) + 'deg' }, p.style) },
+      h('div', { className: 'cs-bin-shape' },
+        h('svg', { viewBox: CARD_BOX, 'aria-hidden': true }, cardArt(cardShape(p.shape), 'raw')),
+        h('div', { className: 'cs-card-body' },
+          h('span', { className: 'cs-card-meta' }, h('b', null, 'binned'), h('span', null, p.archivedAt || '')),
+          h('h3', { className: 'cs-card-title' }, p.title),
+          tags ? h('span', { className: 'cs-card-tags' }, tags) : null)),
+      h('div', { className: 'cs-bin-actions' },
+        h(Pill, { size: 'sm', onClick: p.onRestore }, 'Restore'),
+        h(Pill, { size: 'sm', variant: 'danger', onClick: p.onPurge }, 'Purge')));
+  }
+
+  var BIN_TILT = [-7, 5, -5, 8, -8, 6];
+  /* The bin (Trash): binned nuggets, newest first, as greyed cards; a "Meanwhile…" caption when there are none. */
+  function Bin(p) {
+    var ideas = p.ideas || [];
+    if (!ideas.length) return h(EmptyState, { eyebrow: 'Meanwhile, in the bin…', headline: 'Trash is empty', body: 'Archived nuggets land here. Nothing has been binned yet.', className: p.className, style: p.style });
+    return h('div', { className: cx('cs-bin', p.className), style: p.style },
+      h(CaptionBox, { tone: 'mayo', eyebrow: 'Meanwhile, in the bin…' }, 'Archived nuggets, newest binned first. Restoring puts one back in the bank; purging is permanent.'),
+      h('ul', { className: 'cs-bin-grid' }, ideas.map(function (i, n) {
+        var seed = idSeed(i.id, n);
+        return h(BinCard, {
+          key: i.id, title: i.title, tags: i.tags, archivedAt: i.archivedAt,
+          shape: seed, tilt: BIN_TILT[seed % BIN_TILT.length],
+          onRestore: function () { p.onRestore && p.onRestore(i.id); }, onPurge: function () { p.onPurge && p.onPurge(i.id); }
+        });
+      })));
+  }
+
+  /* The classic look in miniature: a plain card in a thin grey line. */
+  function ClassicThumb() {
+    return h('svg', { width: 72, height: 54, viewBox: '0 0 72 54', fill: 'none', 'aria-hidden': true },
+      h('rect', { x: 2, y: 4, width: 68, height: 46, rx: 9, fill: 'var(--paper)', stroke: 'var(--ink-soft)', strokeWidth: 1.5 }),
+      h('path', { d: 'M12 18h34M12 27h46M12 36h22', stroke: 'var(--ink-soft)', strokeWidth: 2.5, strokeLinecap: 'round' }));
+  }
+  var LOOKS = [{ value: 'classic', name: 'Classic', tilt: -3 }, { value: 'comic', name: 'Comic', tilt: 3 }];
+  /* The Look picker at the top of Settings: Classic and Comic as two sticker tiles in a radio group. */
+  function LookPicker(p) {
+    var id = 'cs-look-' + useId().replace(/[^a-zA-Z0-9_-]/g, ''), noteId = id + '-wip';
+    return h('fieldset', { className: cx('cs-look', p.className) },
+      h('legend', { className: 'cs-look-legend' }, 'Look'),
+      h('div', { className: 'cs-look-tiles' }, LOOKS.map(function (l) {
+        var on = p.value === l.value, wip = l.value === 'comic' && p.comicInProgress;
+        return h('label', { key: l.value, className: cx('cs-look-tile', on ? 'cs-look-tile--on' : null), style: { '--cs-tilt': l.tilt + 'deg' } },
+          h('input', { type: 'radio', name: id, value: l.value, checked: on, className: 'cs-look-radio', 'aria-describedby': wip ? noteId : null, onChange: function () { p.onChange && p.onChange(l.value); } }),
+          h('span', { className: 'cs-look-art' }, l.value === 'classic' ? h(ClassicThumb) : h(NuggetMark, { size: 64, seed: 19 })),
+          h('span', { className: 'cs-look-name' }, on ? h(Icon, { name: 'check', size: 16 }) : null, l.name),
+          wip ? h('span', { id: noteId, className: 'cs-look-note' }, 'In progress') : null);
+      })),
+      p.hint ? h('p', { className: 'cs-field-hint' }, p.hint) : null);
+  }
+
+  /* One integration in the Settings dialog: a caption-box heading, its status line, a literal error, its Fields and its pills. */
+  function SettingsSection(p) {
+    var id = 'cs-set-' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
+    return h('section', { 'aria-labelledby': id, className: cx('cs-settings', p.className) },
+      h(CaptionBox, { tone: 'mayo', className: 'cs-settings-head' },
+        h('h3', { id: id, className: 'cs-settings-title' }, p.title),
+        p.description ? h('p', { className: 'cs-settings-desc' }, p.description) : null),
+      p.status || p.detail ? h('div', { className: 'cs-settings-status' }, p.status, p.detail ? h('span', { className: 'cs-settings-detail' }, p.detail) : null) : null,
+      h(ActionError, { message: p.error }),
+      p.children,
+      p.actions || p.dangerAction ? h('div', { className: 'cs-settings-actions' }, p.dangerAction || h('span'), h('div', { className: 'cs-settings-actions-end' }, p.actions)) : null);
+  }
+
+  /* Plan with Claude: the planning prompt in a speech bubble, the ways to send it, and a field to bring the answer back. */
+  function PlanWithClaude(p) {
+    var answer = p.answer || '';
+    return h(Dialog, {
+      title: 'Plan with Claude', width: 640, onClose: p.onClose, className: p.className,
+      description: 'A planning prompt built from this nugget. Send it to Claude, then paste the answer back to keep it in the notes.',
+      footer: h(Pill, { onClick: p.onClose }, 'Close')
+    },
+      h(SpeechBubble, { tail: 'bottom', className: 'cs-plan-bubble' }, h('pre', { className: 'cs-plan-prompt', 'aria-label': 'Planning prompt', tabIndex: 0 }, p.prompt)),
+      h('div', { className: 'cs-plan-send' },
+        h('div', { className: 'cs-plan-pills' },
+          h(Pill, { href: p.desktopUrl, variant: 'tomato', size: 'sm' }, 'Open in Claude Desktop'),
+          h(Pill, { size: 'sm', onClick: p.onCopyAndOpen }, 'Copy & open claude.ai'),
+          h(Pill, { size: 'sm', onClick: p.onCopy }, 'Copy prompt')),
+        p.trimmed ? h('p', { role: 'status', className: 'cs-plan-note' }, 'These notes are long, so the Claude Desktop link carries a trimmed copy of them. Copy prompt always copies the complete prompt.') : null,
+        h('p', { className: 'cs-plan-note' }, 'Claude Desktop opens with the prompt filled in, ready for you to send. No desktop app? Copy & open claude.ai, then paste.'),
+        p.copyNote ? h('p', { role: 'status', className: 'cs-plan-note' }, p.copyNote) : null),
+      h(Field, { multiline: true, label: "Claude's answer", placeholder: "Paste Claude's plan here", rows: 6, value: answer, onChange: function (e) { p.onAnswerChange && p.onAnswerChange(e.target.value); }, hint: "Saving appends it to the end of this nugget's notes; nothing already there is replaced." }),
+      h(ActionError, { message: p.saveError }),
+      h('div', { className: 'cs-plan-save' }, h(Pill, { size: 'sm', onClick: p.onSave, disabled: p.saving || !answer.trim() }, 'Save to notes')));
+  }
+
+  /* The drawn nugget: its card dropped onto the dialog at a tilt, with a PICK ME stamp. Keyed by the nugget so a reroll drops a fresh one. */
+  var DRAW_TILT = [-5, 4, -3, 5];
+  function DrawnCard(p) {
+    var i = p.idea, seed = idSeed(i.id, 0), tags = tagLine(i.tags);
+    return h('div', { className: 'cs-drawn', style: { '--cs-tilt': DRAW_TILT[seed % DRAW_TILT.length] + 'deg' } },
+      h('svg', { viewBox: CARD_BOX, 'aria-hidden': true }, cardArt(cardShape(seed), i.status || 'building')),
+      h('div', { className: 'cs-card-body' },
+        p.tag ? h('span', { className: 'cs-card-meta' }, h('b', null, 'narrowed to ' + p.tag)) : null,
+        h('h3', { className: 'cs-card-title' }, i.title),
+        tags ? h('span', { className: 'cs-card-tags' }, tags) : null),
+      h('span', { className: 'cs-stamp', 'aria-hidden': true }, 'PICK ME'));
+  }
+  function ChallengeRow(p) {
+    return h('div', { className: 'cs-challenge-row' },
+      h('div', { className: 'cs-challenge-text' }, h('span', { className: 'cs-challenge-label' }, p.label), h('span', { className: 'cs-challenge-value' }, p.children)),
+      h(Pill, { size: 'sm', onClick: p.onReroll }, p.rerollLabel));
+  }
+  /* Draw a nugget's result: the drawn card with its stamp, its notes, and the dealt timebox and stack, each rerolled on its own. */
+  function RandomNugget(p) {
+    var i = p.idea, title = p.loading ? 'Drawing…' : i ? 'Your challenge' : 'Nothing to draw';
+    return h(Dialog, {
+      title: title, width: 480, onClose: p.onClose, className: cx('cs-random', p.className),
+      footer: [h(Pill, { key: 'c', onClick: p.onClose }, 'Close'), h(Pill, { key: 'r', variant: 'tomato', onClick: p.onReroll, disabled: p.loading }, 'Reroll nugget')]
+    },
+      p.loading ? h('p', { role: 'status', className: 'cs-random-wait' }, 'Drawing a nugget…')
+        : !i ? h(CaptionBox, { eyebrow: 'Meanwhile, on the tray…' }, 'No active nuggets match that tag. Drop one in first.')
+          : h(React.Fragment, null,
+            h(DrawnCard, { key: i.id == null ? i.title : i.id, idea: i, tag: p.tag }),
+            i.notes ? h('p', { className: 'cs-random-notes' }, i.notes) : null,
+            p.timebox && p.stack ? h('div', { className: 'cs-challenge' },
+              h(ChallengeRow, { label: 'Timebox', rerollLabel: 'Reroll timebox', onReroll: p.onRerollTimebox }, p.timebox),
+              h(ChallengeRow, { label: 'Build it with', rerollLabel: 'Reroll stack', onReroll: p.onRerollStack }, p.stack.language + ' + ' + p.stack.framework, p.stack.track ? h('span', { className: 'cs-challenge-track' }, p.stack.track) : null),
+              p.source ? h('a', { className: 'cs-challenge-source', href: p.source.url, target: '_blank', rel: 'noreferrer', title: p.source.retrieved ? 'Popularity weights copied ' + p.source.retrieved : null }, 'data: ' + p.source.label) : null) : null));
+  }
+
+  var REQUEST_STATE = { created: { tone: 'ok', word: 'Sent' }, pending: { tone: 'wait', word: 'Queued' }, failed: { tone: 'error', word: 'Failed' } };
+  function requestView(state) { return state === 'created' || state === 'failed' ? state : 'pending'; }
+  /* A nugget's GitHub feature requests as a strip of small panels: the issue (or why there isn't one yet), its repo, its state and Retry. */
+  function FeatureRequests(p) {
+    var list = p.requests || [];
+    if (!list.length) return null;
+    return h('ul', { 'aria-label': 'Feature requests', className: cx('cs-requests', p.className) }, list.map(function (r) {
+      var view = requestView(r.state), state = REQUEST_STATE[view];
+      var head = view === 'created'
+        ? (r.url ? h('a', { href: r.url, target: '_blank', rel: 'noreferrer' }, 'Feature request #' + r.number) : h('strong', null, 'Feature request #' + r.number))
+        : h('span', null, view === 'pending' ? 'Feature request queued' : 'Feature request failed');
+      return h('li', { key: r.id, className: cx('cs-panel', 'cs-request', 'cs-request--' + view) },
+        h('div', { className: 'cs-request-head' }, h('span', { className: 'cs-request-title' }, head), h(StatePill, { tone: state.tone }, state.word)),
+        h('span', { className: 'cs-request-repo' }, r.repo),
+        view !== 'created' && r.last_error ? h('p', { className: 'cs-request-error' }, r.last_error) : null,
+        view === 'failed' ? h(Pill, { size: 'sm', className: 'cs-request-retry', onClick: function () { p.onRetry && p.onRetry(r.id); }, disabled: p.retrying === r.id }, 'Retry') : null);
+    }));
+  }
+
+  window.Comic = Object.assign(window.Comic || {}, { Panel: Panel, Strip: Strip, Pill: Pill, Chip: Chip, SearchField: SearchField, StatusPill: StatusPill, NuggetCard: NuggetCard, NuggetMark: NuggetMark, SpeechBubble: SpeechBubble, Sfx: Sfx, Burst: Burst, CaptionBox: CaptionBox, Dialog: Dialog, Field: Field, NameSuggestions: NameSuggestions, SuggestedTags: SuggestedTags, ThoughtBubble: ThoughtBubble, StatePill: StatePill, ActionError: ActionError, EmptyState: EmptyState, BinCard: BinCard, Bin: Bin, LookPicker: LookPicker, SettingsSection: SettingsSection, PlanWithClaude: PlanWithClaude, RandomNugget: RandomNugget, FeatureRequests: FeatureRequests, Icon: Icon, nuggetPath: blob });
 })();
