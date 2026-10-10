@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Status } from '../../api';
+import type { Status } from '../../lib/status';
 import { useSauce } from '../../models/useSauce';
 import { blob } from './ui/blob';
 import { CARD_BOX, cardShape, outlineDash } from './ui/cardGeometry';

@@ -1,4 +1,4 @@
-import type { Status } from '../../../api';
+import type { Status } from '../../../lib/status';
 import { CARD_SHAPES } from './cardShapes';
 
 /** The viewBox every card drawing shares (the lumpy outlines are drawn in it). */

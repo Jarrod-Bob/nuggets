@@ -1,4 +1,7 @@
 import type { Status } from '../api';
+
+// Views reach Status through here, never through api (ADR 0002).
+export { STATUSES, type Status } from '../api';
 import type { BadgeProps } from '../components/core/Badge';
 
 type Tone = NonNullable<BadgeProps['tone']>;

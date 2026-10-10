@@ -1,4 +1,4 @@
-import type { Status } from '../../../api';
+import type { Status } from '../../../lib/status';
 import { CARD_BOX, cardShape, outlineDash } from './cardGeometry';
 
 const STATUS_FILL: Record<Status, string> = {

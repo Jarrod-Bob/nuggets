@@ -1,4 +1,4 @@
-import type { Status } from '../../../api';
+import type { Status } from '../../../lib/status';
 import { statusLabel } from '../../../lib/status';
 
 /**
