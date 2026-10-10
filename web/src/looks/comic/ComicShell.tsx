@@ -2,6 +2,7 @@ import './fonts.css';
 import './tokens.css';
 import './comic.css';
 import './ui/ui.css';
+import './ui/card.css';
 import { Link, Outlet } from 'react-router-dom';
 import { BugReportButton } from '../../components/feedback/BugReportButton';
 import { TopBarSlot, type TopBarContent } from '../../components/navigation/TopBarSlot';
