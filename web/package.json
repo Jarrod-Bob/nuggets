@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint src",
+    "check:comic-chunk": "node scripts/check-comic-chunk.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

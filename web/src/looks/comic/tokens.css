@@ -1,6 +1,6 @@
 /* Comic look tokens, from design/comic-strip/system/project/tokens.json.
    Scoped to the Comic look and prefixed --comic-*: they never reuse Classic's
-   --nug-* names, and the bundle's bare --ink / --paper are prefixed too. */
+   names, and the design bundle's unprefixed ink and paper are prefixed too. */
 [data-look="comic"] {
   /* Colour */
   --comic-paper: #ffffff;
