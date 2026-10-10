@@ -213,6 +213,187 @@
   overflow-wrap: anywhere;
 }
 
+/* Suggested tags: pencilled in. A dashed ink-soft tray; hover or focus inks a chip up (solid line, mayo fill, nugget plus). */
+.comic-suggest-tray {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 12px;
+  border: var(--comic-line-thin) dashed var(--comic-ink-soft);
+  border-radius: var(--comic-radius-pill);
+  background: var(--comic-paper);
+}
+.comic-suggest-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--comic-ink-soft);
+}
+.comic-suggest-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  border: var(--comic-line-thin) dashed var(--comic-ink-soft);
+  border-radius: var(--comic-radius-pill);
+  background: var(--comic-paper);
+  color: var(--comic-ink);
+  font-family: var(--comic-font-mono);
+  font-weight: 700;
+  font-size: 12.5px;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.comic-suggest-chip--inked {
+  border-style: solid;
+  border-color: var(--comic-ink);
+  background: var(--comic-mayo);
+}
+.comic-suggest-chip--busy {
+  opacity: 0.6;
+}
+.comic-suggest-add,
+.comic-suggest-dismiss {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--comic-radius-pill);
+}
+.comic-suggest-chip--busy .comic-suggest-add,
+.comic-suggest-chip--busy .comic-suggest-dismiss {
+  cursor: default;
+}
+.comic-suggest-add {
+  gap: 6px;
+  height: 100%;
+  padding: 0 4px 0 6px;
+}
+.comic-suggest-dismiss {
+  justify-content: center;
+  width: 24px;
+  height: 100%;
+  margin-right: 2px;
+  font-size: 16px;
+  line-height: 1;
+}
+.comic-suggest-plus {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: var(--comic-paper);
+}
+.comic-suggest-chip--inked .comic-suggest-plus {
+  background: var(--comic-nugget);
+  border-color: var(--comic-ink);
+}
+.comic-suggest-add:focus-visible,
+.comic-suggest-dismiss:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 2px;
+}
+
+/* The hash is drawn, not written, so a tag's name reads the same as in Classic (and to screen readers). */
+.comic-hash::before {
+  content: '#';
+}
+
+/* A thought bubble: a reason or an aside, as opposed to speech. Two puffs trail back up to the chip. */
+.comic-thought {
+  position: absolute;
+  top: 100%;
+  z-index: 5;
+  padding-top: 18px;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.96);
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-bounce);
+}
+.comic-thought[data-side='right'] {
+  left: 0;
+}
+.comic-thought[data-side='left'] {
+  right: 0;
+}
+.comic-thought[data-open] {
+  opacity: 1;
+  transform: none;
+}
+.comic-thought-puff {
+  position: absolute;
+  background: var(--comic-paper);
+  border: var(--comic-line-thin) solid var(--comic-ink);
+  border-radius: 50%;
+}
+.comic-thought-puff--big {
+  top: 4px;
+  width: 11px;
+  height: 11px;
+}
+.comic-thought-puff--small {
+  top: 0;
+  width: 6px;
+  height: 6px;
+}
+.comic-thought[data-side='right'] .comic-thought-puff--big {
+  left: 22px;
+}
+.comic-thought[data-side='right'] .comic-thought-puff--small {
+  left: 14px;
+}
+.comic-thought[data-side='left'] .comic-thought-puff--big {
+  right: 22px;
+}
+.comic-thought[data-side='left'] .comic-thought-puff--small {
+  right: 14px;
+}
+.comic-thought-body {
+  display: block;
+  width: max-content;
+  max-width: min(300px, 78vw);
+  box-sizing: border-box;
+  padding: 12px 16px;
+  white-space: normal;
+  text-align: left;
+  background: var(--comic-paper);
+  color: var(--comic-ink);
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-bubble);
+  box-shadow: var(--comic-shadow-thought);
+  font-family: var(--comic-font-body);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.comic-thought-body b {
+  font-family: var(--comic-font-mono);
+}
+.comic-thought-list {
+  margin: 6px 0 8px;
+  padding-left: 18px;
+}
+.comic-thought-line {
+  display: block;
+  margin-bottom: 6px;
+}
+.comic-thought-foot {
+  display: block;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  color: var(--comic-ink-soft);
+}
+
 /* A speech bubble: something said. Plan with Claude's prompt is what you will say to Claude. */
 .comic-bubble {
   position: relative;

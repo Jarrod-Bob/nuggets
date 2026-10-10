@@ -45,7 +45,7 @@ describe('Comic TagSuggestions', () => {
     const tray = screen.getByRole('group', { name: 'Suggested tags' });
     expect(tray.className).toContain('comic-suggest-tray');
     expect(tray.textContent).toMatch(/^suggested/i);
-    expect(screen.getAllByRole('button', { name: /^Add the suggested tag / }).map((b) => b.textContent)).toEqual(['#cooking', '#weekend']);
+    expect(screen.getAllByRole('button', { name: /^Add the suggested tag / }).map((b) => b.textContent)).toEqual(['cooking', 'weekend']);
     expect(screen.getByRole('button', { name: 'Dismiss the suggested tag weekend' }).textContent).toBe('×');
     expect(tray.textContent).not.toMatch(/0\.9|90|%/);
   });
@@ -86,7 +86,7 @@ describe('Comic TagSuggestions', () => {
 
     const why = bubble()!;
     expect(why.className).toContain('comic-thought');
-    expect(why.textContent).toContain('Suggested because it reads like these nuggets tagged #cooking:');
+    expect(why.textContent).toContain('Suggested because it reads like these nuggets tagged cooking:');
     expect([...why.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['Recipe box', 'Pantry tracker']);
     expect(why.textContent).toContain('click to ink it in · × to rub it out');
 
@@ -107,19 +107,19 @@ describe('Comic TagSuggestions', () => {
     renderTray([cooking]);
     const why = document.getElementById(addButton('cooking').getAttribute('aria-describedby') ?? '');
     expect(why?.getAttribute('role')).toBe('tooltip');
-    expect(why?.textContent).toContain('tagged #cooking');
+    expect(why?.textContent).toContain('tagged cooking');
   });
 
   it('says "this nugget" for a single example, and names only the tag when there are none', async () => {
     renderTray([weekend, { tag: 'old', probability: 0.8, examples: [] }]);
     fireEvent.mouseEnter(addButton('weekend'));
     await wait(REASON_DELAY_MS);
-    expect(bubble()!.textContent).toContain('reads like this nugget tagged #weekend:');
+    expect(bubble()!.textContent).toContain('reads like this nugget tagged weekend:');
     fireEvent.mouseLeave(addButton('weekend'));
 
     fireEvent.mouseEnter(addButton('old'));
     await wait(REASON_DELAY_MS);
-    expect(bubble()!.textContent).toContain('Suggested from nuggets already tagged #old');
+    expect(bubble()!.textContent).toContain('Suggested from nuggets already tagged old');
     expect(bubble()!.querySelector('ul')).toBeNull();
   });
 

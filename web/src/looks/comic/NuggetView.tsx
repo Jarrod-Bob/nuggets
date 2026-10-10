@@ -8,6 +8,7 @@ import { describeOrigin } from '../../lib/origin';
 import type { NuggetPageModel } from '../../models/useNuggetPage';
 import { FeatureRequests } from './FeatureRequests';
 import { PlanWithClaude } from './PlanWithClaude';
+import { TagSuggestions } from './TagSuggestions';
 import { ActionError, Button, CardArt, CaptionBox, Dialog, EmptyState, shapeSeed, StatusPill, Tag } from './ui';
 
 /**
@@ -98,6 +99,9 @@ export function NuggetView({ page }: { page: NuggetPageModel }) {
                       <Tag name={t} />
                     </Link>
                   ))}
+                  {page.showSuggestions && (
+                    <TagSuggestions suggestions={page.suggestions} onAdd={page.addSuggestedTag} onDismiss={page.dismissSuggestedTag} busy={page.suggestionBusy} />
+                  )}
                 </div>
               )}
             </section>
