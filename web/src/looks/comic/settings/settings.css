@@ -1,0 +1,189 @@
+/* The Comic Settings dialog: the Look picker's sticker tiles and the integration sections,
+   translated from the design's .cs-look-* and .cs-settings-* rules. Values come from tokens.css.
+   Imported by the settings button, so it ships in the Comic chunk of whichever view uses it. */
+
+/* The Look picker */
+.comic-look {
+  min-width: 0;
+}
+.comic-look-legend {
+  margin: 0 0 10px;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.comic-look-tiles {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 10px 4px 6px;
+}
+.comic-look-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 150px;
+  box-sizing: border-box;
+  padding: 14px 12px 12px;
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-sticker);
+  background: var(--comic-paper);
+  box-shadow: var(--comic-shadow-stamp);
+  transform: rotate(var(--comic-tilt, 0deg));
+  cursor: pointer;
+  transition: transform var(--dur-base) var(--ease-bounce);
+}
+.comic-look-tile:hover {
+  transform: rotate(0) translate(-1px, -2px);
+}
+.comic-look-tile:focus-within {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 3px;
+}
+.comic-look-tile--on {
+  background: var(--comic-nugget);
+  box-shadow: var(--comic-shadow-sticker);
+}
+.comic-look-radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.comic-look-art {
+  position: relative;
+  display: block;
+  width: 74px;
+  height: 54px;
+}
+.comic-look-art > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.comic-look-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.comic-look-hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--comic-ink-soft);
+}
+
+/* An integration section */
+.comic-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding-top: 24px;
+  border-top: var(--comic-line) solid var(--comic-ink);
+}
+.comic-settings-title {
+  margin: 0;
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.comic-settings-desc {
+  margin: 4px 0 0;
+  font-size: 14px;
+  text-wrap: pretty;
+}
+.comic-settings-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.comic-settings-detail {
+  min-width: 0;
+  margin-left: auto;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  color: var(--comic-ink-soft);
+  overflow-wrap: anywhere;
+}
+.comic-settings-url {
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  color: var(--comic-ink-soft);
+  overflow-wrap: anywhere;
+}
+.comic-settings-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.comic-settings-note a {
+  color: var(--comic-ink);
+  font-weight: 700;
+}
+.comic-settings-saved {
+  align-self: center;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  color: var(--comic-ink-soft);
+}
+.comic-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.comic-settings-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.comic-settings-row > .comic-round {
+  margin-bottom: 3px;
+}
+.comic-settings-mappings {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.comic-settings-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.comic-settings-actions-end {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comic-look-tile {
+    transition: none;
+  }
+  .comic-look-tile:hover {
+    transform: rotate(var(--comic-tilt, 0deg));
+  }
+}

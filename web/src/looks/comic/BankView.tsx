@@ -1,11 +1,11 @@
 import './bank.css';
 import { TopBar } from '../../components/navigation/TopBar';
-import { SettingsButton } from '../../components/settings/SettingsButton';
 import { STATUSES, statusLabel } from '../../lib/status';
 import type { Bank } from '../../models/useBank';
 import { IdeaDialog } from './IdeaDialog';
 import { NuggetCard } from './NuggetCard';
 import { RandomNugget } from './RandomNugget';
+import { SettingsButton } from './settings/SettingsButton';
 import { ActionError, Button, Chip, EmptyState, Icon, IconButton, SearchField } from './ui';
 
 /**
@@ -13,8 +13,8 @@ import { ActionError, Button, Chip, EmptyState, Icon, IconButton, SearchField } 
  * gingham liner, with the status and tag filters above it. Everything it
  * draws comes from the `bank` model (ADR 0002), the same one Classic's
  * BankView takes, with the same labels and accessible names, so the route's
- * tests pass under both Looks. Drop and Edit open the Comic
- * IdeaDialog; Settings is still Classic's button (#55).
+ * tests pass under both Looks. Drop and Edit open the Comic IdeaDialog
+ * (#54); Settings is the Comic settings button (#55).
  */
 export function BankView({ bank }: { bank: Bank }) {
   const filtered = !!(bank.query || bank.activeTag || bank.activeStatus);

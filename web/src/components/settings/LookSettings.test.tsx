@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LookSettings } from './LookSettings';
+import { LookSettings as ComicLookSettings } from '../../looks/comic/settings/LookSettings';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
@@ -36,23 +37,27 @@ afterEach(() => {
 });
 
 const classic = () => screen.getByRole('radio', { name: 'Classic' }) as HTMLInputElement;
-const comic = () => screen.getByRole('radio', { name: 'Comic (in progress)' }) as HTMLInputElement;
+const comic = () => screen.getByRole('radio', { name: 'Comic' }) as HTMLInputElement;
 
-describe('LookSettings', () => {
-  it('offers Classic, selected by default, and Comic (in progress)', async () => {
-    render(<LookSettings open />);
+describe.each([
+  ['classic', LookSettings],
+  ['comic', ComicLookSettings],
+] as const)('LookSettings under the %s look', (_look, Section) => {
+  it('offers Classic, selected by default, and Comic', async () => {
+    render(<Section open />);
     await waitFor(() => expect(classic().checked).toBe(true));
     expect(comic().checked).toBe(false);
+    expect(screen.queryByText(/in progress/i)).toBeNull();
   });
 
   it('shows the saved look', async () => {
     saved = 'comic';
-    render(<LookSettings open />);
+    render(<Section open />);
     await waitFor(() => expect(comic().checked).toBe(true));
   });
 
   it('saves Comic and switches the page to it straight away', async () => {
-    render(<LookSettings open />);
+    render(<Section open />);
     await waitFor(() => expect(classic().checked).toBe(true));
 
     fireEvent.click(comic());
@@ -63,7 +68,7 @@ describe('LookSettings', () => {
   });
 
   it('shows the error and keeps the old look when saving fails', async () => {
-    render(<LookSettings open />);
+    render(<Section open />);
     await waitFor(() => expect(classic().checked).toBe(true));
     failNext = true;
 

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LiveUpdatesProvider } from '../../live/LiveUpdates';
 import { SpicesSettings } from './SpicesSettings';
+import { SpicesSettings as ComicSpicesSettings } from '../../looks/comic/settings/SpicesSettings';
 import type { SpicesStatus } from '../../api';
 
 class QuietEventSource {
@@ -51,17 +52,27 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** The section under test: Classic's, or the Comic look's drawing of it (same model, same accessible names). */
+let Section: typeof SpicesSettings = SpicesSettings;
+
 const renderSection = () =>
   render(
     <LiveUpdatesProvider>
-      <SpicesSettings open />
+      <Section open />
     </LiveUpdatesProvider>,
   );
 
 const calls = (method: string, path: string) =>
   fetchMock.mock.calls.filter(([p, init]) => p === path && ((init as RequestInit | undefined)?.method ?? 'GET') === method);
 
-describe('spices settings', () => {
+describe.each([
+  ['classic', SpicesSettings],
+  ['comic', ComicSpicesSettings],
+] as const)('spices settings under the %s look', (_look, Impl) => {
+  beforeEach(() => {
+    Section = Impl;
+  });
+
   it('connects once a token is pasted in', async () => {
     renderSection();
     const connect = await screen.findByRole('button', { name: 'Connect' });

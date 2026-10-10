@@ -10,8 +10,8 @@ import { TopBarSlot, type TopBarContent } from '../../components/navigation/TopB
 /**
  * The Comic look's top bar (the design's Strip): the `nuggets.` wordmark, which
  * links back to the bank, then whatever the page's view gives its top bar —
- * search first, actions after. Views are still Classic until #52–#55, so the
- * content is theirs; only the frame is drawn here.
+ * search first, actions after. Each page's view supplies the
+ * content; this draws only the frame.
  */
 function drawTopBar({ center, right }: TopBarContent) {
   return (
