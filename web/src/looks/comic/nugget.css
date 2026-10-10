@@ -1,0 +1,471 @@
+/* A nugget's page in the Comic look: a hero panel beside the title and notes panels, a tomato action panel below.
+   Values come from tokens.css and the house motion tokens. Imported by NuggetView, so it ships in the Comic nugget chunk. */
+
+.comic-nugget {
+  flex: 1;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--comic-page) var(--comic-page) 40px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--comic-gutter);
+}
+
+.comic-nugget-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 380px) minmax(0, 1fr);
+  grid-template-areas:
+    'hero title'
+    'hero notes'
+    'actions actions'
+    'requests requests';
+  gap: var(--comic-gutter);
+}
+@media (max-width: 1100px) {
+  .comic-nugget-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'title'
+      'hero'
+      'notes'
+      'actions'
+      'requests';
+  }
+}
+@media (max-width: 700px) {
+  .comic-nugget {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+.comic-nugget-hero {
+  grid-area: hero;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: var(--comic-panel-pad);
+  background: var(--comic-mayo);
+}
+.comic-nugget-art {
+  position: relative;
+  width: min(100%, 300px);
+  aspect-ratio: 372 / 272;
+  transform: rotate(-3deg);
+}
+.comic-nugget-grid--binned .comic-nugget-art {
+  filter: grayscale(1);
+}
+.comic-nugget-binned {
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--comic-ink-soft);
+}
+
+.comic-nugget-title {
+  grid-area: title;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--comic-panel-pad);
+}
+.comic-nugget-h1 {
+  margin: 0;
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.comic-nugget-project {
+  margin: 0;
+}
+/* The sauce means one thing: this nugget has a project name. */
+.comic-nugget-project-name {
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 4px 14px;
+  border: var(--comic-line-thin) solid var(--comic-ink);
+  border-radius: var(--comic-radius-pill);
+  background: var(--comic-curry);
+  color: var(--comic-on-curry);
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comic-nugget-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.comic-nugget-tag {
+  color: var(--comic-ink);
+  text-decoration: none;
+  padding: 2px 4px;
+  border-radius: var(--comic-radius-pill);
+}
+.comic-nugget-tag:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+.comic-nugget-tag:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 3px;
+}
+
+.comic-nugget-notes {
+  grid-area: notes;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: var(--comic-panel-pad);
+}
+.comic-nugget-notes-text {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.comic-nugget-notes-empty {
+  margin: 0;
+  color: var(--comic-ink-soft);
+}
+.comic-nugget-dates {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--comic-ink-soft);
+}
+
+.comic-nugget-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px var(--comic-panel-pad);
+  background: var(--comic-tomato);
+  color: var(--comic-on-tomato);
+}
+
+/* Feature requests: a strip of small panels under the action panel, one per request. */
+.comic-requests {
+  grid-area: requests;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--comic-gutter);
+}
+.comic-request {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px;
+}
+/* Red ink is a line, never a fill; the words stay ink. */
+.comic-request--failed {
+  border-color: var(--comic-tomato);
+}
+.comic-request-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.comic-request-name {
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--comic-ink);
+}
+.comic-request-repo {
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  color: var(--comic-ink-soft);
+  overflow-wrap: anywhere;
+}
+.comic-request-error {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* Suggested tags: pencilled in. A dashed ink-soft tray; hover or focus inks a chip up (solid line, mayo fill, nugget plus). */
+.comic-suggest-tray {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 12px;
+  border: var(--comic-line-thin) dashed var(--comic-ink-soft);
+  border-radius: var(--comic-radius-pill);
+  background: var(--comic-paper);
+}
+.comic-suggest-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--comic-ink-soft);
+}
+.comic-suggest-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  border: var(--comic-line-thin) dashed var(--comic-ink-soft);
+  border-radius: var(--comic-radius-pill);
+  background: var(--comic-paper);
+  color: var(--comic-ink);
+  font-family: var(--comic-font-mono);
+  font-weight: 700;
+  font-size: 12.5px;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.comic-suggest-chip--inked {
+  border-style: solid;
+  border-color: var(--comic-ink);
+  background: var(--comic-mayo);
+}
+.comic-suggest-chip--busy {
+  opacity: 0.6;
+}
+.comic-suggest-add,
+.comic-suggest-dismiss {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--comic-radius-pill);
+}
+.comic-suggest-chip--busy .comic-suggest-add,
+.comic-suggest-chip--busy .comic-suggest-dismiss {
+  cursor: default;
+}
+.comic-suggest-add {
+  gap: 6px;
+  height: 100%;
+  padding: 0 4px 0 6px;
+}
+.comic-suggest-dismiss {
+  justify-content: center;
+  width: 24px;
+  height: 100%;
+  margin-right: 2px;
+  font-size: 16px;
+  line-height: 1;
+}
+.comic-suggest-plus {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: var(--comic-paper);
+}
+.comic-suggest-chip--inked .comic-suggest-plus {
+  background: var(--comic-nugget);
+  border-color: var(--comic-ink);
+}
+.comic-suggest-add:focus-visible,
+.comic-suggest-dismiss:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 2px;
+}
+
+/* The hash is drawn, not written, so a tag's name reads the same as in Classic (and to screen readers). */
+.comic-hash::before {
+  content: '#';
+}
+
+/* A thought bubble: a reason or an aside, as opposed to speech. Two puffs trail back up to the chip. */
+.comic-thought {
+  position: absolute;
+  top: 100%;
+  z-index: 5;
+  padding-top: 18px;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.96);
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-bounce);
+}
+.comic-thought[data-side='right'] {
+  left: 0;
+}
+.comic-thought[data-side='left'] {
+  right: 0;
+}
+.comic-thought[data-open] {
+  opacity: 1;
+  transform: none;
+}
+.comic-thought-puff {
+  position: absolute;
+  background: var(--comic-paper);
+  border: var(--comic-line-thin) solid var(--comic-ink);
+  border-radius: 50%;
+}
+.comic-thought-puff--big {
+  top: 4px;
+  width: 11px;
+  height: 11px;
+}
+.comic-thought-puff--small {
+  top: 0;
+  width: 6px;
+  height: 6px;
+}
+.comic-thought[data-side='right'] .comic-thought-puff--big {
+  left: 22px;
+}
+.comic-thought[data-side='right'] .comic-thought-puff--small {
+  left: 14px;
+}
+.comic-thought[data-side='left'] .comic-thought-puff--big {
+  right: 22px;
+}
+.comic-thought[data-side='left'] .comic-thought-puff--small {
+  right: 14px;
+}
+.comic-thought-body {
+  display: block;
+  width: max-content;
+  max-width: min(300px, 78vw);
+  box-sizing: border-box;
+  padding: 12px 16px;
+  white-space: normal;
+  text-align: left;
+  background: var(--comic-paper);
+  color: var(--comic-ink);
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-bubble);
+  box-shadow: var(--comic-shadow-thought);
+  font-family: var(--comic-font-body);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.comic-thought-body b {
+  font-family: var(--comic-font-mono);
+}
+.comic-thought-list {
+  margin: 6px 0 8px;
+  padding-left: 18px;
+}
+.comic-thought-line {
+  display: block;
+  margin-bottom: 6px;
+}
+.comic-thought-foot {
+  display: block;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  color: var(--comic-ink-soft);
+}
+
+/* A speech bubble: something said. Plan with Claude's prompt is what you will say to Claude. */
+.comic-bubble {
+  position: relative;
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-bubble);
+  background: var(--comic-paper);
+}
+.comic-bubble--prompt {
+  margin-bottom: 22px;
+}
+.comic-bubble--prompt::after {
+  content: '';
+  position: absolute;
+  right: 44px;
+  bottom: -17px;
+  width: 24px;
+  height: 24px;
+  background: var(--comic-paper);
+  border-right: var(--comic-line) solid var(--comic-ink);
+  border-bottom: var(--comic-line) solid var(--comic-ink);
+  transform: skewX(-24deg) rotate(45deg);
+  border-bottom-right-radius: 4px;
+}
+
+/* Plan with Claude */
+.comic-plan-prompt {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  padding: 16px 20px;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.comic-plan-prompt:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: -6px;
+  border-radius: var(--comic-radius-bubble);
+}
+.comic-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.comic-plan-actions a {
+  text-decoration: none;
+}
+.comic-plan-note {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--comic-ink-soft);
+  text-wrap: pretty;
+}
+.comic-plan-note--strong {
+  color: var(--comic-ink);
+}
+.comic-plan-answer textarea {
+  min-height: 140px;
+}
+.comic-plan-answer {
+  margin-top: 20px;
+}
+.comic-plan-error {
+  margin: 8px 0 0;
+  padding-left: 10px;
+  border-left: var(--comic-line) solid var(--comic-tomato);
+  font-size: 14px;
+}
+.comic-plan-save {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
