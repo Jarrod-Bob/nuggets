@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Idea } from '../../api';
+import type { FeatureRequest, Idea } from '../../api';
 import { LiveUpdatesProvider } from '../../live/LiveUpdates';
 import { NuggetPage } from '../../pages/NuggetPage';
 import { TagsProvider } from '../../tags/TagsProvider';
@@ -46,11 +46,13 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 describe("a nugget's page under the Comic look", () => {
   let current: Idea;
   let calls: Array<[string, string]>;
+  let requests: FeatureRequest[];
 
   beforeEach(() => {
     document.documentElement.dataset.look = 'comic';
     current = base;
     calls = [];
+    requests = [];
     vi.stubGlobal('EventSource', QuietEventSource);
     vi.stubGlobal(
       'fetch',
@@ -58,6 +60,7 @@ describe("a nugget's page under the Comic look", () => {
         const method = init?.method ?? 'GET';
         calls.push([method, path]);
         if (path === '/api/tags') return Promise.resolve(json([]));
+        if (path === '/api/ideas/1/github-issues') return Promise.resolve(json(requests));
         if (path === '/api/ideas/1' && method === 'GET') return Promise.resolve(json(current));
         if (path === '/api/ideas/1/restore') {
           current = { ...current, archived_at: null };
@@ -138,5 +141,20 @@ describe("a nugget's page under the Comic look", () => {
     const note = await screen.findByText('Not in the bank');
     expect(note.closest('.comic-caption')).toBeTruthy();
     expect(screen.getAllByRole('button', { name: 'Back to the bank' }).length).toBeGreaterThan(0);
+  });
+
+  it('draws each feature request as its own small panel with a state pill, red-ink when it failed', async () => {
+    requests = [
+      { id: 7, idea_id: 1, repo: 'Jarrod-Bob/nuggets', tag: 'web', state: 'failed', attempts: 1, last_error: 'GitHub answered 404.' },
+      { id: 8, idea_id: 1, repo: 'Jarrod-Bob/spices', tag: 'web', state: 'created', attempts: 1, number: 42, url: 'https://github.com/Jarrod-Bob/spices/issues/42' },
+    ];
+    renderPage();
+    const list = await screen.findByRole('list', { name: 'Feature requests' });
+    const [failed, sent] = within(list).getAllByRole('listitem');
+    expect(failed.className).toContain('comic-panel');
+    expect(failed.className).toContain('comic-request--failed');
+    expect(within(failed).getByText('Failed', { selector: '.comic-state--error' })).toBeTruthy();
+    expect(within(sent).getByText('Sent', { selector: '.comic-state--ok' })).toBeTruthy();
+    expect(sent.className).not.toContain('comic-request--failed');
   });
 });
