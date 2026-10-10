@@ -452,6 +452,9 @@
 .comic-plan-note--strong {
   color: var(--comic-ink);
 }
+.comic-plan-answer textarea {
+  min-height: 140px;
+}
 .comic-plan-answer {
   margin-top: 20px;
 }

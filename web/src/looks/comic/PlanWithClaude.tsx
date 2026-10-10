@@ -66,7 +66,6 @@ export function PlanWithClaude({ open, idea, onClose, onSave }: PlanWithClaudePr
           id="plan-answer"
           label="Claude's answer"
           multiline
-          rows={6}
           placeholder="Paste Claude's plan here"
           value={answer}
           onChange={(e) => plan.setAnswer(e.target.value)}
