@@ -168,3 +168,47 @@
   background: var(--comic-tomato);
   color: var(--comic-on-tomato);
 }
+
+/* Feature requests: a strip of small panels under the action panel, one per request. */
+.comic-requests {
+  grid-area: requests;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--comic-gutter);
+}
+.comic-request {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px;
+}
+/* Red ink is a line, never a fill; the words stay ink. */
+.comic-request--failed {
+  border-color: var(--comic-tomato);
+}
+.comic-request-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.comic-request-name {
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--comic-ink);
+}
+.comic-request-repo {
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  color: var(--comic-ink-soft);
+  overflow-wrap: anywhere;
+}
+.comic-request-error {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}

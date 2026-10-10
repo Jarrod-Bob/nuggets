@@ -6,6 +6,7 @@ import { IdeaForm } from '../../components/nuggets/IdeaForm';
 import { formatRelative } from '../../lib/formatRelative';
 import { describeOrigin } from '../../lib/origin';
 import type { NuggetPageModel } from '../../models/useNuggetPage';
+import { FeatureRequests } from './FeatureRequests';
 import { ActionError, Button, CardArt, CaptionBox, Dialog, EmptyState, shapeSeed, StatusPill, Tag } from './ui';
 
 /**
@@ -128,6 +129,7 @@ export function NuggetView({ page }: { page: NuggetPageModel }) {
                 Purge
               </Button>
             </section>
+            <FeatureRequests requests={page.requests} onRetry={page.retryRequest} retrying={page.retrying} />
           </article>
         )}
       </main>
