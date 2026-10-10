@@ -1,7 +1,7 @@
 import './idea-dialog.css';
 import { STATUSES, statusLabel } from '../../lib/status';
 import { useIdeaDraft, type DraftSource, type IdeaDraft } from '../../models/useIdeaDraft';
-import { ProjectNameField } from './ProjectNameField';
+import { NameStickers } from './NameStickers';
 import { TagField } from './TagField';
 import { Button, Chip, Dialog, Field } from './ui';
 
@@ -56,7 +56,7 @@ export function IdeaDialog({ open = false, mode = 'create', idea, tagOptions = [
         </p>
       )}
       <Field label="Title" placeholder="What's the idea?" value={draft.title} onChange={(e) => draft.setTitle(e.target.value)} hint={draft.message || undefined} aria-invalid={draft.message ? true : undefined} />
-      <ProjectNameField value={draft.projectName} onChange={draft.setProjectName} notes={draft.notes} onPick={draft.pickProjectName} />
+      <NameStickers value={draft.projectName} onChange={draft.setProjectName} notes={draft.notes} onPick={draft.pickProjectName} />
       <Field label="Notes" multiline placeholder="Anything else worth remembering." value={draft.notes} onChange={(e) => draft.setNotes(e.target.value)} />
 
       <div className="comic-field">
