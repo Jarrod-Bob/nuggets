@@ -1,0 +1,8 @@
+/* Comic look fonts, self-hosted so the look works offline. Only the weights the
+   design uses; this file is imported by the lazy Comic chunk alone. */
+@import "@fontsource/bangers/400.css";
+@import "@fontsource/bricolage-grotesque/800.css";
+@import "@fontsource/instrument-sans/400.css";
+@import "@fontsource/instrument-sans/600.css";
+@import "@fontsource/space-mono/400.css";
+@import "@fontsource/space-mono/700.css";
