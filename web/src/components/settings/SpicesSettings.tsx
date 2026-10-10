@@ -2,17 +2,14 @@ import React from 'react';
 import { Button } from '../core/Button';
 import { Badge } from '../core/Badge';
 import { Input } from '../forms/Input';
-import { api, ApiError, type SpicesStatus, type SpicesSettingsUpdate } from '../../api';
 import { describeLastSync } from '../../lib/origin';
 import { SettingsSection } from './SettingsSection';
-import { useLiveRefresh } from '../../live/LiveUpdates';
+import { useSpicesSettings } from '../../models/useSpicesSettings';
 
 export interface SpicesSettingsProps {
   /** Whether the settings dialog is showing: status is fetched each time it opens. */
   open: boolean;
 }
-
-const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
 const note: React.CSSProperties = { margin: '0 0 14px', fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-700)', textWrap: 'pretty' };
 const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--nug-ink-500)' };
@@ -25,108 +22,7 @@ const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 'v
  * leaving it empty keeps the stored one.
  */
 export function SpicesSettings({ open }: SpicesSettingsProps) {
-  const [status, setStatus] = React.useState<SpicesStatus | null>(null);
-  const [editing, setEditing] = React.useState(false);
-  const [url, setUrl] = React.useState('');
-  const [token, setToken] = React.useState('');
-  const [interval, setIntervalText] = React.useState('');
-  const [confirmingResync, setConfirmingResync] = React.useState(false);
-  const [notice, setNotice] = React.useState<string | undefined>(undefined);
-  const [error, setError] = React.useState<string | undefined>(undefined);
-  const [busy, setBusy] = React.useState(false);
-
-  const refresh = React.useCallback((clearError: boolean) => {
-    if (clearError) setError(undefined);
-    api.spices
-      .status()
-      .then(setStatus)
-      .catch((err) => setError(describeError(err)));
-  }, []);
-
-  React.useEffect(() => {
-    // Fetching status when the dialog opens is inherently a side effect (an
-    // async request keyed off `open`), not state derivable during render.
-    if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setEditing(false);
-      setConfirmingResync(false);
-      setNotice(undefined);
-      refresh(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  // Keep the last-sync line and any error current while the dialog is open:
-  // pulls happen in the background, and the server says when the status moves.
-  useLiveRefresh('spices-status', () => {
-    if (open) refresh(false);
-  });
-
-  const startEditing = () => {
-    if (!status) return;
-    setUrl(status.url);
-    setIntervalText(String(status.interval_seconds));
-    setToken('');
-    setEditing(true);
-  };
-
-  const save = () => {
-    if (!status) return;
-    const update: SpicesSettingsUpdate = { url: (url || status.url).trim() };
-    if (token.trim()) update.token = token.trim();
-    const seconds = Number((interval || String(status.interval_seconds)).trim());
-    if (!Number.isInteger(seconds)) {
-      setError('The sync interval needs to be a whole number of seconds.');
-      return;
-    }
-    update.interval_seconds = seconds;
-
-    setBusy(true);
-    setError(undefined);
-    api.spices
-      .save(update)
-      .then((s) => {
-        setStatus(s);
-        setToken('');
-        setEditing(false);
-      })
-      .catch((err) => setError(describeError(err)))
-      .finally(() => setBusy(false));
-  };
-
-  const disconnect = () => {
-    setBusy(true);
-    setError(undefined);
-    setNotice(undefined);
-    api.spices
-      .disconnect()
-      .then(() => refresh(false))
-      .catch((err) => setError(describeError(err)))
-      .finally(() => setBusy(false));
-  };
-
-  const syncNow = () => {
-    setBusy(true);
-    api.spices
-      .sync()
-      .catch((err) => setError(describeError(err)))
-      .finally(() => setBusy(false));
-  };
-
-  const resync = () => {
-    setBusy(true);
-    setError(undefined);
-    api.spices
-      .resync()
-      .then((s) => {
-        setStatus(s);
-        setConfirmingResync(false);
-        const n = s.detached ?? 0;
-        setNotice(`${n} ${n === 1 ? 'nugget' : 'nuggets'} from the old spices kept, set aside as detached. Pulling everything in again.`);
-      })
-      .catch((err) => setError(describeError(err)))
-      .finally(() => setBusy(false));
-  };
+  const { status, busy, confirmingResync, disconnect, editing, error, interval, notice, resync, save, setConfirmingResync, setEditing, setIntervalText, setToken, setUrl, startEditing, syncNow, token, url } = useSpicesSettings(open);
 
   const form = status && (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
