@@ -2,6 +2,8 @@ import type { FeatureRequest } from '../../api';
 import { featureRequestView } from '../../lib/featureRequest';
 import { Button, cx, StatePill } from './ui';
 
+const STATE = { created: { tone: 'ok', label: 'Sent' }, pending: { tone: 'wait', label: 'Queued' }, failed: { tone: 'error', label: 'Failed' } } as const;
+
 export interface FeatureRequestsProps {
   requests: FeatureRequest[];
   onRetry: (id: number) => void;
@@ -35,9 +37,7 @@ export function FeatureRequests({ requests, onRetry, retrying = null }: FeatureR
                 ))}
               {view === 'pending' && <span className="comic-request-name">Feature request queued</span>}
               {view === 'failed' && <span className="comic-request-name">Feature request failed</span>}
-              <StatePill tone={view === 'created' ? 'ok' : view === 'pending' ? 'wait' : 'error'}>
-                {view === 'created' ? 'Sent' : view === 'pending' ? 'Queued' : 'Failed'}
-              </StatePill>
+              <StatePill tone={STATE[view].tone}>{STATE[view].label}</StatePill>
             </div>
             <span className="comic-request-repo">{r.repo}</span>
             {view !== 'created' && r.last_error && <span className="comic-request-error">{r.last_error}</span>}

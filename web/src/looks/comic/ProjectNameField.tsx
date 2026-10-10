@@ -29,7 +29,7 @@ const NOTES_EMPTY_HINT = 'Write some notes and kimi will name it';
 const UNAVAILABLE_TEXT = 'kimi is not available at the moment';
 
 /** Each sticker is peeled on at its own angle, by its place in the row. */
-const TILTS = [-3, 2, -2, 3, -1.5];
+const STICKER_TILTS = [-3, 2, -2, 3, -1.5];
 
 export function ProjectNameField({ value, onChange, notes, onPick }: ProjectNameFieldProps) {
   const kimi = useKimiNames({ notes, value });
@@ -95,7 +95,7 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
                   aria-selected={picked}
                   tabIndex={0}
                   className={cx('comic-sticker', picked && 'comic-sticker--picked')}
-                  style={{ '--comic-tilt': `${TILTS[i % TILTS.length]}deg` } as React.CSSProperties}
+                  style={{ '--comic-tilt': `${STICKER_TILTS[i % STICKER_TILTS.length]}deg` } as React.CSSProperties}
                   onClick={() => onPick(n.name)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
