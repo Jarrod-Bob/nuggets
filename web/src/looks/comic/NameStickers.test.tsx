@@ -3,7 +3,7 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { KimiName } from '../../api';
-import { ProjectNameField } from './ProjectNameField';
+import { NameStickers } from './NameStickers';
 
 /**
  * The Comic project-name field: a dice pill, kimi's names as tilted stickers,
@@ -45,7 +45,7 @@ afterEach(() => {
 /** The field as the form holds it: the form owns the value, and a pick fills it. */
 function Harness({ notes }: { notes: string }) {
   const [value, setValue] = React.useState('');
-  return <ProjectNameField value={value} onChange={setValue} notes={notes} onPick={setValue} />;
+  return <NameStickers value={value} onChange={setValue} notes={notes} onPick={setValue} />;
 }
 
 async function renderField(notes = 'a bank for little ideas') {

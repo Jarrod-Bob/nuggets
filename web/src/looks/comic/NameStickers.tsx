@@ -14,8 +14,11 @@ import { Button, cx, Field, Icon } from './ui';
  * Mount it only while the form is open, so kimi's health is checked when the
  * form opens, and the names shown are discarded when it closes. Closing it
  * mid-request aborts the call.
+ *
+ * Not mounted yet: the Comic edit and drop dialog (#54) has a simpler field of
+ * its own. Swapping this in there is the follow-up once #53 and #54 are in.
  */
-export interface ProjectNameFieldProps {
+export interface NameStickersProps {
   value: string;
   onChange: (value: string) => void;
   /** The form's current notes: what kimi names. */
@@ -31,7 +34,7 @@ const UNAVAILABLE_TEXT = 'kimi is not available at the moment';
 /** Each sticker is peeled on at its own angle, by its place in the row. */
 const STICKER_TILTS = [-3, 2, -2, 3, -1.5];
 
-export function ProjectNameField({ value, onChange, notes, onPick }: ProjectNameFieldProps) {
+export function NameStickers({ value, onChange, notes, onPick }: NameStickersProps) {
   const kimi = useKimiNames({ notes, value });
   const hint = kimi.blocked === 'no-notes' ? NOTES_EMPTY_HINT : kimi.blocked === 'unavailable' ? UNAVAILABLE_TEXT : undefined;
   const names = kimi.results.state === 'names';
