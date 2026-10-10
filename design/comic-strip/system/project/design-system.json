@@ -1,0 +1,116 @@
+{
+  "v": 3,
+  "layout": "files",
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-09T19:01:43Z"
+  },
+  "title": "nuggets Comic Strip",
+  "namespace": "Comic",
+  "libraries": [
+    {
+      "name": "react",
+      "version": "18"
+    },
+    {
+      "name": "react-dom",
+      "version": "18"
+    }
+  ],
+  "sections": {},
+  "groups": [
+    "Illustrations",
+    "Curry"
+  ],
+  "assetGroups": {
+    "Illustrations": {
+      "name": "Illustrations",
+      "tile": "l",
+      "order": [
+        "bucket.svg",
+        "hero-nugget.svg",
+        "fig1-nugget.svg",
+        "burst.svg",
+        "gingham.svg"
+      ],
+      "files": {
+        "bucket.svg": {
+          "name": "bucket.svg",
+          "blob": "23f45bf24b33975d32bbe79f8b3aed06",
+          "size": 27096,
+          "type": "image/svg+xml"
+        },
+        "hero-nugget.svg": {
+          "name": "hero-nugget.svg",
+          "blob": "bb1e2f732eee599104dccf791f10fdf9",
+          "size": 2642,
+          "type": "image/svg+xml"
+        },
+        "fig1-nugget.svg": {
+          "name": "fig1-nugget.svg",
+          "blob": "51b0aa975d408fd76d5f7c8d75f19fec",
+          "size": 1405,
+          "type": "image/svg+xml"
+        },
+        "burst.svg": {
+          "name": "burst.svg",
+          "blob": "641ba5b79f0890e7016a454a3bc0884d",
+          "size": 905,
+          "type": "image/svg+xml"
+        },
+        "gingham.svg": {
+          "name": "gingham.svg",
+          "blob": "d56fb8721e51ba8d292f47b1c4ad01a7",
+          "size": 432,
+          "type": "image/svg+xml"
+        }
+      }
+    },
+    "Curry": {
+      "name": "Curry",
+      "tile": "l",
+      "order": [
+        "curry-card-base.svg",
+        "curry-rest.svg",
+        "curry-spread.svg",
+        "curry-full.svg"
+      ],
+      "files": {
+        "curry-card-base.svg": {
+          "name": "curry-card-base.svg",
+          "blob": "57e392313162974fb8127afeaf2b3eb0",
+          "size": 2295,
+          "type": "image/svg+xml"
+        },
+        "curry-rest.svg": {
+          "name": "curry-rest.svg",
+          "blob": "908c575df596a3f0c6307efa69a213a0",
+          "size": 3016,
+          "type": "image/svg+xml"
+        },
+        "curry-spread.svg": {
+          "name": "curry-spread.svg",
+          "blob": "5b4e8e6850ffb4232df70d8a24845662",
+          "size": 3079,
+          "type": "image/svg+xml"
+        },
+        "curry-full.svg": {
+          "name": "curry-full.svg",
+          "blob": "e3b5c8a7da3e357f6ead7f84e5c0625e",
+          "size": 3652,
+          "type": "image/svg+xml"
+        }
+      }
+    }
+  },
+  "blobs": {},
+  "docs": {
+    "sections": []
+  },
+  "lastChange": {
+    "by": "Jarrod",
+    "at": "2026-10-10T03:40:00Z",
+    "via": "Claude Code",
+    "note": "Curry, pickle (Done) and six components for the name generator, tag suggestions and dialogs: CaptionBox, Dialog, Field, NameSuggestions, SuggestedTags, ThoughtBubble. NuggetCard gains the curry corner."
+  }
+}

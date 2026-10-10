@@ -1,0 +1,46 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Cover</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Instrument+Sans:wght@400&display=swap">
+<style>
+  html,body{margin:0;background:var(--paper)}
+  .cover{position:relative;width:960px;height:288px;overflow:hidden;background:var(--paper)}
+  svg{position:absolute;left:0;top:0}
+  .nugget{fill:var(--nugget)} .tomato{fill:var(--tomato)} .ink{fill:var(--ink)} .mayo{fill:var(--mayo)} .paper{fill:var(--paper)}
+  .edge{fill:none;stroke:var(--ink);stroke-width:var(--line)}
+  .blk{rx:var(--radius-panel)}
+  .text{position:absolute;left:40px;bottom:36px;max-width:420px}
+  .name{margin:0;font-family:var(--font-display);font-weight:800;font-size:64px;line-height:.95;letter-spacing:-0.045em;color:var(--ink)}
+  .tag{margin:12px 0 0;font-family:var(--font-body);font-size:14px;line-height:1.4;color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<div class="cover">
+  <!--
+    blocks: nugget 224x300 (bleeds top and bottom), tomato 256x160 (bleeds right), ink 96x128, mayo 160x128 (bleeds right and bottom); radius-panel on every block, line (3px ink) around each
+    arrangement: one tall nugget slab with satellites, separated by the gutter (14px), everything right of x=480
+    pattern: stripes, from "loud, bold, poster type": the system's own bucket stripes, paper cut out of the tomato block at a 28px pitch (2 x gutter), 14px wide
+    scales: gutter 14px, radius-panel 6px, line 3px
+  -->
+  <svg width="960" height="288" viewBox="0 0 960 288" aria-hidden="true">
+    <rect class="nugget blk" x="480" y="-8" width="224" height="304"/>
+    <rect class="edge blk" x="480" y="-8" width="224" height="304"/>
+    <rect class="tomato blk" x="718" y="-8" width="256" height="168"/>
+    <g class="paper">
+      <rect x="732" y="-8" width="14" height="168"/><rect x="760" y="-8" width="14" height="168"/><rect x="788" y="-8" width="14" height="168"/>
+      <rect x="816" y="-8" width="14" height="168"/><rect x="844" y="-8" width="14" height="168"/><rect x="872" y="-8" width="14" height="168"/>
+      <rect x="900" y="-8" width="14" height="168"/><rect x="928" y="-8" width="14" height="168"/>
+    </g>
+    <rect class="edge blk" x="718" y="-8" width="256" height="168"/>
+    <rect class="ink blk" x="718" y="174" width="96" height="128"/>
+    <rect class="mayo blk" x="828" y="174" width="160" height="128"/>
+    <rect class="edge blk" x="828" y="174" width="160" height="128"/>
+  </svg>
+  <div class="text">
+    <p class="name">nuggets<br>Comic Strip</p>
+    <p class="tag">An idea bank drawn as a Sunday-paper comic.</p>
+  </div>
+</div>
+</body>
+</html>
