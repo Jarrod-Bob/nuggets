@@ -2,6 +2,7 @@ import './bin.css';
 import { TopBar } from '../../components/navigation/TopBar';
 import type { Trash } from '../../models/useTrash';
 import { BinCard } from './BinCard';
+import { SettingsButton } from './settings/SettingsButton';
 import { ActionError, Button, CaptionBox, Dialog, EmptyState } from './ui';
 
 /**
@@ -16,9 +17,12 @@ export function TrashView({ trash }: { trash: Trash }) {
       <TopBar
         center={<h1 className="comic-bin-heading">Trash</h1>}
         right={
-          <Button size="sm" icon="arrow-left" onClick={trash.backToBank}>
-            Back to the bank
-          </Button>
+          <>
+            <SettingsButton />
+            <Button size="sm" icon="arrow-left" onClick={trash.backToBank}>
+              Back to the bank
+            </Button>
+          </>
         }
       />
 
