@@ -97,7 +97,8 @@ func WithBackoff(base, max time.Duration) Option {
 }
 func WithRequestTimeout(d time.Duration) Option { return func(s *Sender) { s.requestTimeout = d } }
 
-// WithClock replaces the clock that decides when a pause or a retry is over,
+// WithClock replaces the clock Pass uses to decide when a pause or a retry is
+// over (the Loop's own sleeps still use real time),
 // so tests don't depend on timer resolution.
 func WithClock(now func() time.Time) Option { return func(s *Sender) { s.now = now } }
 
