@@ -79,6 +79,13 @@ describe.each(LOOKS)('under the %s look', (look) => {
   const drawnTitle = () => within(screen.getByRole('dialog')).getByRole('heading', { level: 3 }).textContent;
   const ready = (label: string) => waitFor(() => expect((screen.getByText(label).closest('button') as HTMLButtonElement).disabled).toBe(false));
 
+  it("draws the bank in this Look's own view, not another's", async () => {
+    renderBank();
+    await screen.findByText('First idea');
+    // The Comic tray is the lazy view's marker; Classic must never show it.
+    expect(document.querySelector('.comic-tray') !== null).toBe(look === 'comic');
+  });
+
   describe('BankRoute draw', () => {
     it('never rerolls the nugget onto the one already showing', async () => {
       renderBank();

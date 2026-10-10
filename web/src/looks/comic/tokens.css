@@ -47,6 +47,14 @@
   --comic-line: 3px;
   --comic-line-thin: 2.5px;
 
+  /* Curry is slow on purpose, like something thick (design readme, Motion): the house
+     --dur-* / --ease-* tokens are all too quick for sauce. Everything else uses the house tokens. */
+  --comic-pour: 2s;
+  --comic-drain: 800ms;
+  --comic-ease-pour: cubic-bezier(0.65, 0, 0.35, 1);
+  --comic-drip-delay: 1.5s;
+  --comic-name-delay: 1.1s;
+
   /* Shadow: solid ink offsets, never blurred */
   --comic-shadow-lift: 3px 3px 0 var(--comic-ink);
   --comic-shadow-sticker: 10px 10px 0 var(--comic-ink);
