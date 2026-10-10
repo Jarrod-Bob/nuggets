@@ -57,7 +57,7 @@ describe('the Comic settings button', () => {
     for (const name of ['spices', 'GitHub', 'kimi', 'Tag suggestions']) {
       expect(within(dialog).getByRole('heading', { name })).toBeTruthy();
     }
-    await waitFor(() => expect((within(dialog).getByRole('radio', { name: 'Comic (in progress)' }) as HTMLInputElement).checked).toBe(true));
+    await waitFor(() => expect((within(dialog).getByRole('radio', { name: 'Comic' }) as HTMLInputElement).checked).toBe(true));
   });
 
   it('closes on Escape and on its close button', async () => {

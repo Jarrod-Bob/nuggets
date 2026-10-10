@@ -37,16 +37,17 @@ afterEach(() => {
 });
 
 const classic = () => screen.getByRole('radio', { name: 'Classic' }) as HTMLInputElement;
-const comic = () => screen.getByRole('radio', { name: 'Comic (in progress)' }) as HTMLInputElement;
+const comic = () => screen.getByRole('radio', { name: 'Comic' }) as HTMLInputElement;
 
 describe.each([
   ['classic', LookSettings],
   ['comic', ComicLookSettings],
 ] as const)('LookSettings under the %s look', (_look, Section) => {
-  it('offers Classic, selected by default, and Comic (in progress)', async () => {
+  it('offers Classic, selected by default, and Comic', async () => {
     render(<Section open />);
     await waitFor(() => expect(classic().checked).toBe(true));
     expect(comic().checked).toBe(false);
+    expect(screen.queryByText(/in progress/i)).toBeNull();
   });
 
   it('shows the saved look', async () => {
