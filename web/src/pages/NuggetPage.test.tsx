@@ -188,6 +188,27 @@ describe.each(LOOKS)('under the %s look', (look) => {
     });
   });
 
+  describe('NuggetPage edit', () => {
+    it("opens the look's edit dialog and saves with a PATCH", async () => {
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+
+      const dialog = screen.getByRole('dialog', { name: 'Edit nugget' });
+      expect(dialog.classList.contains('comic-dialog')).toBe(look === 'comic');
+      fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'A renamed nugget' } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      });
+
+      const patches = vi
+        .mocked(fetch)
+        .mock.calls.filter(([path, init]) => path === '/api/ideas/1' && init?.method === 'PATCH')
+        .map(([, init]) => JSON.parse(String(init?.body)));
+      expect(patches).toHaveLength(1);
+      expect(patches[0]).toMatchObject({ title: 'A renamed nugget' });
+    });
+  });
+
   describe('NuggetPage plan with Claude', () => {
     const patches = () =>
       vi
