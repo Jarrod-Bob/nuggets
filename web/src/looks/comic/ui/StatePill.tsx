@@ -1,3 +1,4 @@
+import { cx } from './cx';
 import React from 'react';
 
 /**
@@ -12,5 +13,5 @@ export interface StatePillProps {
 }
 
 export function StatePill({ tone, children, className }: StatePillProps) {
-  return <span className={['comic-state', `comic-state--${tone}`, className].filter(Boolean).join(' ')}>{children}</span>;
+  return <span className={cx('comic-state', `comic-state--${tone}`, className)}>{children}</span>;
 }

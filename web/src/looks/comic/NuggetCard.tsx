@@ -2,7 +2,7 @@ import React from 'react';
 import type { Status } from '../../lib/status';
 import { statusLabel } from '../../lib/status';
 import { CurryCorner } from './CurryCorner';
-import { CardArt, shapeSeed } from './ui';
+import { CardArt, cx, shapeSeed } from './ui';
 
 /** Resting rotations, picked by the nugget's id so a card never changes its tilt between visits. */
 const TILTS = [-3, 2, -2, 3, -1, 4, -4, 1];
@@ -33,7 +33,7 @@ export function NuggetCard({ id, title, status, age, tags = [], projectName, onO
   const shortAge = age?.replace(/ ago$/, '');
   const named = !!projectName;
   return (
-    <div className={['comic-card', `comic-card--${status}`, named && 'comic-card--named'].filter(Boolean).join(' ')} style={{ '--comic-tilt': `${tilt}deg` } as React.CSSProperties}>
+    <div className={cx('comic-card', `comic-card--${status}`, named && 'comic-card--named')} style={{ '--comic-tilt': `${tilt}deg` } as React.CSSProperties}>
       <CardArt shape={seed} status={status} />
       <button type="button" className="comic-card-open" onClick={onOpen}>
         <span className="comic-card-body">

@@ -1,3 +1,4 @@
+import { cx } from './cx';
 import React from 'react';
 
 /** A narration box: a notice about the page, in the strip's caption style. */
@@ -10,7 +11,7 @@ export interface CaptionBoxProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function CaptionBox({ tone = 'nugget', eyebrow, className, children, ...rest }: CaptionBoxProps) {
   return (
-    <div className={['comic-caption', `comic-caption--${tone}`, className].filter(Boolean).join(' ')} {...rest}>
+    <div className={cx('comic-caption', `comic-caption--${tone}`, className)} {...rest}>
       {eyebrow && <span className="comic-caption-eyebrow">{eyebrow}</span>}
       <div className="comic-caption-text">{children}</div>
     </div>

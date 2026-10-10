@@ -1,3 +1,4 @@
+import { cx } from './cx';
 import { Button } from './Button';
 import { CaptionBox } from './CaptionBox';
 
@@ -8,7 +9,7 @@ import { CaptionBox } from './CaptionBox';
 export function ActionError({ message, onDismiss, className }: { message?: string; onDismiss?: () => void; className?: string }) {
   if (!message) return null;
   return (
-    <CaptionBox tone="error" role="alert" className={['comic-error', className].filter(Boolean).join(' ')}>
+    <CaptionBox tone="error" role="alert" className={cx('comic-error', className)}>
       <span className="comic-error-text">{message}</span>
       {onDismiss && (
         <Button size="sm" onClick={onDismiss}>

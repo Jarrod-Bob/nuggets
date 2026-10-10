@@ -1,3 +1,4 @@
+import { cx } from './cx';
 import React from 'react';
 
 /**
@@ -12,7 +13,7 @@ export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLBut
 
 export function IconButton({ label, className, children, type = 'button', ...rest }: IconButtonProps) {
   return (
-    <button type={type} aria-label={label} title={label} className={['comic-round', className].filter(Boolean).join(' ')} {...rest}>
+    <button type={type} aria-label={label} title={label} className={cx('comic-round', className)} {...rest}>
       {children}
     </button>
   );

@@ -1,3 +1,4 @@
+import { cx } from './cx';
 import React from 'react';
 
 /** A labelled text input or textarea with an optional hint. The label is wired with `htmlFor`, the hint with `aria-describedby`. */
@@ -18,7 +19,7 @@ export function Field({ label, hint, multiline, action, id, className, style, ..
   const props = { id: inputId, 'aria-describedby': hintId, className: 'comic-field-input', ...rest };
   const input = multiline ? <textarea {...(props as React.TextareaHTMLAttributes<HTMLTextAreaElement>)} /> : <input {...props} />;
   return (
-    <div className={['comic-field', className].filter(Boolean).join(' ')} style={style}>
+    <div className={cx('comic-field', className)} style={style}>
       <label className="comic-field-label" htmlFor={inputId}>
         {label}
       </label>

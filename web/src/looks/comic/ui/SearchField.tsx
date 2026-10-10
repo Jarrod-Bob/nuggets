@@ -1,3 +1,4 @@
+import { cx } from './cx';
 import React from 'react';
 import { Icon } from './Icon';
 
@@ -9,7 +10,7 @@ export interface SearchFieldProps extends React.InputHTMLAttributes<HTMLInputEle
 
 export function SearchField({ label, onClear, className, ...rest }: SearchFieldProps) {
   return (
-    <div className={['comic-search', className].filter(Boolean).join(' ')}>
+    <div className={cx('comic-search', className)}>
       <Icon name="search" />
       <input type="search" aria-label={label ?? rest.placeholder} {...rest} />
       {rest.value && onClear && (

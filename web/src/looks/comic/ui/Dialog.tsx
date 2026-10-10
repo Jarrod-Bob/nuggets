@@ -1,3 +1,4 @@
+import { cx } from './cx';
 import React from 'react';
 import { Icon } from './Icon';
 import { IconButton } from './IconButton';
@@ -83,7 +84,7 @@ export function Dialog({ title, description, onClose, footer, width = 560, class
         aria-labelledby={titleId}
         aria-describedby={descId}
         tabIndex={-1}
-        className={['comic-panel', 'comic-dialog', className].filter(Boolean).join(' ')}
+        className={cx('comic-panel', 'comic-dialog', className)}
         style={{ width }}
       >
         <header className="comic-dialog-head">

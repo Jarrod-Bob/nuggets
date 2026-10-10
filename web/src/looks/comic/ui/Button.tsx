@@ -1,3 +1,4 @@
+import { cx } from './cx';
 import React from 'react';
 import { Icon, type IconName } from './Icon';
 
@@ -17,7 +18,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 export function Button({ variant = 'paper', size = 'md', icon, iconAfter, className, children, type = 'button', ...rest }: ButtonProps) {
-  const cls = ['comic-pill', `comic-pill--${variant}`, size !== 'md' && `comic-pill--${size}`, className].filter(Boolean).join(' ');
+  const cls = cx('comic-pill', `comic-pill--${variant}`, size !== 'md' && `comic-pill--${size}`, className);
   return (
     <button type={type} className={cls} {...rest}>
       {icon && <Icon name={icon} />}

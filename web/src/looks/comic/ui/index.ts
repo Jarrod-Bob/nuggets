@@ -2,6 +2,7 @@
 export { ActionError } from './ActionError';
 export { Button, type ButtonProps } from './Button';
 export { CardArt } from './CardArt';
+export { cx } from './cx';
 export { CARD_BOX, cardShape, shapeSeed, outlineDash } from './cardGeometry';
 export { CaptionBox, type CaptionBoxProps } from './CaptionBox';
 export { Chip, Tag, type ChipProps } from './Chip';

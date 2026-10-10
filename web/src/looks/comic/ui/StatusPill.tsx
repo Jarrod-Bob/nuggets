@@ -1,3 +1,4 @@
+import { cx } from './cx';
 import type { Status } from '../../../lib/status';
 import { statusLabel } from '../../../lib/status';
 
@@ -7,5 +8,5 @@ import { statusLabel } from '../../../lib/status';
  * always there. The label is the Classic look's, so both Looks share their tests.
  */
 export function StatusPill({ status, className }: { status: Status; className?: string }) {
-  return <span className={['comic-status', `comic-status--${status}`, className].filter(Boolean).join(' ')}>{statusLabel(status)}</span>;
+  return <span className={cx('comic-status', `comic-status--${status}`, className)}>{statusLabel(status)}</span>;
 }
