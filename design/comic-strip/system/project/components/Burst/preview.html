@@ -1,0 +1,15 @@
+<!-- @dsCard group="Layout" height=260 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Burst — preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var C = window.Comic, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{padding:14}},h(C.Burst,{className:'cs-panel',style:{height:220,display:'flex',alignItems:'center',justifyContent:'center'}},h(C.NuggetMark,{size:180,seed:19}))));
+</script>
+</body>
+</html>

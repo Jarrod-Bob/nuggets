@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nuggets — comic strip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --color-paper:#FFFFFF; --color-mayo:#FFF3D6; --color-toast:#F2C9A8;
+  --color-ink:#141210; --color-ink-soft:#5A534C;
+  --color-nugget:#FFB21E; --color-nugget-deep:#E08A00; --color-tomato:#E8452C;
+  --color-raw:#FFE3A3; --color-burnt:#8A4512;
+  --font-display:"Bricolage Grotesque",system-ui,sans-serif;
+  --font-body:"Instrument Sans",system-ui,sans-serif;
+  --font-mono:"Space Mono",ui-monospace,monospace;
+  --font-sfx:"Bangers","Impact",sans-serif;
+  --text-label:12px; --text-body:15px; --text-lead:17px; --text-title:28px; --text-h2:72px; --text-h1:120px;
+  --tracking-tight:-0.045em; --tracking-label:0.08em;
+  --radius-panel:6px; --radius-pill:999px; --line:3px;
+  --gutter:14px;
+  --ease-bounce:cubic-bezier(.34,1.56,.64,1);
+}
+*{box-sizing:border-box;margin:0}
+html,body{background:var(--color-paper);color:var(--color-ink)}
+body{font-family:var(--font-body);font-size:var(--text-body);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.mono{font-family:var(--font-mono);font-size:var(--text-label);letter-spacing:var(--tracking-label);text-transform:uppercase}
+.view{display:none;flex-direction:column;gap:var(--gutter);padding:24px;min-height:100vh;max-width:1600px;margin:0 auto}
+body[data-view="bucket"] #v-bucket,body[data-view="bank"] #v-bank,body[data-view="nugget"] #v-nugget{display:flex}
+.panel{border:var(--line) solid var(--color-ink);border-radius:var(--radius-panel);background:var(--color-paper);position:relative;min-width:0}
+.strip{display:flex;align-items:center;gap:20px;min-height:66px;padding:10px 12px 10px 24px;background:var(--color-nugget)}
+.wordmark{font-family:var(--font-display);font-weight:800;font-size:34px;letter-spacing:var(--tracking-tight);line-height:1}
+.pill{display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 18px;border:var(--line) solid var(--color-ink);border-radius:var(--radius-pill);background:var(--color-paper);font-family:var(--font-display);font-weight:800;font-size:16px;letter-spacing:-0.01em;white-space:nowrap;transition:transform .14s var(--ease-bounce),box-shadow .14s}
+.pill:hover{transform:translate(-2px,-2px);box-shadow:3px 3px 0 var(--color-ink)}
+.pill:active{transform:translate(1px,1px);box-shadow:none}
+.pill.tomato{background:var(--color-tomato);color:var(--color-ink)}
+.pill.big{height:58px;padding:0 28px;font-size:20px}
+:focus-visible{outline:3px solid var(--color-ink);outline-offset:3px}
+
+/* ---------- bucket view ---------- */
+#v-bucket .masthead{justify-content:space-between}
+.stage{display:grid;grid-template-columns:minmax(0,500px) minmax(0,1fr);gap:var(--gutter);flex:1;min-height:0}
+.left-col{display:flex;flex-direction:column;gap:var(--gutter);min-width:0}
+.title-panel{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:20px;padding:36px 34px;transition:opacity .3s}
+.fig{position:absolute;left:30px;top:30px;display:flex;align-items:flex-end;gap:12px}
+.fig svg{width:93px;height:78px;transform:rotate(-8deg)}
+.fig span{font-family:var(--font-mono);font-size:var(--text-label);line-height:1.4;color:var(--color-ink-soft);padding-bottom:8px}
+.h1{font-family:var(--font-display);font-weight:800;font-size:clamp(64px,8.4vw,var(--text-h1));line-height:.88;letter-spacing:var(--tracking-tight);text-wrap:balance}
+.lead{font-size:var(--text-lead);max-width:380px}
+.action-panel{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:112px;padding:0 28px;background:var(--color-tomato);transition:opacity .3s}
+.link-paper{font-family:var(--font-display);font-weight:800;font-size:17px;color:var(--color-ink);text-decoration:underline;text-underline-offset:3px}
+.bucket-panel{overflow:hidden;background:var(--color-mayo);display:flex;align-items:flex-end;justify-content:center;min-height:620px}
+.burst{position:absolute;inset:0;width:100%;height:100%}
+.bucket-btn{position:relative;width:min(600px,92%);aspect-ratio:560/640;transform-origin:62% 92%;transition:transform .42s var(--ease-bounce)}
+.bucket-btn svg{width:100%;height:100%;display:block}
+.bucket-btn:hover{transform:rotate(-3deg)}
+.bucket-btn .label{position:absolute;left:31%;top:56%;width:40%;height:18%;display:flex;flex-direction:column;align-items:center;justify-content:center;transform:rotate(-1.6deg);pointer-events:none}
+.bucket-btn .label b{font-family:var(--font-sfx);font-weight:400;font-size:clamp(28px,4.2vw,56px);line-height:1;letter-spacing:.03em;color:var(--color-tomato)}
+.bucket-btn .label i{font-family:var(--font-mono);font-style:normal;font-weight:700;font-size:12px;letter-spacing:var(--tracking-label);text-transform:uppercase}
+.mouth{position:absolute;left:50%;top:30%;width:2px;height:2px}
+.bubble{position:absolute;left:40px;top:44px;width:250px;height:150px;transform:rotate(-6deg);pointer-events:none;transition:opacity .2s}
+.bubble svg{position:absolute;inset:0}
+.bubble div{position:absolute;left:0;right:0;top:28px;display:flex;flex-direction:column;align-items:center}
+.bubble b{font-family:var(--font-sfx);font-weight:400;font-size:40px;line-height:1;letter-spacing:.03em}
+.bubble span{font-weight:600;font-size:14px;color:var(--color-ink-soft)}
+.sfx{position:fixed;z-index:50;font-family:var(--font-sfx);font-size:120px;line-height:1;color:var(--color-nugget);-webkit-text-stroke:4px var(--color-ink);paint-order:stroke fill;text-shadow:6px 6px 0 var(--color-ink);pointer-events:none}
+body.tipping .bucket-btn{transform:rotate(-34deg) translate(-4%,4%)}
+body.tipping .title-panel,body.tipping .action-panel,body.tipping .bubble{opacity:.12}
+
+/* ---------- bank view ---------- */
+.search{display:flex;align-items:center;gap:10px;flex:1;height:44px;padding:0 16px;border:var(--line) solid var(--color-ink);border-radius:var(--radius-pill);background:var(--color-paper)}
+.search input{flex:1;border:0;outline:0;font:inherit;background:none;min-width:0}
+.tray{flex:1;padding:28px;background-color:var(--color-paper);background-image:linear-gradient(90deg,rgba(232,69,44,.5) 50%,transparent 50%),linear-gradient(0deg,rgba(232,69,44,.5) 50%,transparent 50%);background-size:40px 40px}
+.liner{padding:32px 40px 56px;display:flex;flex-direction:column;gap:28px;min-height:100%}
+.liner-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.h2{font-family:var(--font-display);font-weight:800;font-size:clamp(44px,5vw,var(--text-h2));line-height:.9;letter-spacing:var(--tracking-tight)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{height:34px;padding:0 14px;border:2.5px solid var(--color-ink);border-radius:var(--radius-pill);font-family:var(--font-mono);font-weight:700;font-size:13px;background:var(--color-paper)}
+.chip[aria-pressed="true"]{background:var(--color-ink);color:var(--color-paper)}
+.spill{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:34px 40px;padding:8px 6px}
+.card{position:relative;aspect-ratio:372/272;width:100%;text-align:left;transform:rotate(var(--r)) translateY(var(--dy));transition:transform .2s var(--ease-bounce)}
+.card:hover{transform:rotate(calc(var(--r) * -1)) translateY(calc(var(--dy) - 6px)) scale(1.03)}
+.card svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.card .content{position:absolute;left:17%;right:18%;top:26%;display:flex;flex-direction:column;gap:8px}
+.card .meta{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:12px}
+.card .meta b{font-weight:700;letter-spacing:var(--tracking-label);text-transform:uppercase}
+.card .title{font-family:var(--font-display);font-weight:800;font-size:clamp(18px,1.75vw,25px);line-height:1;letter-spacing:-0.03em;text-wrap:balance}
+.card .tags{font-family:var(--font-mono);font-weight:700;font-size:12.5px}
+.card .fill{fill:var(--color-nugget)}
+.card.s-raw .fill{fill:var(--color-raw)}
+.card.s-parked .fill{fill:var(--color-mayo)} .card.s-parked .edge{stroke-dasharray:10 8}
+.card.s-killed .fill{fill:var(--color-burnt)} .card.s-killed .content{color:var(--color-paper)}
+.card.picked{animation:wiggle .5s ease-in-out 2}
+@keyframes wiggle{0%,100%{transform:rotate(var(--r)) translateY(var(--dy))}25%{transform:rotate(6deg) translateY(var(--dy)) scale(1.06)}75%{transform:rotate(-6deg) translateY(var(--dy)) scale(1.06)}}
+.dip-note{display:flex;align-items:center;gap:16px;justify-self:center;align-self:center}
+.dip-note span{font-family:var(--font-sfx);font-size:28px;letter-spacing:.03em;transform:rotate(-4deg)}
+.empty{grid-column:1/-1;text-align:center;padding:60px 0;font-family:var(--font-display);font-weight:800;font-size:28px}
+
+/* ---------- single nugget ---------- */
+.n-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);grid-template-rows:auto auto 1fr auto;gap:var(--gutter);flex:1}
+.hero-panel{grid-row:1/4;overflow:hidden;background:var(--color-mayo);display:flex;align-items:center;justify-content:center;min-height:560px}
+.hero-panel .hero{position:relative;width:min(560px,90%)}
+.hero-panel .hero svg{width:100%;height:auto;display:block}
+.caption{position:absolute;left:-3px;top:-3px;padding:10px 16px;background:var(--color-nugget);border:var(--line) solid var(--color-ink);border-radius:var(--radius-panel) 0 var(--radius-panel) 0}
+.hero-sfx{position:absolute;right:28px;top:28px;font-family:var(--font-sfx);font-size:64px;line-height:1;color:var(--color-tomato);-webkit-text-stroke:2px var(--color-ink);paint-order:stroke fill;transform:rotate(8deg)}
+.title-p{padding:30px 32px;display:flex;flex-direction:column;gap:14px}
+.status{align-self:flex-start;height:30px;padding:0 12px;display:inline-flex;align-items:center;border:2.5px solid var(--color-ink);border-radius:var(--radius-pill);background:var(--color-nugget)}
+.n-title{font-family:var(--font-display);font-weight:800;font-size:clamp(44px,4.6vw,68px);line-height:.92;letter-spacing:var(--tracking-tight);text-wrap:balance}
+.notes-p{padding:30px 32px 34px;background:var(--color-paper)}
+.speech{position:relative;padding:26px 28px;border:var(--line) solid var(--color-ink);border-radius:46% 54% 50% 50% / 30% 30% 70% 70%;border-radius:40px;background:var(--color-paper)}
+.speech::after{content:"";position:absolute;left:-24px;bottom:30px;width:34px;height:30px;background:var(--color-paper);border-left:var(--line) solid var(--color-ink);border-bottom:var(--line) solid var(--color-ink);transform:skewY(-30deg) rotate(10deg)}
+.speech p{font-size:var(--text-lead)}
+.speech p+p{margin-top:12px;font-size:var(--text-body);color:var(--color-ink-soft)}
+.speech[contenteditable="true"]{background:var(--color-mayo);outline:none}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin-top:22px;align-items:baseline}
+.facts dt{color:var(--color-ink-soft)} .facts dd{font-weight:600}
+.facts a{color:var(--color-ink);text-decoration-thickness:2px;text-underline-offset:3px}
+.actions-p{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;background:var(--color-tomato);flex-wrap:wrap}
+.actions-p .group{display:flex;gap:10px;flex-wrap:wrap}
+.bin{color:var(--color-ink);font-family:var(--font-display);font-weight:800;font-size:16px;text-decoration:underline;text-underline-offset:3px}
+
+/* ---------- drop dialog ---------- */
+dialog{border:var(--line) solid var(--color-ink);border-radius:var(--radius-panel);padding:0;width:min(520px,92vw);box-shadow:10px 10px 0 var(--color-ink)}
+dialog::backdrop{background:rgba(20,18,16,.45)}
+dialog form{display:flex;flex-direction:column;gap:14px;padding:28px}
+dialog label{display:flex;flex-direction:column;gap:6px}
+dialog input,dialog textarea{font:inherit;padding:10px 14px;border:2.5px solid var(--color-ink);border-radius:10px;background:var(--color-paper)}
+dialog textarea{min-height:90px;resize:vertical}
+.err{color:var(--color-tomato);font-weight:700;min-height:1.5em}
+
+@media (max-width:1100px){
+  .stage,.n-grid{grid-template-columns:minmax(0,1fr)}
+  .hero-panel{grid-row:auto;min-height:420px}
+  .spill{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bucket-panel{min-height:520px}
+  .fig{position:static}
+}
+@media (max-width:700px){
+  .view{padding:16px}
+  .strip{flex-wrap:wrap}
+  .spill{grid-template-columns:minmax(0,1fr)}
+  .tray{padding:14px} .liner{padding:22px 18px 40px}
+  .masthead .mono{display:none}
+  .card .title{font-size:22px}
+  .fig{display:none}
+  .action-panel{flex-wrap:wrap;padding:20px}
+  .bucket-panel{min-height:420px}
+  .bubble{transform:rotate(-6deg) scale(.75);transform-origin:top left;left:12px;top:12px}
+  .pill.big{height:52px;padding:0 20px;font-size:18px}
+  .liner-head .chips{width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body data-view="bucket">
+
+<!-- ===================== THE BUCKET ===================== -->
+<section id="v-bucket" class="view" aria-label="The bucket">
+  <header class="panel strip masthead">
+    <span class="wordmark">nuggets.</span>
+    <span class="mono">Issue no. <span data-count></span> · an idea bank in one bucket</span>
+    <span class="mono" style="text-transform:none">127.0.0.1:7777</span>
+  </header>
+  <div class="stage">
+    <div class="left-col">
+      <div class="panel title-panel">
+        <div class="fig">{{SMALL}}<span>FIG. 1 — a nugget.<br>Half an idea, fried.</span></div>
+        <span class="mono" style="color:var(--color-ink-soft)">Previously, in your notes app…</span>
+        <h1 class="h1">Ideas, by the bucket.</h1>
+        <p class="lead"><span data-count-word></span> half-formed thoughts, kept warm. Tip the bucket to spill them across the tray.</p>
+      </div>
+      <div class="panel action-panel">
+        <button class="pill big" data-tip>Tip the bucket
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <button class="link-paper" data-drop>+ Drop a nugget</button>
+      </div>
+    </div>
+    <div class="panel bucket-panel">
+      <svg class="burst" viewBox="0 0 820 760" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="820" height="760" fill="var(--color-mayo)"/><path d="{{BURST}}" fill="var(--color-paper)"/></svg>
+      <div class="bubble" aria-hidden="true">
+        <svg width="250" height="150" viewBox="0 0 250 150" fill="none"><path d="M125 8C186 8 238 30 238 64C238 98 192 118 140 120L190 146L112 120C58 117 12 96 12 64C12 30 64 8 125 8Z" fill="var(--color-paper)" stroke="var(--color-ink)" stroke-width="3.5" stroke-linejoin="round"/></svg>
+        <div><b>PSST! TIP ME!</b><span>click the bucket</span></div>
+      </div>
+      <button class="bucket-btn" data-tip aria-label="Tip the bucket and spill the nuggets">
+        {{BUCKET}}
+        <span class="label"><b>NUGGETS</b><i><span data-count></span> ideas inside</i></span>
+        <span class="mouth"></span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== THE BANK (TRAY) ===================== -->
+<section id="v-bank" class="view" aria-label="The bank">
+  <header class="panel strip">
+    <button class="wordmark" data-go="bucket" title="Back to the bucket">nuggets.</button>
+    <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Rummage through the tray…" aria-label="Search nuggets"></label>
+    <button class="pill" id="random">Pick one at random</button>
+    <button class="pill tomato" data-drop>+ Drop a nugget</button>
+  </header>
+  <div class="panel tray">
+    <div class="panel liner">
+      <div class="liner-head">
+        <div>
+          <span class="mono" style="color:var(--color-ink-soft)">The bank · <span id="shown"></span> on the tray</span>
+          <h2 class="h2">Spilled &amp; sorted.</h2>
+        </div>
+        <div class="chips" id="chips" role="group" aria-label="Filter by tag"></div>
+      </div>
+      <div class="spill" id="spill"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== A SINGLE NUGGET ===================== -->
+<section id="v-nugget" class="view" aria-label="A single nugget">
+  <header class="panel strip">
+    <button class="pill" data-go="bank"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Back to the tray</button>
+    <span class="wordmark" style="margin-left:auto">nuggets.</span>
+  </header>
+  <div class="n-grid">
+    <div class="panel hero-panel">
+      <svg class="burst" viewBox="0 0 820 760" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="820" height="760" fill="var(--color-mayo)"/><path d="{{BURST}}" fill="var(--color-paper)"/></svg>
+      <span class="caption mono" id="n-caption"></span>
+      <span class="hero-sfx" aria-hidden="true">CRUNCH!</span>
+      <div class="hero">{{HERO}}</div>
+    </div>
+    <div class="panel title-p">
+      <span class="status mono" id="n-status"></span>
+      <h1 class="n-title" id="n-title"></h1>
+      <span class="mono" style="color:var(--color-ink-soft)" id="n-dates"></span>
+    </div>
+    <div class="panel notes-p" style="grid-row:span 2">
+      <span class="mono" style="color:var(--color-ink-soft);display:block;margin-bottom:14px">The nugget says…</span>
+      <div class="speech" id="n-notes"></div>
+      <dl class="facts">
+        <dt class="mono">Tags</dt><dd class="mono" style="letter-spacing:0;text-transform:none" id="n-tags"></dd>
+        <dt class="mono">Link</dt><dd id="n-link"></dd>
+      </dl>
+    </div>
+    <div class="panel actions-p">
+      <div class="group">
+        <button class="pill big" id="plan">Plan with Claude</button>
+        <button class="pill big" id="edit">Edit</button>
+      </div>
+      <button class="bin" id="bin">Bin it</button>
+    </div>
+  </div>
+</section>
+
+<dialog id="drop">
+  <form method="dialog" id="drop-form">
+    <span class="mono" style="color:var(--color-ink-soft)">Into the bucket</span>
+    <h2 class="h2" style="font-size:44px">Drop a nugget.</h2>
+    <label><span class="mono">Title</span><input name="title" autocomplete="off"></label>
+    <label><span class="mono">Notes</span><textarea name="notes" placeholder="Half-formed is fine."></textarea></label>
+    <label><span class="mono">Tags</span><input name="tags" placeholder="saas, tooling" autocomplete="off"></label>
+    <span class="err" id="drop-err" role="alert"></span>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="pill" value="cancel" formnovalidate>Never mind</button>
+      <button class="pill tomato" id="drop-go" value="go">Drop it in</button>
+    </div>
+  </form>
+</dialog>
+
+<template id="shapes">{{SHAPES}}</template>
+
+<script>
+const SHAPES = JSON.parse(document.getElementById('shapes').innerHTML);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const nuggets = [
+  {id:14,title:'A receipt scanner that argues back',status:'building',age:'2d',dropped:'12 Sep',tags:['saas','writing'],notes:'Photograph a receipt, get a one-line roast of the purchase. "£4.20 for oat milk. Bold."',more:'OCR is the boring part — try on-device text recognition before paying for anything. The roast needs a dial: gentle, honest, ruthless.',link:'github.com/Jarrod-Bob/nuggets/issues/27'},
+  {id:9,title:'Pocket synth from a broken calculator',status:'exploring',age:'5d',dropped:'3 Sep',tags:['hardware','games'],notes:'The keypad is already a sequencer if you squint.',more:'Needs a speaker and some nerve. Check what the display driver can do before buying anything.'},
+  {id:17,title:'Commit messages as haiku',status:'raw',age:'1w',dropped:'1 Oct',tags:['tooling','writing'],notes:'A git hook that refuses anything over seventeen syllables.',more:'Probably annoying by day two. That might be the point.'},
+  {id:4,title:'A board game about queueing at the post office',status:'parked',age:'3w',dropped:'18 Aug',tags:['games'],notes:'Worker placement, but every worker is impatient.',more:'Parked until I find a second playtester.'},
+  {id:11,title:'Habit tracker that forgets on purpose',status:'exploring',age:'4d',dropped:'20 Sep',tags:['saas','tooling'],notes:'Streaks expire after a week so missing a day never feels fatal.',more:'Local-first. No account. The forgetting is the feature.'},
+  {id:19,title:'Weekly digest of the bank, by email to myself',status:'building',age:'today',dropped:'8 Oct',tags:['tooling'],notes:'Three random nuggets every Sunday.',more:'Opt out by actually doing one.'},
+  {id:2,title:'Crowd-sourced bus-stop poetry',status:'killed',age:'2mo',dropped:'2 Jul',tags:['writing'],notes:'Turns out the council has opinions.',more:'Killed after one email. Kept for the memory.'},
+  {id:21,title:'Plant-watering reminder that guilt-trips you',status:'raw',age:'6d',dropped:'3 Oct',tags:['hardware','saas'],notes:'A moisture sensor and a passive-aggressive notification.',more:'"Fern is fine. Fern is always fine."'},
+];
+const ROT=[-4,3,-2,2.5,-3.5,1.5,-1.5,4], DY=[0,24,6,-10,18,-4,12,0];
+let tag='all', query='', current=null;
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+const words=['Zero','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve'];
+
+function show(v){document.body.dataset.view=v;scrollTo(0,0)}
+function counts(){
+  $$('[data-count]').forEach(e=>e.textContent=nuggets.length);
+  $$('[data-count-word]').forEach(e=>e.textContent=words[nuggets.length]||nuggets.length);
+}
+function cardSVG(i){
+  const d=SHAPES[i%SHAPES.length];
+  return `<svg viewBox="-8 -4 372 272" aria-hidden="true"><path d="${d}" fill="var(--color-ink)" transform="translate(7 8)"/><path class="fill edge" d="${d}" stroke="var(--color-ink)" stroke-width="3.5" stroke-linejoin="round"/><path d="M38 96C46 64 74 44 112 36" stroke="var(--color-paper)" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M126 33h8" stroke="var(--color-paper)" stroke-width="7" stroke-linecap="round"/><path d="M300 110l4 6M292 180l6 2M70 186l-3 6M250 222l5 2M318 140l2 6" stroke="var(--color-nugget-deep)" stroke-width="3" stroke-linecap="round"/></svg>`;
+}
+function visible(){
+  const q=query.trim().toLowerCase();
+  return nuggets.filter(n=>(tag==='all'||n.tags.includes(tag))&&(!q||(n.title+' '+n.notes+' '+n.tags.join(' ')).toLowerCase().includes(q)));
+}
+function renderChips(){
+  const all=[...new Set(nuggets.flatMap(n=>n.tags))].sort();
+  $('#chips').innerHTML=['all',...all].map(t=>`<button class="chip" aria-pressed="${t===tag}" data-tag="${esc(t)}">${t==='all'?'all':'#'+esc(t)}</button>`).join('');
+}
+function renderTray(){
+  const list=visible();
+  $('#shown').textContent=`${list.length} of ${nuggets.length}`;
+  $('#spill').innerHTML=list.length?list.map((n,i)=>{
+    const k=nuggets.indexOf(n);
+    return `<button class="card s-${n.status}" data-id="${n.id}" data-r="${ROT[k%8]}" data-dy="${DY[k%8]}" style="--r:${ROT[k%8]}deg;--dy:${DY[k%8]}px">${cardSVG(k)}
+      <span class="content"><span class="meta"><b>${n.status}</b><span>${esc(n.age)}</span></span>
+      <span class="title">${esc(n.title)}</span><span class="tags">${n.tags.map(t=>'#'+esc(t)).join(' ')}</span></span></button>`;
+  }).join(''):`<p class="empty">Nothing on the tray matches. Try another word.</p>`;
+  renderChips();
+}
+function sfx(text,x,y){
+  if(reduced)return;
+  const s=document.createElement('span');s.className='sfx';s.textContent=text;document.body.append(s);
+  s.style.left=(x-s.offsetWidth/2)+'px';s.style.top=(y-s.offsetHeight/2)+'px';
+  s.animate([{transform:'scale(.3) rotate(-14deg)',opacity:0},{transform:'scale(1.1) rotate(-8deg)',opacity:1,offset:.35},{transform:'scale(1) rotate(-6deg)',opacity:1,offset:.7},{transform:'scale(1.05) rotate(-6deg)',opacity:0}],{duration:900,easing:'ease-out'}).onfinish=()=>s.remove();
+}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function tip(){
+  if(document.body.classList.contains('tipping'))return;
+  tag='all';query='';$('#q').value='';renderTray();
+  if(reduced){show('bank');return}
+  document.body.classList.add('tipping');
+  await wait(380);
+  const m=$('.mouth').getBoundingClientRect(), mx=m.left, my=m.top;
+  sfx('TIP!',mx-120,my-80);
+  const ghost=$('.bucket-btn').cloneNode(true), r=$('.bucket-btn').getBoundingClientRect();
+  Object.assign(ghost.style,{position:'fixed',left:r.left+'px',top:r.top+'px',width:r.width+'px',zIndex:40,pointerEvents:'none',margin:0});
+  ghost.removeAttribute('data-tip');document.body.append(ghost);
+  show('bank');
+  ghost.animate([{opacity:1,transform:'rotate(-34deg) translate(-4%,4%)'},{opacity:0,transform:'rotate(-40deg) translate(-4%,30%)'}],{duration:520,easing:'ease-in',fill:'forwards'}).onfinish=()=>ghost.remove();
+  $$('.liner-head,.strip').forEach(e=>e.animate([{opacity:0},{opacity:1}],{duration:400,delay:200,fill:'backwards'}));
+  $$('#spill .card').forEach((c,i)=>{
+    const b=c.getBoundingClientRect(), dx=mx-(b.left+b.width/2), dy=my-(b.top+b.height/2);
+    const R=+c.dataset.r, DYv=+c.dataset.dy, spin=(i%2?1:-1)*(40+i*12);
+    c.animate([
+      {transform:`translate(${dx}px,${dy}px) scale(.18) rotate(${spin}deg)`,opacity:0},
+      {opacity:1,offset:.12},
+      {transform:`translate(${dx*.35}px,${dy*.35-140}px) scale(.8) rotate(${spin/3}deg)`,offset:.55},
+      {transform:`rotate(${R}deg) translateY(${DYv}px)`}
+    ],{duration:760,delay:i*55,easing:'cubic-bezier(.3,.9,.4,1.08)',fill:'backwards'});
+  });
+  await wait(900);
+  document.body.classList.remove('tipping');
+}
+
+function open(id){
+  const n=nuggets.find(x=>x.id===id); if(!n)return; current=n;
+  $('#n-caption').textContent=`Nugget #${n.id}`;
+  $('#n-status').textContent=n.status;
+  $('#n-status').style.background=n.status==='raw'?'var(--color-raw)':n.status==='parked'?'var(--color-mayo)':n.status==='killed'?'var(--color-burnt)':'var(--color-nugget)';
+  $('#n-title').textContent=n.title;
+  $('#n-dates').textContent=`dropped ${n.dropped} · edited ${n.age}${n.age==='today'?'':' ago'}`;
+  $('#n-notes').innerHTML=`<p>${esc(n.notes)}</p>${n.more?`<p>${esc(n.more)}</p>`:''}`;
+  $('#n-notes').contentEditable='false';$('#edit').textContent='Edit';
+  $('#n-tags').textContent=n.tags.map(t=>'#'+t).join('  ');
+  $('#n-link').innerHTML=n.link?`<a href="https://${esc(n.link)}" target="_blank" rel="noopener">${esc(n.link)}</a>`:'<span style="color:var(--color-ink-soft)">none yet</span>';
+  $('#plan').textContent='Plan with Claude';
+  show('nugget');
+  if(!reduced){
+    $('.hero').animate([{transform:'scale(.6) rotate(-12deg)',opacity:0},{transform:'scale(1) rotate(0)',opacity:1}],{duration:520,easing:'cubic-bezier(.34,1.56,.64,1)'});
+    $('.hero-sfx').animate([{transform:'scale(0) rotate(8deg)'},{transform:'scale(1) rotate(8deg)'}],{duration:360,delay:220,easing:'cubic-bezier(.34,1.56,.64,1)',fill:'backwards'});
+  }
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-tip],[data-go],[data-drop],[data-tag],.card');
+  if(!t)return;
+  if(t.matches('[data-tip]'))tip();
+  else if(t.matches('[data-go]'))show(t.dataset.go);
+  else if(t.matches('[data-drop]')){$('#drop-form').reset();$('#drop-err').textContent='';$('#drop').showModal()}
+  else if(t.matches('[data-tag]')){tag=t.dataset.tag;renderTray()}
+  else if(t.matches('.card'))open(+t.dataset.id);
+});
+$('#q').addEventListener('input',e=>{query=e.target.value;renderTray()});
+$('#random').addEventListener('click',async()=>{
+  const cards=$$('#spill .card'); if(!cards.length)return;
+  const c=cards[Math.floor(Math.random()*cards.length)];
+  c.scrollIntoView({block:'center',behavior:reduced?'auto':'smooth'});
+  c.classList.add('picked'); await wait(reduced?0:1000); c.classList.remove('picked'); open(+c.dataset.id);
+});
+$('#edit').addEventListener('click',()=>{
+  const s=$('#n-notes'), on=s.contentEditable!=='true';
+  s.contentEditable=on; $('#edit').textContent=on?'Save':'Edit';
+  if(on)s.focus(); else { const ps=[...s.querySelectorAll('p')]; current.notes=ps[0]?.textContent||s.textContent; current.more=ps.slice(1).map(p=>p.textContent).join(' '); renderTray(); }
+});
+$('#plan').addEventListener('click',async()=>{
+  const n=current, prompt=`Help me plan this idea from my idea bank.\n\nTitle: ${n.title}\nNotes: ${n.notes} ${n.more||''}\nTags: ${n.tags.join(', ')}\n\nAsk me three questions first, then propose the smallest version I could build this weekend.`;
+  try{await navigator.clipboard.writeText(prompt);$('#plan').textContent='Prompt copied — paste into Claude'}catch{$('#plan').textContent='Copy failed — select the notes instead'}
+});
+$('#bin').addEventListener('click',()=>{
+  const i=nuggets.indexOf(current); if(i<0)return;
+  nuggets.splice(i,1); counts(); renderTray(); show('bank');
+});
+$('#drop-form').addEventListener('submit',e=>{
+  if(e.submitter?.value!=='go')return;
+  const f=new FormData(e.target), title=f.get('title').trim();
+  if(!title){e.preventDefault();$('#drop-err').textContent='A nugget needs a title.';return}
+  const n={id:Math.max(...nuggets.map(x=>x.id),0)+1,title,status:'raw',age:'today',dropped:'just now',
+    tags:[...new Set(String(f.get('tags')).split(',').map(s=>s.trim().toLowerCase().replace(/^#/,'')).filter(Boolean))],
+    notes:String(f.get('notes')).trim()||'Nothing written yet. Half-formed is fine.',more:''};
+  nuggets.unshift(n); tag='all'; query=''; $('#q').value=''; counts(); renderTray(); show('bank');
+  requestAnimationFrame(()=>{
+    const c=$('#spill .card'); if(!c||reduced)return;
+    c.animate([{transform:'translateY(-120vh) rotate(-30deg)'},{transform:`rotate(${c.dataset.r}deg) translateY(${c.dataset.dy}px)`}],{duration:620,easing:'cubic-bezier(.34,1.56,.64,1)'});
+    const b=c.getBoundingClientRect(); setTimeout(()=>sfx('PLOP!',b.left+b.width/2,b.top+b.height/2),420);
+  });
+});
+counts(); renderTray();
+</script>
+</body>
+</html>

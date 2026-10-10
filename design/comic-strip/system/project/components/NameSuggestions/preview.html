@@ -1,0 +1,15 @@
+<!-- @dsCard group="Nuggets" height=300 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>NameSuggestions — preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var C = window.Comic, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{padding:20,maxWidth:560}},h(C.NameSuggestions,{value:'Golden Hour',available:true,names:[{name:'Nutgets',explanation:'A nugget that nets you the money you spent.'},{name:'Golden Hour',explanation:'The receipt glows gold and the roast lands right on time.'},{name:'WingIt',explanation:'For the purchases you did not plan.'},{name:'Pollomotion',explanation:'Receipts in, roasts out, at speed.'},{name:'Drumstick',explanation:'It beats you over the head about the drumsticks.'}]})));
+</script>
+</body>
+</html>
