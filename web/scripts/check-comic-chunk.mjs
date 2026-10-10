@@ -21,7 +21,8 @@ check(comicFiles.some((f) => f.endsWith('.js')), 'no separate Comic JS chunk (Co
 check(comicFiles.some((f) => f.endsWith('.css')), 'no separate Comic CSS chunk (ComicShell-*.css) was built');
 
 // What only the Comic chunk may contain.
-const comicOnly = ['Bricolage Grotesque', 'Bangers', 'Instrument Sans', 'Space Mono', '--comic-', 'comic-strip', 'comic-shell'];
+const FONTS = ['Bricolage Grotesque', 'Bangers', 'Instrument Sans', 'Space Mono'];
+const comicOnly = [...FONTS, '--comic-', 'comic-strip', 'comic-shell'];
 
 for (const file of entryFiles) {
   check(!/ComicShell/.test(file), `index.html loads the Comic chunk eagerly: ${file}`);
@@ -35,7 +36,7 @@ check(!/ComicShell/.test(html), 'index.html preloads the Comic chunk');
 const comicText = Object.fromEntries(comicFiles.map((f) => [f, readFileSync(path.join(assets, f), 'utf8')]));
 const comicCss = Object.entries(comicText).filter(([f]) => f.endsWith('.css')).map(([, t]) => t).join('\n');
 const comicJs = Object.entries(comicText).filter(([f]) => f.endsWith('.js')).map(([, t]) => t).join('\n');
-for (const needle of ['Bricolage Grotesque', 'Bangers', 'Instrument Sans', 'Space Mono', '--comic-ink', 'comic-strip']) {
+for (const needle of [...FONTS, '--comic-ink', 'comic-strip']) {
   check(comicCss.includes(needle), `Comic CSS chunk is missing "${needle}"`);
 }
 check(comicJs.includes('comic-strip'), 'Comic JS chunk is missing the shell (comic-strip)');
