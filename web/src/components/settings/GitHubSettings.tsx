@@ -4,17 +4,14 @@ import { Badge } from '../core/Badge';
 import { IconButton } from '../core/IconButton';
 import { Input } from '../forms/Input';
 import { iconPlus, iconTrash } from '../icons';
-import { api, ApiError, type GitHubMapping, type GitHubSettingsUpdate, type GitHubStatus } from '../../api';
 import { SettingsSection } from './SettingsSection';
-import { useLiveRefresh } from '../../live/LiveUpdates';
+import { useGitHubSettings } from '../../models/useGitHubSettings';
 import { describeQueue } from '../../lib/featureRequest';
 
 export interface GitHubSettingsProps {
   /** Whether the settings dialog is showing: status is fetched each time it opens. */
   open: boolean;
 }
-
-const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
 
 const note: React.CSSProperties = { margin: '0 0 14px', fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-700)', textWrap: 'pretty' };
 const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--nug-ink-500)' };
@@ -27,89 +24,7 @@ const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 'v
  * leaving it empty keeps the stored one.
  */
 export function GitHubSettings({ open }: GitHubSettingsProps) {
-  const [status, setStatus] = React.useState<GitHubStatus | null>(null);
-  const [editing, setEditing] = React.useState(false);
-  const [token, setToken] = React.useState('');
-  const [rows, setRows] = React.useState<GitHubMapping[]>([]);
-  const [error, setError] = React.useState<string | undefined>(undefined);
-  const [busy, setBusy] = React.useState(false);
-
-  /** Shows a fresh status and resets the mapping rows to it. */
-  const load = React.useCallback((s: GitHubStatus) => {
-    setStatus(s);
-    setRows(s.mappings.map((m) => ({ ...m })));
-  }, []);
-
-  React.useEffect(() => {
-    // Fetching status when the dialog opens is inherently a side effect (an
-    // async request keyed off `open`), not state derivable during render.
-    if (!open) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setEditing(false);
-    setError(undefined);
-    setToken('');
-    api.github
-      .status()
-      .then(load)
-      .catch((err) => setError(describeError(err)));
-  }, [open, load]);
-
-  // Keep the status line and queue counts current while the dialog is open.
-  // Only the status: the mapping rows may hold unsaved edits.
-  useLiveRefresh('github-changed', () => {
-    if (!open) return;
-    api.github
-      .status()
-      .then(setStatus)
-      .catch(() => {});
-  });
-
-  const startEditing = () => {
-    if (!status) return;
-    setRows(status.mappings.map((m) => ({ ...m })));
-    setToken('');
-    setError(undefined);
-    setEditing(true);
-  };
-
-  const cancelEditing = () => {
-    if (status) setRows(status.mappings.map((m) => ({ ...m })));
-    setToken('');
-    setError(undefined);
-    setEditing(false);
-  };
-
-  const setRow = (index: number, patch: Partial<GitHubMapping>) =>
-    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-
-  const save = () => {
-    // A row left completely blank is dropped rather than rejected.
-    const update: GitHubSettingsUpdate = { mappings: rows.filter((r) => r.tag.trim() || r.repo.trim()) };
-    if (token.trim()) update.token = token.trim();
-    setBusy(true);
-    setError(undefined);
-    api.github
-      .save(update)
-      .then((s) => {
-        load(s);
-        setToken('');
-        setEditing(false);
-      })
-      .catch((err) => setError(describeError(err)))
-      .finally(() => setBusy(false));
-  };
-
-  const disconnect = () => {
-    setBusy(true);
-    setError(undefined);
-    api.github
-      .disconnect()
-      .then(() => api.github.status())
-      .then(load)
-      .then(() => setEditing(false))
-      .catch((err) => setError(describeError(err)))
-      .finally(() => setBusy(false));
-  };
+  const { status, busy, cancelEditing, disconnect, editing, error, rows, save, setRow, addRow, removeRow, setToken, startEditing, token } = useGitHubSettings(open);
 
   const form = status && (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -141,7 +56,7 @@ export function GitHubSettings({ open }: GitHubSettingsProps) {
           />
           <IconButton
             label={`Remove the ${row.tag.trim() || 'empty'} mapping`}
-            onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
+            onClick={() => removeRow(i)}
             style={{ marginBottom: 3, flexShrink: 0 }}
           >
             {iconTrash}
@@ -149,7 +64,7 @@ export function GitHubSettings({ open }: GitHubSettingsProps) {
         </div>
       ))}
       <div>
-        <Button variant="ghost" size="sm" iconLeft={iconPlus} onClick={() => setRows((prev) => [...prev, { tag: '', repo: '' }])}>
+        <Button variant="ghost" size="sm" iconLeft={iconPlus} onClick={addRow}>
           Add a tag
         </Button>
       </div>

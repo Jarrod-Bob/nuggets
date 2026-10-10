@@ -3,7 +3,8 @@ import type { Idea } from '../../api';
 import { Button } from '../core/Button';
 import { Dialog } from '../feedback/Dialog';
 import { Textarea } from '../forms/Textarea';
-import { buildDeepLinkPrompt, buildPlanPrompt, CLAUDE_WEB_NEW_CHAT_URL, claudeDesktopUrl } from '../../lib/planPrompt';
+import { claudeDesktopUrl } from '../../lib/planPrompt';
+import { usePlan } from '../../models/usePlan';
 
 /**
  * "Plan with Claude" (issue #16a, phase 1): shows the planning prompt built
@@ -30,43 +31,8 @@ const linkButton: React.CSSProperties = {
 };
 
 export function PlanWithClaude({ open, idea, onClose, onSave }: PlanWithClaudeProps) {
-  const prompt = React.useMemo(() => buildPlanPrompt(idea), [idea]);
-  const deepLink = React.useMemo(() => buildDeepLinkPrompt(idea), [idea]);
-
-  const [copyNote, setCopyNote] = React.useState<string | undefined>(undefined);
-  const [answer, setAnswer] = React.useState('');
-  const [saving, setSaving] = React.useState(false);
-  const [saveError, setSaveError] = React.useState<string | undefined>(undefined);
-
-  const close = () => {
-    setCopyNote(undefined);
-    setSaveError(undefined);
-    onClose();
-  };
-
-  const copy = (): Promise<void> => {
-    // Started inside the click, before anything else can take focus.
-    const write = navigator.clipboard?.writeText(prompt) ?? Promise.reject(new Error('no clipboard'));
-    return write.then(
-      () => setCopyNote('Copied the full prompt.'),
-      () => setCopyNote("Couldn't copy. Select the prompt above and copy it by hand."),
-    );
-  };
-
-  const copyAndOpenWeb = () => {
-    void copy().then(() => window.open(CLAUDE_WEB_NEW_CHAT_URL, '_blank', 'noopener'));
-  };
-
-  const save = () => {
-    setSaving(true);
-    onSave(answer)
-      .then(() => {
-        setAnswer('');
-        close();
-      })
-      .catch((err: unknown) => setSaveError(err instanceof Error ? err.message : 'Something went wrong.'))
-      .finally(() => setSaving(false));
-  };
+  const plan = usePlan({ idea, onSave, onClose });
+  const { prompt, deepLink, copyNote, answer, saving, saveError, close } = plan;
 
   return (
     <Dialog
@@ -98,10 +64,10 @@ export function PlanWithClaude({ open, idea, onClose, onSave }: PlanWithClaudePr
         <a href={claudeDesktopUrl(deepLink.prompt)} style={linkButton}>
           Open in Claude Desktop
         </a>
-        <Button variant="secondary" size="sm" onClick={copyAndOpenWeb}>
+        <Button variant="secondary" size="sm" onClick={plan.copyAndOpenWeb}>
           Copy &amp; open claude.ai
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => void copy()}>
+        <Button variant="secondary" size="sm" onClick={() => void plan.copy()}>
           Copy prompt
         </Button>
       </div>
@@ -126,7 +92,7 @@ export function PlanWithClaude({ open, idea, onClose, onSave }: PlanWithClaudePr
           rows={6}
           placeholder="Paste Claude's plan here"
           value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
+          onChange={(e) => plan.setAnswer(e.target.value)}
           hint="Saving appends it to the end of this nugget's notes; nothing already there is replaced."
         />
         {saveError && (
@@ -135,7 +101,7 @@ export function PlanWithClaude({ open, idea, onClose, onSave }: PlanWithClaudePr
           </p>
         )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-          <Button size="sm" onClick={save} disabled={saving || !answer.trim()}>
+          <Button size="sm" onClick={plan.save} disabled={saving || !answer.trim()}>
             Save to notes
           </Button>
         </div>

@@ -71,6 +71,9 @@ export class ApiError extends Error {
   }
 }
 
+/** What to tell the captain about a failed call: the server's message, or a generic line for anything else. */
+export const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
