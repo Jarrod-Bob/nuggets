@@ -1,5 +1,6 @@
 import React from 'react';
 import { Wordmark } from '../brand/Wordmark';
+import { TopBarSlot } from './TopBarSlot';
 
 /**
  * The app's only piece of chrome: 60px header with the wordmark, the search
@@ -14,6 +15,8 @@ export interface TopBarProps {
 }
 
 export function TopBar({ center, right, style }: TopBarProps) {
+  const drawInShell = React.useContext(TopBarSlot);
+  if (drawInShell) return drawInShell({ center, right });
   return (
     <header style={{
       display: 'flex', alignItems: 'center', gap: 20, height: 'var(--topbar-h)',
