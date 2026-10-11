@@ -1,5 +1,5 @@
 /** The Comic look's line icons: 24px grid, 3px stroke in currentColor, round caps. They always sit beside a text label. */
-export type IconName = 'search' | 'arrow-right' | 'arrow-left' | 'plus' | 'close' | 'check' | 'pencil' | 'dice' | 'trash' | 'archive';
+export type IconName = 'search' | 'arrow-right' | 'arrow-left' | 'plus' | 'close' | 'check' | 'pencil' | 'dice' | 'trash' | 'archive' | 'settings';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   search: (
@@ -25,6 +25,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <circle cx="8.5" cy="8.5" r="0.4" />
       <circle cx="12" cy="12" r="0.4" />
       <circle cx="15.5" cy="15.5" r="0.4" />
+    </>
+  ),
+  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
     </>
   ),
   trash: <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />,
