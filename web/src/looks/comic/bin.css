@@ -1,0 +1,59 @@
+/* The Comic bin, translated from the design's .cs-bin rules. Values come from tokens.css.
+   Imported by TrashView, so it ships in the Comic bin chunk. */
+
+.comic-bin-heading {
+  margin: 0;
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+}
+
+.comic-bin {
+  flex: 1;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--comic-page) var(--comic-page) 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.comic-bin-note {
+  max-width: 620px;
+}
+.comic-bin-grid {
+  list-style: none;
+  margin: 0;
+  padding: 8px 6px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 30px 36px;
+}
+.comic-bin-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  color: var(--comic-ink);
+}
+.comic-bin-shape {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 372 / 272;
+  transform: rotate(var(--comic-tilt, -6deg));
+}
+.comic-bin-shape > .comic-card-art {
+  filter: grayscale(1);
+}
+.comic-bin-shape .comic-card-title {
+  font-size: clamp(17px, 1.5vw, 21px);
+}
+.comic-bin-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
