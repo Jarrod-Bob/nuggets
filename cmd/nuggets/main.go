@@ -49,11 +49,6 @@ func main() {
 	}
 	defer database.Close()
 
-	frontend, err := web.Handler()
-	if err != nil {
-		log.Fatalf("loading frontend: %v", err)
-	}
-
 	listener, err := net.Listen("tcp", *addr)
 	if err != nil {
 		log.Fatalf("listening on %s: %v", *addr, err)
@@ -76,6 +71,11 @@ func main() {
 	defer stop()
 
 	settingsStore := settings.NewStore(database)
+	dist, err := web.Dist()
+	if err != nil {
+		log.Fatalf("loading frontend: %v", err)
+	}
+	frontend := web.Handler(dist, settingsStore)
 	// A nugget that gains a mapped tag queues a GitHub feature request in the
 	// same transaction as the write that added it
 	// (docs/superpowers/specs/2026-09-28-tag-to-github-issue-design.md).

@@ -76,6 +76,9 @@ export class ApiError extends Error {
   }
 }
 
+/** What to tell the captain about a failed call: the server's message, or a generic line for anything else. */
+export const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -200,6 +203,11 @@ export interface KimiSettings {
 /** The code POST /api/kimi/names errors with when kimi's model couldn't run (httpapi's kimiModelErrorCode). */
 export const KIMI_MODEL_ERROR_CODE = 'kimi_model_error';
 
+/** GET/PUT /api/settings/look: which Look the server stamps onto the page (internal/look). */
+export interface LookSetting {
+  look: 'classic' | 'comic';
+}
+
 /** Mirrors internal/kimi.Name: one suggested project name. */
 export interface KimiName {
   name: string;
@@ -242,6 +250,11 @@ export const api = {
     disconnect: () => request<void>('/api/settings/spices', { method: 'DELETE' }),
     sync: () => request<void>('/api/spices/sync', { method: 'POST' }),
     resync: () => request<SpicesStatus>('/api/spices/resync', { method: 'POST' }),
+  },
+  look: {
+    get: () => request<LookSetting>('/api/settings/look'),
+    save: (setting: LookSetting) =>
+      request<LookSetting>('/api/settings/look', { method: 'PUT', body: JSON.stringify(setting) }),
   },
   kimi: {
     settings: () => request<KimiSettings>('/api/settings/kimi'),

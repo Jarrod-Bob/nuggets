@@ -31,3 +31,7 @@ _Avoid_: auto-tag, recommended tag, predicted tag
 **Dismissed suggestion**:
 A tag the captain turned down for one nugget, by dismissing its suggestion or by removing the tag from the nugget; that tag is never suggested for that nugget again.
 _Avoid_: rejected tag, ignored suggestion
+
+**Look**:
+The whole visual style the web app is drawn in, chosen by the captain in Settings: the **Classic look** or the **Comic look**. Changing the look never changes what a nugget is or what any screen does. The comic look's bucket and tray are drawings of the bank, not new things.
+_Avoid_: theme (read as light/dark), skin, mode, comic mode
