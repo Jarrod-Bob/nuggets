@@ -47,17 +47,23 @@ describe('the bank under the Comic look', () => {
   let bank: Idea[];
   let listStatus: number;
   let requested: string[];
+  let writes: Array<{ method: string; path: string; body: Record<string, unknown> }>;
 
   beforeEach(() => {
     document.documentElement.dataset.look = 'comic';
     bank = [nugget(1, 'Named idea', { project_name: 'Ideanori', tags: ['saas'] }), nugget(2, 'Plain idea', { status: 'done' })];
     listStatus = 200;
     requested = [];
+    writes = [];
     vi.stubGlobal('EventSource', QuietEventSource);
     vi.stubGlobal(
       'fetch',
-      vi.fn((path: string) => {
+      vi.fn((path: string, init?: RequestInit) => {
         requested.push(path);
+        if (init?.method === 'POST' || init?.method === 'PATCH') {
+          writes.push({ method: init.method, path, body: JSON.parse(String(init.body)) });
+          return Promise.resolve(json(bank[0], init.method === 'POST' ? 201 : 200));
+        }
         const url = new URL(path, 'http://nuggets.test');
         if (url.pathname === '/api/ideas/random') return Promise.resolve(json({ ...bank[1], notes: 'Worth a look.' }));
         if (url.pathname === '/api/ideas') return Promise.resolve(listStatus === 200 ? json(bank) : json({ error: { message: 'the bank is closed' } }, listStatus));
@@ -140,5 +146,33 @@ describe('the bank under the Comic look', () => {
     expect(alert.textContent).toContain('the bank is closed');
     fireEvent.click(within(alert).getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it("drops a nugget through the Comic dialog, not Classic's form", async () => {
+    renderBank();
+    await screen.findByRole('button', { name: /Named idea/ });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Drop a nugget' })[0]);
+    const dialog = await screen.findByRole('dialog', { name: 'Drop a nugget' });
+    expect(dialog.classList.contains('comic-dialog')).toBe(true);
+
+    fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Fresh one' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Drop it in' }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]).toMatchObject({ method: 'POST', path: '/api/ideas', body: { title: 'Fresh one' } });
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Drop a nugget' })).toBeNull());
+  });
+
+  it('edits a card through the Comic dialog, starting from its fields', async () => {
+    renderBank();
+    await screen.findByRole('button', { name: /Named idea/ });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+    const dialog = await screen.findByRole('dialog', { name: 'Edit nugget' });
+    expect(dialog.classList.contains('comic-dialog')).toBe(true);
+    expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('Named idea');
+
+    fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Renamed' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]).toMatchObject({ method: 'PATCH', path: '/api/ideas/1', body: { title: 'Renamed', tags: ['saas'] } });
   });
 });
