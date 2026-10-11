@@ -1,9 +1,9 @@
 import './bank.css';
 import { TopBar } from '../../components/navigation/TopBar';
-import { IdeaForm } from '../../components/nuggets/IdeaForm';
 import { SettingsButton } from '../../components/settings/SettingsButton';
 import { STATUSES, statusLabel } from '../../lib/status';
 import type { Bank } from '../../models/useBank';
+import { IdeaDialog } from './IdeaDialog';
 import { NuggetCard } from './NuggetCard';
 import { RandomNugget } from './RandomNugget';
 import { ActionError, Button, Chip, EmptyState, Icon, IconButton, SearchField } from './ui';
@@ -13,8 +13,8 @@ import { ActionError, Button, Chip, EmptyState, Icon, IconButton, SearchField } 
  * gingham liner, with the status and tag filters above it. Everything it
  * draws comes from the `bank` model (ADR 0002), the same one Classic's
  * BankView takes, with the same labels and accessible names, so the route's
- * tests pass under both Looks. The edit and drop dialogs are still Classic's
- * IdeaForm, and Settings is still Classic's button (#54, #55).
+ * tests pass under both Looks. Drop and Edit open the Comic
+ * IdeaDialog; Settings is still Classic's button (#55).
  */
 export function BankView({ bank }: { bank: Bank }) {
   const filtered = !!(bank.query || bank.activeTag || bank.activeStatus);
@@ -99,7 +99,7 @@ export function BankView({ bank }: { bank: Bank }) {
         </section>
       </main>
 
-      <IdeaForm
+      <IdeaDialog
         open={bank.creating}
         mode="create"
         tagOptions={bank.tags.map((t) => t.name)}
@@ -109,7 +109,7 @@ export function BankView({ bank }: { bank: Bank }) {
       />
 
       {bank.editing && (
-        <IdeaForm
+        <IdeaDialog
           open
           mode="edit"
           idea={bank.editing}
