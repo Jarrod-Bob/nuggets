@@ -2,10 +2,11 @@ import React from 'react';
 import { Dialog } from '../feedback/Dialog';
 import { Button } from '../core/Button';
 import { Tag } from '../core/Tag';
-import { drawConstraint, drawTimebox, type Constraint, type Rng } from '../../lib/challenge';
+import type { Constraint, Rng } from '../../lib/challenge';
 import { CATALOG_SOURCE, TRACK_LABELS, type TimeboxPreset } from '../../lib/challengeCatalog';
+import { useRandomDraw, type RandomIdea } from '../../models/useRandomDraw';
 
-export interface RandomIdea { id?: number; title: string; notes?: string; tags?: string[] }
+export type { RandomIdea };
 
 /**
  * The mini-challenge: one button, one result dialog, reroll freely.
@@ -39,24 +40,19 @@ export interface RandomNuggetProps {
 }
 
 export function RandomNugget({ tag = null, onDraw, loading = false, buttonLabel = 'Draw a nugget', buttonVariant = 'secondary', style, rng = Math.random }: RandomNuggetProps) {
-  const [open, setOpen] = React.useState(false);
-  const [idea, setIdea] = React.useState<RandomIdea | null>(null);
-  const [timebox, setTimebox] = React.useState<TimeboxPreset | null>(null);
-  const [constraint, setConstraint] = React.useState<Constraint | null>(null);
-  const draw = () => { const next = onDraw ? onDraw(tag) : null; setIdea(next); setOpen(true); };
-  // Opening deals a whole new challenge. Rerolling the nugget keeps it.
-  const openFresh = () => { setTimebox(drawTimebox(rng)); setConstraint(drawConstraint(rng)); draw(); };
+  const draw = useRandomDraw({ tag, onDraw, rng });
+  const { open, idea, timebox, constraint } = draw;
   return (
     <>
-      <Button variant={buttonVariant} onClick={openFresh} disabled={loading} style={style}
+      <Button variant={buttonVariant} onClick={draw.openFresh} disabled={loading} style={style}
         iconLeft={<span style={{ width: 15, height: 12, borderRadius: 'var(--radius-nugget)', background: 'var(--nug-golden-400)', border: '1.5px solid var(--nug-golden-700)', display: 'block' }} />}>
         {buttonLabel}
       </Button>
-      <Dialog open={open} width={480} onClose={() => setOpen(false)}
+      <Dialog open={open} width={480} onClose={draw.close}
         title={loading ? 'Drawing…' : idea ? 'Your challenge' : 'Nothing to draw'}
         footer={<>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Close</Button>
-          <Button variant="secondary" onClick={draw} disabled={loading}>Reroll nugget</Button>
+          <Button variant="ghost" onClick={draw.close}>Close</Button>
+          <Button variant="secondary" onClick={draw.rerollNugget} disabled={loading}>Reroll nugget</Button>
         </>}>
         {loading ? (
           <p style={{ margin: 0, color: 'var(--nug-ink-500)' }}>Drawing a nugget…</p>
@@ -70,8 +66,8 @@ export function RandomNugget({ tag = null, onDraw, loading = false, buttonLabel 
             )}
             {timebox && constraint && (
               <Challenge timebox={timebox} constraint={constraint}
-                onRerollTimebox={() => setTimebox(drawTimebox(rng, timebox))}
-                onRerollConstraint={() => setConstraint(drawConstraint(rng, constraint))} />
+                onRerollTimebox={draw.rerollTimebox}
+                onRerollConstraint={draw.rerollConstraint} />
             )}
           </div>
         ) : (

@@ -1,0 +1,18 @@
+<!-- @dsCard group="Nuggets" height=330 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>NuggetCard — preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var C = window.Comic, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:'24px 32px',padding:'20px 24px'}},
+  h(C.NuggetCard,{title:'A receipt scanner that argues back',status:'building',age:'2d',tags:['saas','writing'],shape:0,tilt:-4,projectName:'Golden Hour'}),
+  h(C.NuggetCard,{title:'Commit messages as haiku',status:'raw',age:'1w',tags:['tooling','writing'],shape:2,tilt:2,projectName:'Seventeen Syllables',sauceOpen:true}),
+  h(C.NuggetCard,{title:'A board game about queueing at the post office',status:'parked',age:'3w',tags:['games'],shape:3,tilt:-2})));
+</script>
+</body>
+</html>

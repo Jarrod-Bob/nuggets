@@ -1,0 +1,17 @@
+<!-- @dsCard group="Nuggets" height=200 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>SpeechBubble — preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var C = window.Comic, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'grid',gridTemplateColumns:'1.4fr 1fr',gap:36,padding:'20px 20px 34px 44px',alignItems:'start'}},
+  h(C.SpeechBubble,null,h('p',{className:'lead',style:{margin:0}},'Photograph a receipt, get a one-line roast of the purchase.'),h('p',{className:'body',style:{margin:'10px 0 0',color:'var(--ink-soft)'}},'The roast needs a dial: gentle, honest, ruthless.')),
+  h(C.SpeechBubble,{tail:'bottom',style:{textAlign:'center'}},h(C.Sfx,{size:'sm',tilt:-3},'PSST! TIP ME!'))));
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Input } from '../forms/Input';
 import { Button } from '../core/Button';
 import { IconButton } from '../core/IconButton';
-import { api, type KimiName } from '../../api';
+import { useKimiNames } from '../../models/useKimiNames';
 
 /**
  * The form's "Suggested project name" field and its ✨ button, which asks
@@ -45,67 +45,9 @@ function chipStyle(picked: boolean): React.CSSProperties {
   };
 }
 
-type Results = { state: 'none' } | { state: 'failed' } | { state: 'names'; names: KimiName[] };
-
 export function ProjectNameField({ value, onChange, notes, onPick }: ProjectNameFieldProps) {
-  // null while the health check is in flight.
-  const [available, setAvailable] = React.useState<boolean | null>(null);
-  const [naming, setNaming] = React.useState<AbortController | null>(null);
-  const [results, setResults] = React.useState<Results>({ state: 'none' });
-  // Every name shown this form session, for Re-roll's avoid. A ref, not
-  // state: nothing renders from it.
-  const shown = React.useRef<string[]>([]);
-  const inFlight = React.useRef<AbortController | null>(null);
-  // Whether the busy button is hovered or focused, so it shows ✕ for cancel.
-  const [cancelShown, setCancelShown] = React.useState(false);
-  // The suggestion under the pointer or keyboard focus. Its explanation shows,
-  // else the picked one's.
-  const [pointed, setPointed] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    let live = true;
-    api.kimi.available().then((ok) => {
-      if (live) setAvailable(ok);
-    });
-    return () => {
-      live = false;
-      // Forget the request before aborting it, so its finally doesn't set
-      // state on a field that is gone.
-      const request = inFlight.current;
-      inFlight.current = null;
-      request?.abort();
-    };
-  }, []);
-
-  const ask = (avoid: string[]) => {
-    const controller = new AbortController();
-    inFlight.current = controller;
-    setNaming(controller);
-    api.kimi
-      .names(notes.trim(), avoid, controller.signal)
-      .then((names) => {
-        shown.current = [...shown.current, ...names.map((n) => n.name)];
-        setResults({ state: 'names', names });
-      })
-      .catch(() => {
-        // A cancel leaves the list as it was; anything else is "not available".
-        if (!controller.signal.aborted) setResults({ state: 'failed' });
-      })
-      .finally(() => {
-        if (inFlight.current === controller) {
-          inFlight.current = null;
-          setNaming(null);
-          setCancelShown(false);
-        }
-      });
-  };
-
-  const cancel = () => {
-    naming?.abort();
-  };
-
-  const notesEmpty = notes.trim() === '';
-  const hint = notesEmpty ? NOTES_EMPTY_HINT : available === false ? UNAVAILABLE_TEXT : undefined;
+  const kimi = useKimiNames({ notes, value });
+  const hint = kimi.blocked === 'no-notes' ? NOTES_EMPTY_HINT : kimi.blocked === 'unavailable' ? UNAVAILABLE_TEXT : undefined;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -122,36 +64,25 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
         {/* Reserves the busy ring's width on the right at all times, so the
             dialog's scrolling body doesn't clip it and nothing shifts when it appears. */}
         <div style={{ paddingTop: 23, paddingRight: RING_GAP }}>
-          {naming ? (
-            // A golden arc spins around the button while kimi works; the
-            // button itself cancels, showing ✕ when hovered or focused.
-            <span style={{ position: 'relative', display: 'inline-flex' }}
-              onMouseEnter={() => setCancelShown(true)} onMouseLeave={() => setCancelShown(false)}
-              onFocus={() => setCancelShown(true)} onBlur={() => setCancelShown(false)}>
-              <span aria-hidden="true" className="nug-spin" style={spinRingStyle} />
-              <IconButton size="lg" variant="outline" label="Cancel naming" busy onClick={cancel}>
-                {cancelShown
-                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
-                  : <span aria-hidden="true" style={{ fontSize: 18 }}>✨</span>}
-              </IconButton>
-            </span>
+          {kimi.naming ? (
+            <CancelNaming onCancel={kimi.cancel} />
           ) : (
-            <IconButton size="lg" variant="outline" label={GENERATE_TOOLTIP} disabled={notesEmpty || available !== true} onClick={() => ask([])}>
+            <IconButton size="lg" variant="outline" label={GENERATE_TOOLTIP} disabled={kimi.blocked === 'no-notes' || kimi.available !== true} onClick={kimi.generate}>
               <span aria-hidden="true" style={{ fontSize: 18 }}>✨</span>
             </IconButton>
           )}
         </div>
       </div>
 
-      {results.state === 'failed' && (
+      {kimi.results.state === 'failed' && (
         <p role="status" style={{ margin: 0, fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)' }}>{UNAVAILABLE_TEXT}</p>
       )}
 
-      {results.state === 'names' && (
+      {kimi.results.state === 'names' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
             <ul role="listbox" aria-label="Names from kimi" style={{ listStyle: 'none', margin: 0, padding: 0, flex: 1, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {results.names.map((n) => (
+              {kimi.results.names.map((n) => (
                 <li key={n.name} role="option" aria-selected={value === n.name}
                   tabIndex={0}
                   onClick={() => onPick(n.name)}
@@ -161,16 +92,16 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
                       onPick(n.name);
                     }
                   }}
-                  onMouseEnter={() => setPointed(n.name)}
-                  onMouseLeave={() => setPointed(null)}
-                  onFocus={() => setPointed(n.name)}
-                  onBlur={() => setPointed(null)}
+                  onMouseEnter={() => kimi.point(n.name)}
+                  onMouseLeave={() => kimi.point(null)}
+                  onFocus={() => kimi.point(n.name)}
+                  onBlur={() => kimi.point(null)}
                   style={chipStyle(value === n.name)}>
                   {n.name}
                 </li>
               ))}
             </ul>
-            <Button variant="ghost" size="sm" disabled={!!naming || notesEmpty} onClick={() => ask(shown.current)}>Re-roll</Button>
+            <Button variant="ghost" size="sm" disabled={kimi.naming || kimi.blocked === 'no-notes'} onClick={kimi.reroll}>Re-roll</Button>
           </div>
           {/* A fixed two-line box, the same size empty or full, so hovering
               names never shifts the form. Longer explanations are clamped. */}
@@ -179,10 +110,31 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
             display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2,
             fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)', textWrap: 'pretty',
           }}>
-            {results.names.find((n) => n.name === (pointed ?? value))?.explanation}
+            {kimi.explanation}
           </p>
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The busy button: a golden arc spins around it while kimi works, and the
+ * button itself cancels, showing ✕ when hovered or focused. Mounted only while
+ * naming, so the ✕ never carries over to the next request.
+ */
+function CancelNaming({ onCancel }: { onCancel: () => void }) {
+  const [cancelShown, setCancelShown] = React.useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}
+      onMouseEnter={() => setCancelShown(true)} onMouseLeave={() => setCancelShown(false)}
+      onFocus={() => setCancelShown(true)} onBlur={() => setCancelShown(false)}>
+      <span aria-hidden="true" className="nug-spin" style={spinRingStyle} />
+      <IconButton size="lg" variant="outline" label="Cancel naming" busy onClick={onCancel}>
+        {cancelShown
+          ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          : <span aria-hidden="true" style={{ fontSize: 18 }}>✨</span>}
+      </IconButton>
+    </span>
   );
 }

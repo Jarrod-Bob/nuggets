@@ -1,0 +1,83 @@
+/* The project-name field in the Comic look. Imported by NameStickers, so it ships with whichever Comic chunk uses the field. */
+
+/* Name suggestions (the project-name field): kimi's names as tilted nugget stickers; the picked one is curry with a check. */
+.comic-names {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.comic-names-status {
+  margin: 0;
+  font-size: 14px;
+  color: var(--comic-ink-soft);
+}
+.comic-names-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.comic-stickers {
+  list-style: none;
+  margin: 0;
+  padding: 4px 6px 6px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.comic-sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: var(--comic-line-thin) solid var(--comic-ink);
+  border-radius: var(--comic-radius-sticker);
+  background: var(--comic-nugget);
+  color: var(--comic-ink);
+  box-shadow: var(--comic-shadow-stamp);
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transform: rotate(var(--comic-tilt, 0deg));
+  transition: transform var(--dur-fast) var(--ease-bounce), box-shadow var(--dur-fast);
+}
+.comic-sticker:hover {
+  transform: rotate(var(--comic-tilt, 0deg)) translate(-2px, -2px);
+  box-shadow: var(--comic-shadow-sticker);
+}
+.comic-sticker:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 3px;
+}
+/* Curry means one thing: this nugget has a project name. */
+.comic-sticker--picked {
+  background: var(--comic-curry);
+  color: var(--comic-on-curry);
+}
+.comic-names-why {
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 14px;
+  color: var(--comic-ink-soft);
+  text-wrap: pretty;
+}
+.comic-dice--rolling .comic-icon {
+  animation: comic-roll 700ms linear infinite;
+}
+@keyframes comic-roll {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .comic-dice--rolling .comic-icon {
+    animation: none;
+  }
+  .comic-sticker,
+  .comic-sticker:hover {
+    transition: none;
+  }
+}

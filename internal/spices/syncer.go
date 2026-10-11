@@ -64,9 +64,11 @@ type Syncer struct {
 
 	wake chan struct{}
 
-	// mu is held from a page's arrival through its commit, and by Reset and
-	// Resync, so changing the settings can't interleave with a page fetched
-	// under the old ones.
+	// mu is held from a page's arrival through its commit, by Reset and
+	// Resync, and while Drain reads the settings it pulls under, so changing
+	// the settings can't interleave with a page fetched under the old ones,
+	// and a pull never starts from a half-made change — a new address with
+	// the old one's cursor (issue #35).
 	mu sync.Mutex
 
 	// lastAcked is the cursor spices last accepted an acknowledgement for, or
@@ -184,7 +186,9 @@ func (s *Syncer) Resync(ctx context.Context) (int64, error) {
 // (and that nugget only it) can't be told from part of the feed. A failure
 // saves nothing and the next pass starts again from 0.
 func (s *Syncer) Drain(ctx context.Context) error {
+	s.mu.Lock()
 	cfg, err := LoadConfig(ctx, s.settings)
+	s.mu.Unlock()
 	if err != nil {
 		return err
 	}

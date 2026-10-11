@@ -2,28 +2,17 @@ import React from 'react';
 import { Button } from '../core/Button';
 import { Badge } from '../core/Badge';
 import { Input } from '../forms/Input';
-import { api, ApiError, type TagSuggestionStatus } from '../../api';
 import { SettingsSection } from './SettingsSection';
-import { useLiveRefresh } from '../../live/LiveUpdates';
+import { describePending, TYPESAFE_KEYS_URL } from '../../lib/tagSuggestions';
+import { useTagSuggestionSettings } from '../../models/useTagSuggestionSettings';
 
 export interface TagSuggestionSettingsProps {
   /** Whether the settings dialog is showing: status is fetched each time it opens. */
   open: boolean;
 }
 
-/** Where TypeSafe issues API keys. */
-const KEYS_URL = 'https://console.typesafe.ai/keys';
-
-const describeError = (err: unknown): string => (err instanceof ApiError ? err.message : 'Something went wrong.');
-
 const note: React.CSSProperties = { margin: '0 0 14px', fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-700)', textWrap: 'pretty' };
 const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--nug-ink-500)' };
-
-/** "N nuggets waiting to be checked", or null when none are. */
-function describePending(pending: number): string | null {
-  if (pending <= 0) return null;
-  return `${pending} ${pending === 1 ? 'nugget' : 'nuggets'} waiting to be checked`;
-}
 
 /**
  * The "Tag suggestions" section of the settings dialog (Jev tag-suggestions
@@ -32,60 +21,7 @@ function describePending(pending: number): string | null {
  * is never shown back, so the field is always empty.
  */
 export function TagSuggestionSettings({ open }: TagSuggestionSettingsProps) {
-  const [status, setStatus] = React.useState<TagSuggestionStatus | null>(null);
-  const [editing, setEditing] = React.useState(false);
-  const [key, setKey] = React.useState('');
-  const [error, setError] = React.useState<string | undefined>(undefined);
-  const [busy, setBusy] = React.useState(false);
-
-  React.useEffect(() => {
-    // Fetching status when the dialog opens is inherently a side effect (an
-    // async request keyed off `open`), not state derivable during render.
-    if (!open) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setEditing(false);
-    setError(undefined);
-    setKey('');
-    api.tagSuggestions
-      .status()
-      .then(setStatus)
-      .catch((err) => setError(describeError(err)));
-  }, [open]);
-
-  // Keep the status line and the waiting count current while the dialog is open.
-  useLiveRefresh('tag-suggestions-changed', () => {
-    if (!open) return;
-    api.tagSuggestions
-      .status()
-      .then(setStatus)
-      .catch(() => {});
-  });
-
-  const save = () => {
-    setBusy(true);
-    setError(undefined);
-    api.tagSuggestions
-      .connect(key.trim())
-      .then((s) => {
-        setStatus(s);
-        setKey('');
-        setEditing(false);
-      })
-      .catch((err) => setError(describeError(err)))
-      .finally(() => setBusy(false));
-  };
-
-  const disconnect = () => {
-    setBusy(true);
-    setError(undefined);
-    api.tagSuggestions
-      .disconnect()
-      .then(() => api.tagSuggestions.status())
-      .then(setStatus)
-      .then(() => setEditing(false))
-      .catch((err) => setError(describeError(err)))
-      .finally(() => setBusy(false));
-  };
+  const { status, busy, disconnect, editing, error, key, save, startEditing, cancelEditing, setKey } = useTagSuggestionSettings(open);
 
   const waiting = status ? describePending(status.pending) : null;
   const showForm = status && (editing || !status.connected);
@@ -117,7 +53,7 @@ export function TagSuggestionSettings({ open }: TagSuggestionSettingsProps) {
           {!status.connected && (
             <p style={note}>
               Suggestions come from{' '}
-              <a href={KEYS_URL} target="_blank" rel="noreferrer" style={{ color: 'var(--nug-ink-900)', fontWeight: 'var(--weight-bold)' }}>
+              <a href={TYPESAFE_KEYS_URL} target="_blank" rel="noreferrer" style={{ color: 'var(--nug-ink-900)', fontWeight: 'var(--weight-bold)' }}>
                 TypeSafe — get an API key
               </a>
               . Each nugget whose title or notes change is checked once against the tags in use; nuggets saved before a key
@@ -149,7 +85,7 @@ export function TagSuggestionSettings({ open }: TagSuggestionSettingsProps) {
             )}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {status.connected && !editing ? (
-                <Button variant="ghost" onClick={() => setEditing(true)} disabled={busy}>
+                <Button variant="ghost" onClick={startEditing} disabled={busy}>
                   Change key
                 </Button>
               ) : (
@@ -157,11 +93,7 @@ export function TagSuggestionSettings({ open }: TagSuggestionSettingsProps) {
                   {editing && (
                     <Button
                       variant="ghost"
-                      onClick={() => {
-                        setKey('');
-                        setError(undefined);
-                        setEditing(false);
-                      }}
+                      onClick={cancelEditing}
                       disabled={busy}
                     >
                       Cancel

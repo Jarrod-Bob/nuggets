@@ -26,6 +26,7 @@ func NewServer(store *idea.Store, settingsStore *settings.Store, syncer *spices.
 	gh := &githubHandlers{settings: settingsStore, sender: sender}
 	kh := &kimiHandlers{settings: settingsStore, client: kimiClient}
 	jh := &jevHandlers{settings: settingsStore, suggester: suggester}
+	lh := &lookHandlers{settings: settingsStore}
 	eh := &eventsHandler{broker: broker, heartbeat: defaultHeartbeat}
 	mux := http.NewServeMux()
 
@@ -56,6 +57,9 @@ func NewServer(store *idea.Store, settingsStore *settings.Store, syncer *spices.
 	mux.HandleFunc("PUT /api/settings/kimi", kh.saveSettings)
 	mux.HandleFunc("GET /api/kimi/health", kh.health)
 	mux.HandleFunc("POST /api/kimi/names", kh.names)
+
+	mux.HandleFunc("GET /api/settings/look", lh.get)
+	mux.HandleFunc("PUT /api/settings/look", lh.save)
 
 	mux.HandleFunc("GET /api/settings/jev", jh.status)
 	mux.HandleFunc("PUT /api/settings/jev", jh.save)

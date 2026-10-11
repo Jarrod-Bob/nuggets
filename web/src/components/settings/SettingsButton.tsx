@@ -6,6 +6,7 @@ import { SpicesSettings } from './SpicesSettings';
 import { GitHubSettings } from './GitHubSettings';
 import { KimiSettings } from './KimiSettings';
 import { TagSuggestionSettings } from './TagSuggestionSettings';
+import { LookSettings } from './LookSettings';
 
 /**
  * The top-bar entry point to settings (design §11: "reached from the top bar").
@@ -29,6 +30,7 @@ export function SettingsButton() {
           <GitHubSettings open={open} />
           <KimiSettings open={open} />
           <TagSuggestionSettings open={open} />
+          <LookSettings open={open} />
         </div>
       </Dialog>
     </>

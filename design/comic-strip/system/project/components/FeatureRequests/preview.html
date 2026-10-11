@@ -1,0 +1,15 @@
+<!-- @dsCard group="Nuggets" height=230 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>FeatureRequests — preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var C = window.Comic, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{padding:20}},h(C.FeatureRequests,{requests:[{id:1,repo:'Jarrod-Bob/nuggets',state:'created',number:42,url:'#'},{id:2,repo:'Jarrod-Bob/spices',state:'pending'},{id:3,repo:'Jarrod-Bob/typesafe',state:'failed',last_error:'GitHub refused the token.'}]})));
+</script>
+</body>
+</html>
