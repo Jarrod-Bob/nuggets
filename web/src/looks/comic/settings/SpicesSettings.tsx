@@ -112,8 +112,9 @@ export function SpicesSettings({ open }: { open: boolean }) {
       )}
       {confirmingResync && (
         <p className="comic-settings-note">
-          Re-sync keeps every nugget that came from spices, sets them aside as detached, and pulls everything in spices in again as new nuggets. Ideas that
-          were already here will show up twice.
+          Re-sync keeps every nugget that came from spices, sets them aside as detached, and pulls everything in spices in again. An idea with the same
+          title and notes as exactly one detached nugget picks that nugget back up, your edits and tags included; anything else comes in as a new
+          nugget, so some ideas may show up twice.
         </p>
       )}
       {editing && form}
