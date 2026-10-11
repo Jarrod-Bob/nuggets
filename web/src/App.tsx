@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
-import { Shell } from './components/Shell';
+import { LookShell } from './looks/LookShell';
 import { TagsProvider } from './tags/TagsProvider';
 import { LiveUpdatesProvider } from './live/LiveUpdates';
 import { BankRoute } from './pages/BankRoute';
@@ -26,7 +26,7 @@ function App() {
     <LiveUpdatesProvider>
       <TagsProvider>
         <Routes>
-          <Route element={<Shell />}>
+          <Route element={<LookShell />}>
             <Route path="/" element={<BankRoute />} />
             <Route path="/nuggets/:id" element={<NuggetPage />} />
             <Route path="/trash" element={<TrashRoute />} />

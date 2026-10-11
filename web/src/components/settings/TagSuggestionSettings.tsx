@@ -3,6 +3,7 @@ import { Button } from '../core/Button';
 import { Badge } from '../core/Badge';
 import { Input } from '../forms/Input';
 import { SettingsSection } from './SettingsSection';
+import { describePending, TYPESAFE_KEYS_URL } from '../../lib/tagSuggestions';
 import { useTagSuggestionSettings } from '../../models/useTagSuggestionSettings';
 
 export interface TagSuggestionSettingsProps {
@@ -10,17 +11,8 @@ export interface TagSuggestionSettingsProps {
   open: boolean;
 }
 
-/** Where TypeSafe issues API keys. */
-const KEYS_URL = 'https://console.typesafe.ai/keys';
-
 const note: React.CSSProperties = { margin: '0 0 14px', fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-700)', textWrap: 'pretty' };
 const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--nug-ink-500)' };
-
-/** "N nuggets waiting to be checked", or null when none are. */
-function describePending(pending: number): string | null {
-  if (pending <= 0) return null;
-  return `${pending} ${pending === 1 ? 'nugget' : 'nuggets'} waiting to be checked`;
-}
 
 /**
  * The "Tag suggestions" section of the settings dialog (Jev tag-suggestions
@@ -61,7 +53,7 @@ export function TagSuggestionSettings({ open }: TagSuggestionSettingsProps) {
           {!status.connected && (
             <p style={note}>
               Suggestions come from{' '}
-              <a href={KEYS_URL} target="_blank" rel="noreferrer" style={{ color: 'var(--nug-ink-900)', fontWeight: 'var(--weight-bold)' }}>
+              <a href={TYPESAFE_KEYS_URL} target="_blank" rel="noreferrer" style={{ color: 'var(--nug-ink-900)', fontWeight: 'var(--weight-bold)' }}>
                 TypeSafe — get an API key
               </a>
               . Each nugget whose title or notes change is checked once against the tags in use; nuggets saved before a key
