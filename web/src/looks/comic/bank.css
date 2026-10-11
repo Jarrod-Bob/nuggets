@@ -1,0 +1,177 @@
+/* The Comic bank: filters, the gingham tray and its liner, and the drawn nugget. Values come from tokens.css.
+   Imported by BankView, so it ships in the Comic bank chunk. */
+
+.comic-bank {
+  flex: 1;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--comic-page) var(--comic-page) 40px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--comic-gutter);
+}
+
+.comic-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.comic-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.comic-tray-label {
+  margin: 8px 0 0;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--comic-ink);
+}
+
+/* The tray: a gingham border (two 50% tomato gradients at a 40px pitch) around a paper liner. */
+.comic-tray {
+  padding: 22px;
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-panel);
+  background-color: var(--comic-paper);
+  background-image:
+    linear-gradient(90deg, color-mix(in srgb, var(--comic-tomato) 55%, transparent) 50%, transparent 50%),
+    linear-gradient(color-mix(in srgb, var(--comic-tomato) 55%, transparent) 50%, transparent 50%);
+  background-size: 40px 40px;
+}
+.comic-liner {
+  padding: var(--comic-panel-pad);
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-panel);
+  background: var(--comic-paper);
+}
+
+.comic-tray-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 8px 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--comic-card-gap);
+}
+@media (max-width: 1100px) {
+  .comic-tray-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .comic-tray-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .comic-bank {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .comic-tray {
+    padding: 12px;
+  }
+  .comic-liner {
+    padding: 20px;
+  }
+}
+.comic-tray-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.comic-tray-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Draw a nugget: the drawn card drops in, stamped PICK ME (the motion is Motion's; see RandomNugget). */
+.comic-drawn {
+  position: relative;
+  width: min(100%, 340px);
+  aspect-ratio: 372 / 272;
+  margin: 6px auto 4px;
+  color: var(--comic-ink);
+}
+.comic-drawn .comic-card-title {
+  margin: 0;
+}
+.comic-stamp {
+  position: absolute;
+  top: -4%;
+  right: -6%;
+  padding: 6px 12px;
+  border: var(--comic-line) solid var(--comic-tomato);
+  outline: 2px solid var(--comic-tomato);
+  outline-offset: -8px;
+  border-radius: 4px;
+  background: var(--comic-paper);
+  color: var(--comic-tomato);
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.comic-random-wait {
+  margin: 0;
+  color: var(--comic-ink-soft);
+}
+.comic-random-notes {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.comic-challenge {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: var(--comic-line-thin) solid var(--comic-ink);
+  border-radius: var(--comic-radius-field);
+  background: var(--comic-mayo);
+}
+.comic-challenge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.comic-challenge-text {
+  display: flex;
+  flex: 1 1 180px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.comic-challenge-label {
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--comic-ink-soft);
+}
+.comic-challenge-value {
+  font-size: 15px;
+  font-weight: 700;
+}
+.comic-challenge-track {
+  margin-left: 8px;
+  font-weight: 400;
+  color: var(--comic-ink-soft);
+}
+.comic-challenge-source {
+  align-self: flex-end;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  color: var(--comic-ink-soft);
+}

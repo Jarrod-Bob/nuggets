@@ -1,0 +1,199 @@
+/* Nugget cards and the curry corner, translated from the design's bundle.css (.cs-card, .cs-curry-*).
+   Shared by every Comic view that draws a nugget. Loaded by ComicShell. */
+
+.comic-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 372 / 272;
+  color: var(--comic-ink);
+  transform: rotate(var(--comic-tilt, 0deg));
+  transition: transform var(--dur-base) var(--ease-bounce);
+}
+.comic-card:hover {
+  transform: rotate(calc(var(--comic-tilt, 0deg) * -1)) translateY(-6px) scale(1.03);
+}
+.comic-card-art,
+.comic-curry-dab,
+.comic-curry-flood {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.comic-card-art {
+  z-index: 0;
+}
+.comic-curry-dab {
+  z-index: 1;
+}
+.comic-card-open {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  border-radius: 40%;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.comic-card-open:focus-visible,
+.comic-curry-btn:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 3px;
+}
+.comic-card-body {
+  position: absolute;
+  left: 17%;
+  right: 18%;
+  top: 26%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comic-card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+}
+.comic-card-meta b {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.comic-card-title {
+  margin: 0;
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: clamp(18px, 1.75vw, 25px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.comic-card-tags {
+  font-family: var(--comic-font-mono);
+  font-weight: 700;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.comic-card--killed {
+  color: var(--comic-on-burnt);
+}
+.comic-card--named .comic-card-body {
+  right: 27%;
+}
+
+/* Curry corner: named nuggets only. The flood pours from the dab (top right) and drains back. */
+.comic-curry-btn {
+  position: absolute;
+  z-index: 5;
+  top: -2%;
+  right: -2%;
+  width: 28%;
+  height: 38%;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.comic-curry-flood {
+  z-index: 3;
+  pointer-events: none;
+  clip-path: circle(0% at 93% 6%);
+  transition: clip-path var(--comic-drain) var(--comic-ease-pour);
+}
+.comic-curry-flood[data-open='true'] {
+  clip-path: circle(150% at 93% 6%);
+  transition-duration: var(--comic-pour);
+}
+.comic-curry-drips {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  transform: scaleY(0);
+  transition: transform var(--dur-base) ease-in;
+}
+.comic-curry-flood[data-open='true'] .comic-curry-drips {
+  transform: scaleY(1);
+  transition: transform var(--dur-lazy) var(--ease-bounce) var(--comic-drip-delay);
+}
+.comic-curry-name {
+  position: absolute;
+  z-index: 4;
+  left: 15%;
+  right: 16%;
+  top: 24%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--comic-on-curry);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-base);
+}
+.comic-curry-name[data-open='true'] {
+  opacity: 1;
+  transition: opacity var(--dur-slow) var(--comic-name-delay);
+}
+.comic-curry-label {
+  font-family: var(--comic-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.comic-curry-text {
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: clamp(26px, 2.9vw, 44px);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.comic-curry-text--long {
+  font-size: clamp(22px, 2.1vw, 32px);
+}
+.comic-curry-title {
+  font-size: 13px;
+  line-height: 1.3;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comic-card {
+    transition: none;
+  }
+  .comic-card:hover {
+    transform: rotate(var(--comic-tilt, 0deg));
+  }
+  /* No pour: the sauce fades in and out, and the drips are simply there. */
+  .comic-curry-flood,
+  .comic-curry-flood[data-open='true'] {
+    clip-path: none;
+    opacity: 0;
+    transition: opacity 200ms; /* the design's fade; the house tokens are zero under reduced motion */
+  }
+  .comic-curry-flood[data-open='true'] {
+    opacity: 1;
+  }
+  .comic-curry-drips,
+  .comic-curry-flood[data-open='true'] .comic-curry-drips {
+    transform: none;
+    transition: none;
+  }
+  .comic-curry-name[data-open='true'] {
+    transition: opacity 200ms; /* the design's fade; the house tokens are zero under reduced motion */
+  }
+}
