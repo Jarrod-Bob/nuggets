@@ -12,9 +12,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/Jarrod-Bob/nuggets/internal/idea"
 	"github.com/Jarrod-Bob/nuggets/internal/settings"
 )
 
@@ -88,7 +88,7 @@ func (o *Outbox) Wake() {
 // one for the repository — then nothing, ever (the unique index). It runs
 // inside the nugget write's transaction and never calls GitHub.
 //
-// When another nugget with the same title and notes (see sameIdea) already
+// When another nugget with the same title and notes (see idea.SameText) already
 // has a pending, sending or created request on the repository — typically
 // the copy a spices Re-sync left behind — the new row links to that request
 // instead of opening a second issue.
@@ -160,17 +160,11 @@ func findSameIdea(ctx context.Context, tx *sql.Tx, ideaID int64, repo string) (*
 		if err := rows.Scan(&id, &otherTitle, &otherNotes); err != nil {
 			return nil, fmt.Errorf("scanning feature request: %w", err)
 		}
-		if sameIdea(title, otherTitle) && sameIdea(notes, otherNotes) {
+		if idea.SameText(title, otherTitle) && idea.SameText(notes, otherNotes) {
 			return &id, nil
 		}
 	}
 	return nil, rows.Err()
-}
-
-// sameIdea compares two titles or two notes ignoring case, leading and
-// trailing space, and how long each run of whitespace is.
-func sameIdea(a, b string) bool {
-	return strings.EqualFold(strings.Join(strings.Fields(a), " "), strings.Join(strings.Fields(b), " "))
 }
 
 // issueColumns reads a row as it is shown: a linked row's own id, nugget,

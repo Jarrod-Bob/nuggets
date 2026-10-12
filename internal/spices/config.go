@@ -22,6 +22,10 @@ const (
 	// or restored) or the address changed after a pull. Nothing is pulled
 	// until the captain presses Re-sync.
 	KeyNeedsResync = "spices_needs_resync"
+	// KeyReattach is "1" from a Re-sync until the pull of everything that
+	// follows it commits. That pull is applied in one go so its ideas can
+	// reattach to the detached nuggets they match (design §5).
+	KeyReattach = "spices_reattach"
 )
 
 const (
@@ -56,6 +60,7 @@ type Config struct {
 	LastSync    *time.Time
 	LastError   string
 	NeedsResync bool
+	Reattach    bool
 }
 
 // sameSource reports whether c and other point at the same spices with the
@@ -116,6 +121,10 @@ func LoadConfig(ctx context.Context, store *settings.Store) (Config, error) {
 		return Config{}, err
 	}
 	cfg.NeedsResync = raw == "1"
+	if raw, err = get(KeyReattach); err != nil {
+		return Config{}, err
+	}
+	cfg.Reattach = raw == "1"
 	return cfg, nil
 }
 
