@@ -23,11 +23,12 @@ type SyncedItem struct {
 
 // SyncResult counts what ApplySynced did with a page, for logging and tests.
 type SyncResult struct {
-	Created   int // new nuggets
-	Updated   int // unedited nuggets whose content was refreshed
-	Archived  int // nuggets archived by a tombstone
-	Unchanged int // already applied, or edited here so left alone
-	Skipped   int // nothing to import: no title, or a tombstone for an item never imported
+	Created    int // new nuggets
+	Reattached int // detached nuggets that took an item back instead of a copy (ReattachSynced)
+	Updated    int // unedited nuggets whose content was refreshed
+	Archived   int // nuggets archived by a tombstone
+	Unchanged  int // already applied, or edited here so left alone
+	Skipped    int // nothing to import: no title, or a tombstone for an item never imported
 }
 
 // ApplySynced upserts a page of items from source by (source, source_ref) and
@@ -46,6 +47,25 @@ type SyncResult struct {
 //   - A tombstone: the nugget is archived (moved to the trash, restorable) and
 //     the tombstone recorded in source_deleted_at. Never deleted.
 func (s *Store) ApplySynced(ctx context.Context, source string, items []SyncedItem, inTx func(ctx context.Context, tx *sql.Tx) error) (SyncResult, error) {
+	return s.applySynced(ctx, source, "", items, inTx)
+}
+
+// ReattachSynced is ApplySynced for the import that follows a Re-sync
+// (spices pull design §5), given every item the feed holds at once. A live
+// item that would be created instead reattaches to the nugget of source
+// detached with the same title and notes (SameText), when exactly one
+// detached nugget matches it and no other item matches that nugget. The
+// nugget takes the item's ref and rev and goes back to source; everything
+// else about it — content, tags, status, links, archive state, updated_at,
+// tag suggestions — stays as the captain left it. Any ambiguity, either way
+// round, creates a copy as ApplySynced would.
+func (s *Store) ReattachSynced(ctx context.Context, source, detached string, items []SyncedItem, inTx func(ctx context.Context, tx *sql.Tx) error) (SyncResult, error) {
+	return s.applySynced(ctx, source, detached, items, inTx)
+}
+
+// applySynced is ApplySynced, reattaching to nuggets of source detached when
+// that is set.
+func (s *Store) applySynced(ctx context.Context, source, detached string, items []SyncedItem, inTx func(ctx context.Context, tx *sql.Tx) error) (SyncResult, error) {
 	var result SyncResult
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -54,8 +74,14 @@ func (s *Store) ApplySynced(ctx context.Context, source string, items []SyncedIt
 	}
 	defer tx.Rollback()
 
+	var reattach map[string]int64
+	if detached != "" {
+		if reattach, err = planReattach(ctx, tx, detached, items); err != nil {
+			return SyncResult{}, err
+		}
+	}
 	for _, item := range items {
-		if err := s.applySyncedItem(ctx, tx, source, item, &result); err != nil {
+		if err := s.applySyncedItem(ctx, tx, source, item, reattach, &result); err != nil {
 			return SyncResult{}, fmt.Errorf("applying %s item %s: %w", source, item.Ref, err)
 		}
 	}
@@ -70,7 +96,55 @@ func (s *Store) ApplySynced(ctx context.Context, source string, items []SyncedIt
 	return result, nil
 }
 
-func (s *Store) applySyncedItem(ctx context.Context, tx *sql.Tx, source string, item SyncedItem, result *SyncResult) error {
+// planReattach pairs items with the nuggets of source detached they should
+// reattach to, by ref: only one-to-one matches on title and notes, and only
+// for live items with a title, since nothing else would be created.
+func planReattach(ctx context.Context, tx *sql.Tx, detached string, items []SyncedItem) (map[string]int64, error) {
+	type candidate struct {
+		id           int64
+		title, notes string
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT id, title, notes FROM ideas WHERE source = ? ORDER BY id`, detached)
+	if err != nil {
+		return nil, fmt.Errorf("loading %s nuggets: %w", detached, err)
+	}
+	var candidates []candidate
+	for rows.Next() {
+		var c candidate
+		if err := rows.Scan(&c.id, &c.title, &c.notes); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scanning %s nugget: %w", detached, err)
+		}
+		candidates = append(candidates, c)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("loading %s nuggets: %w", detached, err)
+	}
+
+	matches := make(map[string][]int64) // item ref -> matching nuggets
+	claims := make(map[int64]int)       // nugget -> how many items match it
+	for _, item := range items {
+		if item.DeletedAt != nil || strings.TrimSpace(item.Title) == "" {
+			continue
+		}
+		for _, c := range candidates {
+			if SameText(item.Title, c.title) && SameText(item.Notes, c.notes) {
+				matches[item.Ref] = append(matches[item.Ref], c.id)
+				claims[c.id]++
+			}
+		}
+	}
+	plan := make(map[string]int64)
+	for ref, ids := range matches {
+		if len(ids) == 1 && claims[ids[0]] == 1 {
+			plan[ref] = ids[0]
+		}
+	}
+	return plan, nil
+}
+
+func (s *Store) applySyncedItem(ctx context.Context, tx *sql.Tx, source string, item SyncedItem, reattach map[string]int64, result *SyncResult) error {
 	title := strings.TrimSpace(item.Title)
 
 	var (
@@ -89,6 +163,19 @@ func (s *Store) applySyncedItem(ctx context.Context, tx *sql.Tx, source string, 
 	if errors.Is(err, sql.ErrNoRows) {
 		if item.DeletedAt != nil || title == "" {
 			result.Skipped++
+			return nil
+		}
+		if nuggetID, ok := reattach[item.Ref]; ok {
+			// source_synced_at and updated_at are left alone, so a nugget
+			// edited here stays edited and an unedited one still refreshes.
+			if _, err := tx.ExecContext(ctx,
+				`UPDATE ideas SET source = ?, source_ref = ?, source_detached_ref = NULL, source_rev = ?, source_deleted_at = NULL
+				 WHERE id = ?`,
+				source, item.Ref, item.Rev, nuggetID,
+			); err != nil {
+				return fmt.Errorf("reattaching nugget %d: %w", nuggetID, err)
+			}
+			result.Reattached++
 			return nil
 		}
 		now := time.Now().UTC()

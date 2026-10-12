@@ -136,6 +136,14 @@ func OriginLabel(source string) string {
 	}
 }
 
+// SameText compares two titles or two notes ignoring case, leading and
+// trailing space, and how long each run of whitespace is. It is what makes
+// two nuggets "the same idea" wherever nuggets has to guess: a tag's feature
+// request (issue #13) and a Re-sync's reattach (spices pull design §5).
+func SameText(a, b string) bool {
+	return strings.EqualFold(strings.Join(strings.Fields(a), " "), strings.Join(strings.Fields(b), " "))
+}
+
 // Tag is a tag name with how many active ideas carry it.
 type Tag struct {
 	Name  string `json:"name"`

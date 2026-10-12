@@ -9,18 +9,17 @@ export interface LookSettingsProps {
 
 const OPTIONS: ReadonlyArray<{ look: Look; label: string }> = [
   { look: 'classic', label: 'Classic' },
-  { look: 'comic', label: 'Comic (in progress)' },
+  { look: 'comic', label: 'Comic' },
 ];
 
 /**
- * The Look section of the settings dialog (ADR 0002): Classic, or Comic while
- * it is being drawn. Choosing one saves it and switches the page at once.
+ * The Look section of the settings dialog (ADR 0002): Classic or Comic. Choosing one saves it and switches the page at once.
  */
 export function LookSettings({ open }: LookSettingsProps) {
   const { look, choose, error, busy } = useLookSetting(open);
 
   return (
-    <SettingsSection title="Look" description="How nuggets looks. Comic is still being drawn, so most of it still shows Classic.">
+    <SettingsSection title="Look" description="How nuggets looks.">
       {error && (
         <div style={{ marginBottom: 14, padding: '8px 12px', borderRadius: 'var(--radius-md)', background: 'var(--nug-ketchup-100)', color: 'var(--nug-ketchup-600)', fontSize: 'var(--text-body-sm)' }}>
           {error}

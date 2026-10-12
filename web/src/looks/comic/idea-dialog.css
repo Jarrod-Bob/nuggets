@@ -16,66 +16,6 @@
   flex: 1;
 }
 
-/* Project name + kimi */
-.comic-namefield {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.comic-namefield-busy {
-  animation: comic-namefield-pulse 1s ease-in-out infinite alternate;
-}
-@keyframes comic-namefield-pulse {
-  from {
-    box-shadow: 0 0 0 0 var(--comic-nugget);
-  }
-  to {
-    box-shadow: 0 0 0 5px var(--comic-nugget);
-  }
-}
-.comic-namefield-results {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.comic-namefield-names {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-.comic-namefield-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.comic-namefield-name {
-  cursor: pointer;
-  padding: 4px 12px;
-  border: var(--comic-line-thin) solid var(--comic-ink);
-  border-radius: var(--comic-radius-pill);
-  background: var(--comic-paper);
-  font-size: 14px;
-  font-weight: 600;
-}
-.comic-namefield-name[aria-selected='true'] {
-  background: var(--comic-nugget);
-}
-.comic-namefield-name:focus-visible {
-  outline: 3px solid var(--comic-focus);
-  outline-offset: 3px;
-}
-.comic-namefield-why {
-  line-height: 1.4;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
 /* Tags */
 .comic-tagfield {
   position: relative;
@@ -159,11 +99,4 @@
   margin-left: auto;
   font-size: 13px;
   color: var(--comic-ink-soft);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .comic-namefield-busy {
-    animation: none;
-    box-shadow: 0 0 0 4px var(--comic-nugget);
-  }
 }
