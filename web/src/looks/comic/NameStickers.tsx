@@ -14,9 +14,6 @@ import { Button, cx, Field, Icon } from './ui';
  * Mount it only while the form is open, so kimi's health is checked when the
  * form opens, and the names shown are discarded when it closes. Closing it
  * mid-request aborts the call.
- *
- * Not mounted yet: the Comic edit and drop dialog (#54) has a simpler field of
- * its own. Swapping this in there is the follow-up once #53 and #54 are in.
  */
 export interface NameStickersProps {
   value: string;
