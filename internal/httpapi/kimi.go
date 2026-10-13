@@ -22,6 +22,10 @@ type kimiHandlers struct {
 	client   *kimi.Client
 }
 
+// kimiModelErrorCode marks a names error as kimi's model failing to run, so
+// the form can say so and stop offering kimi (design §4–5, issue #36).
+const kimiModelErrorCode = "kimi_model_error"
+
 // maxAvoid mirrors kimi's own limit on avoid entries.
 const maxAvoid = 500
 
@@ -99,6 +103,9 @@ func (h *kimiHandlers) names(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, kimi.ErrUnavailable):
 		log.Printf("kimi names: %v", err)
 		writeError(w, http.StatusServiceUnavailable, "kimi is not available at the moment.")
+	case errors.Is(err, kimi.ErrModelError):
+		log.Printf("kimi names: %v", err)
+		writeErrorCode(w, http.StatusBadGateway, kimiModelErrorCode, "kimi's model couldn't run; check Ollama on the GPU machine.")
 	default:
 		log.Printf("kimi names: %v", err)
 		writeError(w, http.StatusBadGateway, "kimi couldn't suggest names this time.")

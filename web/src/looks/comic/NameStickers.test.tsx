@@ -176,4 +176,13 @@ describe('rolling', () => {
     fireEvent.click(rollButton());
     expect((await screen.findByRole('status')).textContent).toBe('kimi is not available at the moment');
   });
+
+  it("says when kimi's model couldn't run, and puts the dice away for the rest of the form", async () => {
+    namesAnswer = async () => json({ error: { message: 'secret', code: 'kimi_model_error' } }, 502);
+    await renderField();
+    fireEvent.click(rollButton());
+    expect((await screen.findByRole('status')).textContent).toBe("kimi's model couldn't run; check Ollama on the GPU machine");
+    expect(screen.queryByText('kimi is not available at the moment')).toBeNull();
+    expect(rollButton().disabled).toBe(true);
+  });
 });

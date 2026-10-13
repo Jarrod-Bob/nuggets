@@ -9,10 +9,12 @@ import (
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 )
 
-// errorBody is the one error shape the API ever returns.
+// errorBody is the one error shape the API ever returns. Code is set only
+// where the UI must tell one failure from another; most errors leave it out.
 type errorBody struct {
 	Error struct {
 		Message string `json:"message"`
+		Code    string `json:"code,omitempty"`
 	} `json:"error"`
 }
 
@@ -28,8 +30,13 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
+	writeErrorCode(w, status, "", message)
+}
+
+func writeErrorCode(w http.ResponseWriter, status int, code, message string) {
 	var body errorBody
 	body.Error.Message = message
+	body.Error.Code = code
 	writeJSON(w, status, body)
 }
 

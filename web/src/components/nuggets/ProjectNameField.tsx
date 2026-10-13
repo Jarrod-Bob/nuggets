@@ -25,6 +25,8 @@ export interface ProjectNameFieldProps {
 export const GENERATE_TOOLTIP = 'Uses kimi-no-name-wa to generate a creative name for your project!';
 export const NOTES_EMPTY_HINT = 'Write some notes and kimi will name it';
 export const UNAVAILABLE_TEXT = 'kimi is not available at the moment';
+/** kimi is up but its model couldn't run. Its health still says ok, so this is the only sign. */
+export const MODEL_ERROR_TEXT = "kimi's model couldn't run; check Ollama on the GPU machine";
 
 // A 3px arc, fading in from transparent, cut out of a disc just outside the
 // button by a radial mask. Spun by the .nug-spin class (motion.css).
@@ -74,8 +76,10 @@ export function ProjectNameField({ value, onChange, notes, onPick }: ProjectName
         </div>
       </div>
 
-      {kimi.results.state === 'failed' && (
-        <p role="status" style={{ margin: 0, fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)' }}>{UNAVAILABLE_TEXT}</p>
+      {(kimi.results.state === 'failed' || kimi.results.state === 'modelError') && (
+        <p role="status" style={{ margin: 0, fontSize: 'var(--text-body-sm)', color: 'var(--nug-ink-500)' }}>
+          {kimi.results.state === 'modelError' ? MODEL_ERROR_TEXT : UNAVAILABLE_TEXT}
+        </p>
       )}
 
       {kimi.results.state === 'names' && (

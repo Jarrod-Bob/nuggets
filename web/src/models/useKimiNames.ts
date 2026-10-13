@@ -1,5 +1,5 @@
 import React from 'react';
-import { api, type KimiName } from '../api';
+import { api, ApiError, KIMI_MODEL_ERROR_CODE, type KimiName } from '../api';
 
 /**
  * kimi-no-name-wa's name suggestions for the form's project name, shared by
@@ -10,12 +10,23 @@ import { api, type KimiName } from '../api';
 export interface KimiNames {
   /** null while the health check is in flight. */
   available: boolean | null;
-  /** Why names can't be asked for right now, if they can't. */
-  blocked: 'no-notes' | 'unavailable' | null;
+  /**
+   * Why names can't be asked for right now, if they can't. 'model-error' is
+   * kimi up but its model failing: the look shows that in place of the
+   * unavailable hint, and it lasts for the rest of the form.
+   */
+  blocked: 'no-notes' | 'unavailable' | 'model-error' | null;
   /** Whether a request is in flight. */
   naming: boolean;
-  /** 'failed' is anything but a cancel: the look says kimi isn't available. */
-  results: { state: 'none' } | { state: 'failed' } | { state: 'names'; names: KimiName[] };
+  /**
+   * 'failed' is anything but a cancel or a model error: the look says kimi
+   * isn't available. 'modelError' says kimi's model couldn't run.
+   */
+  results:
+    | { state: 'none' }
+    | { state: 'failed' }
+    | { state: 'modelError' }
+    | { state: 'names'; names: KimiName[] };
   /** Ask for five names. */
   generate: () => void;
   /** Ask for five more, avoiding every name shown since the form opened. */
@@ -64,9 +75,17 @@ export function useKimiNames({ notes, value }: { notes: string; value: string })
         shown.current = [...shown.current, ...names.map((n) => n.name)];
         setResults({ state: 'names', names });
       })
-      .catch(() => {
-        // A cancel leaves the list as it was; anything else is "not available".
-        if (!controller.signal.aborted) setResults({ state: 'failed' });
+      .catch((err: unknown) => {
+        // A cancel leaves the list as it was. kimi's model failing to run
+        // would fail every try the same way, slowly, so kimi is off for the
+        // rest of this form. Anything else is "not available".
+        if (controller.signal.aborted) return;
+        if (err instanceof ApiError && err.code === KIMI_MODEL_ERROR_CODE) {
+          setAvailable(false);
+          setResults({ state: 'modelError' });
+        } else {
+          setResults({ state: 'failed' });
+        }
       })
       .finally(() => {
         if (inFlight.current === controller) {
@@ -79,7 +98,9 @@ export function useKimiNames({ notes, value }: { notes: string; value: string })
   const notesEmpty = notes.trim() === '';
   return {
     available,
-    blocked: notesEmpty ? 'no-notes' : available === false ? 'unavailable' : null,
+    blocked: notesEmpty
+      ? 'no-notes'
+      : results.state === 'modelError' ? 'model-error' : available === false ? 'unavailable' : null,
     naming: request !== null,
     results,
     generate: () => ask([]),

@@ -27,6 +27,8 @@ export interface NameStickersProps {
 const GENERATE_TOOLTIP = 'Uses kimi-no-name-wa to generate a creative name for your project!';
 const NOTES_EMPTY_HINT = 'Write some notes and kimi will name it';
 const UNAVAILABLE_TEXT = 'kimi is not available at the moment';
+/** kimi is up but its model couldn't run. Its health still says ok, so this is the only sign. */
+const MODEL_ERROR_TEXT = "kimi's model couldn't run; check Ollama on the GPU machine";
 
 /** Each sticker is peeled on at its own angle, by its place in the row. */
 const STICKER_TILTS = [-3, 2, -2, 3, -1.5];
@@ -77,9 +79,9 @@ export function NameStickers({ value, onChange, notes, onPick }: NameStickersPro
         action={pill}
       />
 
-      {kimi.results.state === 'failed' && (
+      {(kimi.results.state === 'failed' || kimi.results.state === 'modelError') && (
         <p role="status" className="comic-names-status">
-          {UNAVAILABLE_TEXT}
+          {kimi.results.state === 'modelError' ? MODEL_ERROR_TEXT : UNAVAILABLE_TEXT}
         </p>
       )}
 
