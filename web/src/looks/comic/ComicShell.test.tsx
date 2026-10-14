@@ -52,6 +52,13 @@ describe('the Comic shell', () => {
     expect(within(bar).getByRole('button', { name: 'Drop a nugget' })).toBeTruthy();
   });
 
+  it('puts a bucket button in the top bar that goes to the bucket', async () => {
+    renderApp('/');
+    const link = await screen.findByRole('link', { name: 'Bucket' });
+    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Bucket' })).toBe(link);
+    expect(link.getAttribute('href')).toBe('/bucket');
+  });
+
   it('draws the same top bar on the trash page', async () => {
     renderApp('/trash');
     const link = await screen.findByRole('link', { name: 'nuggets' });
