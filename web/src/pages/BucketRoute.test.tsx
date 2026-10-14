@@ -231,4 +231,26 @@ describe('the bucket, in the Comic look', () => {
     await sleep(1500);
     expect(screen.queryByText('the bank')).toBeNull();
   });
+
+  it("says the bucket wouldn't load, and on Try again shows the pile already in place", async () => {
+    bank = [nugget(1), nugget(2), nugget(3)];
+    let down = true;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((path: string) => {
+        if (down) return Promise.resolve(json({ error: 'database is locked' }, 500));
+        return Promise.resolve(json(path === '/api/ideas' ? bank : bin));
+      }),
+    );
+    renderBucket();
+    expect(await screen.findByText("The bucket wouldn't load")).toBeTruthy();
+    expect(screen.queryByRole('figure', { name: 'The bucket' })).toBeNull();
+
+    down = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await headline()).toBe('Till date, 3 nuggets have gone in the bucket:');
+    // Already there, not dropping in one by one.
+    expect(pile()).toHaveLength(3);
+    expect(screen.queryByText("The bucket wouldn't load")).toBeNull();
+  });
 });
