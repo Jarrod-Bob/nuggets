@@ -25,23 +25,35 @@ export function initialPile(pile: PileNugget[]): PileState {
 
 /**
  * Follows a refetch by diffing ids. A purged nugget (no longer `existing`)
- * leaves at once; one not seen before waits to drop in, or is drawn straight
- * away when `instant` (reduced motion). A title or status edit is drawn in
+ * leaves at once; a new one waits to drop in, or is drawn straight away when
+ * `instant` (reduced motion). A title or status edit is drawn in
  * place.
  */
 export function syncPile(state: PileState, pile: PileNugget[], existing: ReadonlySet<number>, instant: boolean): PileState {
   const latest = new Map(pile.map((n) => [n.id, n]));
   const drawn = state.drawn.filter((d) => existing.has(d.id)).map((d) => ({ ...d, ...latest.get(d.id) }));
   const known = new Set([...drawn, ...state.waiting].map((n) => n.id));
-  const waiting = [...state.waiting.filter((n) => latest.has(n.id)).map((n) => latest.get(n.id) ?? n), ...pile.filter((n) => !known.has(n.id))];
-  let next: PileState = { drawn, waiting, newest: new Set(latest.keys()) };
+  // Only a nugget newer than everything drawn is an arrival. An older one
+  // that moved up into the newest (a purge made room) was there all along:
+  // it takes its place without dropping in.
+  const newestKnown = pile.reduce((at, n, i) => (known.has(n.id) ? i : at), -1);
+  const unseen = pile.filter((n) => !known.has(n.id));
+  const arrivals = unseen.filter((n) => pile.indexOf(n) > newestKnown);
+  const backfill = unseen.filter((n) => pile.indexOf(n) < newestKnown);
+  let next: PileState = { drawn, waiting: backfill, newest: new Set(latest.keys()) };
+  while (next.waiting.length > 0) next = dropNext(next, false);
+  // Keep `drawn` oldest first, which is who leaves first.
+  const age = (id: number) => pile.findIndex((n) => n.id === id);
+  next = { ...next, drawn: [...next.drawn].sort((a, b) => age(a.id) - age(b.id)), waiting: [...state.waiting.filter((n) => latest.has(n.id)).map((n) => latest.get(n.id) ?? n), ...arrivals] };
   if (instant) while (next.waiting.length > 0) next = dropNext(next, false);
   return settle(next);
 }
 
 /**
- * Drops the next waiting nugget in, on top of the heap. Past PILE_SIZE the
- * oldest drawn one quietly leaves and the newcomer drops into its place.
+ * Drops the next waiting nugget into the lowest free place in the heap (the
+ * next one up, unless a purge left a gap). Past PILE_SIZE the oldest drawn
+ * one quietly leaves and the newcomer drops into its place, so the rest of
+ * the heap never shuffles.
  */
 export function dropNext(state: PileState, fresh = true): PileState {
   const [next, ...waiting] = state.waiting;
