@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Idea, Status } from '../api';
@@ -87,6 +87,12 @@ const renderBucket = () =>
     </LiveUpdatesProvider>,
   );
 
+/** The nuggets drawn in the bucket. */
+const pile = () => within(screen.getByRole('list', { name: 'The pile' })).queryAllByRole('listitem');
+const pileTitles = () => pile().map((li) => li.getAttribute('title'));
+/** Long enough for a few arrivals to drop in one after another. */
+const DROPS = { timeout: 4000 };
+
 const headline = async () => (await screen.findByRole('heading', { level: 1 })).textContent;
 
 it('sends the Classic look back to the bank', async () => {
@@ -131,5 +137,69 @@ describe('the bucket, in the Comic look', () => {
     renderBucket();
     const stats = await screen.findByRole('list', { name: 'How they’re doing' });
     expect(within(stats).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['1 fried crispy golden', '1 still raw']);
+  });
+
+  it('heaps the 30 newest in the bucket, already there on load, each named only on hover', async () => {
+    bank = Array.from({ length: 33 }, (_, i) => nugget(i + 1));
+    bin = [nugget(34, 'raw', true)];
+    renderBucket();
+    const bucket = await screen.findByRole('figure', { name: 'The bucket' });
+    const heap = within(bucket).getByRole('list', { name: 'The pile' });
+    expect(within(heap).getAllByRole('listitem')).toHaveLength(30);
+    expect(pileTitles()).toContain('Nugget 34');
+    expect(pileTitles()).toContain('Nugget 5');
+    expect(pileTitles()).not.toContain('Nugget 4');
+    // Unnamed: the title is a hover, not text on the nugget.
+    expect(within(heap).queryByText('Nugget 34')).toBeNull();
+  });
+
+  it('drops new arrivals in one at a time, after the number has already gone up', async () => {
+    bank = [nugget(1), nugget(2)];
+    renderBucket();
+    await waitFor(() => expect(pile()).toHaveLength(2));
+
+    bank = [...bank, nugget(3), nugget(4), nugget(5)];
+    TestEventSource.last!.emit('ideas-changed');
+    await waitFor(async () => expect(await headline()).toBe('Till date, 5 nuggets have gone in the bucket:'));
+    expect(pile().length).toBeLessThan(5);
+    await waitFor(() => expect(pile().length).toBe(4), DROPS);
+    await waitFor(() => expect(pileTitles()).toEqual(expect.arrayContaining(['Nugget 3', 'Nugget 4', 'Nugget 5'])), DROPS);
+  });
+
+  it('lets the oldest drawn nugget quietly leave once the pile is past 30', async () => {
+    bank = Array.from({ length: 30 }, (_, i) => nugget(i + 1));
+    renderBucket();
+    await waitFor(() => expect(pile()).toHaveLength(30));
+
+    bank = [...bank, nugget(31)];
+    TestEventSource.last!.emit('ideas-changed');
+    await waitFor(() => expect(pileTitles()).toContain('Nugget 31'), DROPS);
+    await waitFor(() => expect(pileTitles()).not.toContain('Nugget 1'), DROPS);
+    expect(pile()).toHaveLength(30);
+    // Still counted: it only left the pile.
+    expect(await headline()).toBe('Till date, 31 nuggets have gone in the bucket:');
+  });
+
+  it('takes a purged nugget out at once, without waiting for arrivals to drop', async () => {
+    bank = [nugget(1), nugget(2)];
+    bin = [nugget(3, 'raw', true)];
+    renderBucket();
+    await waitFor(() => expect(pile()).toHaveLength(3));
+
+    bin = [];
+    bank = [...bank, nugget(4), nugget(5), nugget(6), nugget(7)];
+    TestEventSource.last!.emit('ideas-changed');
+    await waitFor(() => expect(pileTitles()).not.toContain('Nugget 3'), { timeout: 300 });
+    expect(pileTitles()).not.toContain('Nugget 7');
+    expect(await headline()).toBe('Till date, 6 nuggets have gone in the bucket:');
+  });
+
+  it('draws an edited nugget in place', async () => {
+    bank = [nugget(1)];
+    renderBucket();
+    await waitFor(() => expect(pileTitles()).toEqual(['Nugget 1']));
+    bank = [{ ...nugget(1), title: 'Renamed' }];
+    TestEventSource.last!.emit('ideas-changed');
+    await waitFor(() => expect(pileTitles()).toEqual(['Renamed']));
   });
 });
