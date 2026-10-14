@@ -1,0 +1,141 @@
+/* The Comic bucket, translated from the design's bucket view (.stage, .bucket-panel, .bucket-btn).
+   Values come from tokens.css. Imported by BucketView, so it ships in the Comic bucket chunk. */
+
+.comic-bucket {
+  flex: 1;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--comic-page) var(--comic-page) 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 500px) minmax(0, 1fr);
+  gap: var(--comic-gutter);
+}
+
+.comic-bucket-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 24px;
+  min-width: 0;
+  padding: 36px 34px;
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-panel);
+  background: var(--comic-paper);
+}
+.comic-bucket-headline {
+  margin: 0;
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: clamp(30px, 3.4vw, 46px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.comic-bucket-n {
+  color: var(--comic-tomato);
+  font-size: 1.5em;
+}
+.comic-bucket-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--comic-font-mono);
+  font-size: 14px;
+}
+.comic-bucket-stats b {
+  font-size: 18px;
+}
+
+/* The panel: the bucket stands on a mayo ground and the spill leaves through its edge. */
+.comic-bucket-panel {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 620px;
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-panel);
+  background: var(--comic-mayo);
+}
+.comic-bucket-stage {
+  position: relative;
+  width: min(600px, 92%);
+  aspect-ratio: 560 / 640;
+  transform-origin: 62% 92%;
+}
+.comic-bucket-back,
+.comic-bucket-front svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* The heap sits between the bucket's back and its front lip, so nuggets rise out of the mouth. */
+.comic-bucket-pile {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.comic-bucket-nugget {
+  position: absolute;
+  cursor: pointer;
+}
+.comic-bucket-nugget .comic-card-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* The front is the bucket's own tip button, but only its drawing takes clicks, so the nuggets above the lip can be hovered. */
+.comic-bucket-front {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: none;
+}
+.comic-bucket-front svg {
+  pointer-events: visiblePainted;
+}
+.comic-bucket-front:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: -6px;
+}
+.comic-bucket-label {
+  position: absolute;
+  left: 31%;
+  top: 56%;
+  width: 40%;
+  height: 18%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-1.6deg);
+  font-family: var(--comic-font-sfx);
+  font-size: clamp(28px, 4.2vw, 56px);
+  letter-spacing: 0.03em;
+  color: var(--comic-tomato);
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .comic-bucket {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .comic-bucket-panel {
+    min-height: 460px;
+  }
+}

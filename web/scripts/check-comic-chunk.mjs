@@ -23,7 +23,7 @@ check(comicFiles.some((f) => f.endsWith('.css')), 'no separate Comic CSS chunk (
 // What only the Comic chunk may contain.
 const FONTS = ['Bricolage Grotesque', 'Bangers', 'Instrument Sans', 'Space Mono'];
 // Class names and copy from the Comic views (#52): the tray, its cards, the curry corner, the dialog.
-const VIEW_MARKERS = ['comic-tray', 'comic-card', 'comic-curry', 'comic-dialog', 'comic-pill', 'PICK ME'];
+const VIEW_MARKERS = ['comic-tray', 'comic-card', 'comic-curry', 'comic-dialog', 'comic-bucket', 'comic-pill', 'PICK ME'];
 const comicOnly = [...FONTS, '--comic-', 'comic-strip', 'comic-shell', ...VIEW_MARKERS];
 
 for (const file of entryFiles) {

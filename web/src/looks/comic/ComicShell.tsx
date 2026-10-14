@@ -6,6 +6,7 @@ import './ui/card.css';
 import { Link, Outlet } from 'react-router-dom';
 import { BugReportButton } from '../../components/feedback/BugReportButton';
 import { TopBarSlot, type TopBarContent } from '../../components/navigation/TopBarSlot';
+import { Icon } from './ui';
 
 /**
  * The Comic look's top bar (the design's Strip): the `nuggets.` wordmark, which
@@ -20,7 +21,13 @@ function drawTopBar({ center, right }: TopBarContent) {
         nuggets.
       </Link>
       <div className="comic-strip-center">{center}</div>
-      <div className="comic-strip-right">{right}</div>
+      <div className="comic-strip-right">
+        {right}
+        <Link to="/bucket" className="comic-pill comic-pill--paper comic-pill--sm">
+          <Icon name="bucket" />
+          Bucket
+        </Link>
+      </div>
     </header>
   );
 }
