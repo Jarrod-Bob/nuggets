@@ -185,12 +185,45 @@ describe('the bucket', () => {
       expect(await screen.findByText('the bank', {}, { timeout: 3000 })).toBeTruthy();
     });
 
-    it('tips when the bucket itself is clicked', async () => {
+    it('tips when the bucket itself is clicked, with a TIP!', async () => {
       bank = [nugget(1)];
       renderBucket();
       await waitFor(() => expect(pile()).toHaveLength(1));
+      expect(screen.queryByText('TIP!')).toBeNull();
       fireEvent.click(screen.getByRole('button', { name: 'Tip the bucket and spill the nuggets' }));
+      expect(screen.getByText('TIP!')).toBeTruthy();
       expect(await screen.findByText('the bank', {}, { timeout: 3000 })).toBeTruthy();
+    });
+
+    it("doesn't tip when a nugget in the pile is clicked", async () => {
+      bank = [nugget(1)];
+      renderBucket();
+      await waitFor(() => expect(pile()).toHaveLength(1));
+      fireEvent.click(screen.getByTitle('Nugget 1'));
+      expect(screen.queryByText('TIP!')).toBeNull();
+      await new Promise((r) => setTimeout(r, 1500));
+      expect(screen.queryByText('the bank')).toBeNull();
+    });
+
+    it('says so when the bucket fails to load, and loads on Try again without pouring the pile in', async () => {
+      bank = [nugget(1), nugget(2)];
+      let down = true;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((path: string) => {
+          if (down) return Promise.resolve(new Response(JSON.stringify({ error: 'The bank is closed.' }), { status: 500 }));
+          if (path === '/api/ideas') return Promise.resolve(json(bank));
+          return Promise.resolve(json(bin));
+        }),
+      );
+      renderBucket();
+      expect(await screen.findByText("The bucket wouldn't load")).toBeTruthy();
+
+      down = false;
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(headline()).toBe('Till date, 2 nuggets have gone in the bucket:'));
+      // Already there, not dropping in one by one.
+      expect(pile()).toHaveLength(2);
     });
   });
 });
