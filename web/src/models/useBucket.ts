@@ -46,16 +46,26 @@ export function useBucket(): Bucket {
   const [lists, setLists] = React.useState<{ bank: Idea[]; bin: Idea[] } | null>(null);
   const [loadError, setLoadError] = React.useState<string | undefined>(undefined);
 
+  // Two quick ideas-changed events can answer out of order: only the latest
+  // request may land, and none after the page has gone.
+  const latest = React.useRef(0);
   const refresh = React.useCallback(() => {
+    const request = ++latest.current;
     Promise.all([api.list({}), api.list({ archived: true })])
       .then(([bank, bin]) => {
+        if (request !== latest.current) return;
         setLists({ bank, bin });
         setLoadError(undefined);
       })
-      .catch((err) => setLoadError(describeError(err)));
+      .catch((err) => {
+        if (request === latest.current) setLoadError(describeError(err));
+      });
   }, []);
   React.useEffect(() => {
     refresh();
+    return () => {
+      latest.current = -1;
+    };
   }, [refresh]);
   useLiveRefresh('ideas-changed', refresh);
 

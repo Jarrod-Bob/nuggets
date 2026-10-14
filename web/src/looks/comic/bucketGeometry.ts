@@ -33,8 +33,9 @@ export interface Place extends Point {
  * y − 41 to y + 41.
  *
  * Layer 0, at the bottom, is centred 222 (back) and 246 (front): its tops,
- * 181 and 205, are inside the mouth (which at y 181 spans x 70..490), so a
- * few nuggets read as a few nuggets down in a bucket, the dark mouth behind
+ * 181 and 205, are inside the mouth (which at y 181 spans x 71..489; the
+ * outermost two reach x 73..489 with their jitter, and their lumpy corners are
+ * rounder than that), so a few nuggets read as a few nuggets down in a bucket, the dark mouth behind
  * them. Each layer after it sits 22 to 28 higher and narrower, so the fill
  * rises as the pile grows: layer 1's back row (196, top 155) meets the back
  * rim (154 at the middle) and from layer 2 up the heap stands out of the
@@ -48,8 +49,8 @@ const LAYERS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
     [203, 224],
     [362, 221],
     [280, 247],
-    [126, 220],
-    [438, 223],
+    [134, 220],
+    [428, 223],
     [172, 245],
     [390, 246],
   ],
@@ -94,8 +95,6 @@ export const HEAP: readonly Place[] = LAYERS.flat().map(([x, y], i) => ({
   tilt: ((i * 53 + 7) % 37) - 18,
 }));
 
-export const HEAP_SIZE = HEAP.length;
-
 /**
  * Drawing order of the heap's places: by layer, then back to front, so a
  * nugget in front overlaps the one behind it and an upper layer lies on the
@@ -109,14 +108,14 @@ export const drawRank = (slot: number) => LAYER_OF[slot] * 1000 + HEAP[slot].y;
  * (280, 400), by 81°. Why those numbers: the body's left side runs from
  * (50, 200) to (110, 590), 8.7° off vertical, so turning by 90 − 8.7 ≈ 81°
  * lays that side flat; about (280, 400) it lands at y ≈ 596..598, on the
- * shadow (y 586..638), and the whole tipped bucket stays inside x 46..494,
+ * shadow (y 586..638), and the whole tipped bucket stays inside x 46..501,
  * the box it stood in, so tipping never pushes it out of view. The mouth then
  * faces left: its middle moves to (82, 369), its rim from (47, 596) to
  * (118, 142).
  */
 export const TIP_DEG = -81;
-export const TIP_PIVOT: Point = { x: 280, y: 400 };
-export const TIP_ORIGIN = `${(TIP_PIVOT.x / BOX_W) * 100}% ${(TIP_PIVOT.y / BOX_H) * 100}%`;
+/** bucket.css's `.comic-bucket-tip` transform-origin, 50% 62.5%. */
+const TIP_PIVOT: Point = { x: 280, y: 400 };
 /** Where the tipped bucket lies, padded a little: spilled nuggets land outside it. */
 const TIPPED: { x0: number; x1: number; y0: number; y1: number } = { x0: 30, x1: 510, y0: 125, y1: 612 };
 /** Just outside the tipped mouth, on the floor: the spill fans out from here. */

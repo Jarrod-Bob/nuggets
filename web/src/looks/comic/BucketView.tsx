@@ -123,6 +123,9 @@ function BucketScene({ bucket }: { bucket: Bucket }) {
     return () => clearTimeout(timer);
   }, [spill, goToBank]);
 
+  // Back of the heap first, so a nugget overlaps the one behind it.
+  const drawn = [...pile.drawn].sort((a, b) => drawRank(a.slot) - drawRank(b.slot));
+
   const tip = () => {
     if (tipping) return;
     if (reduced) {
@@ -142,12 +145,11 @@ function BucketScene({ bucket }: { bucket: Bucket }) {
       bottom: Math.min(inner.bottom - border, window.innerHeight || inner.bottom),
     });
     // Top of the heap first: it's nearest the mouth.
-    const pouring = [...pile.drawn].sort((a, b) => drawRank(b.slot) - drawRank(a.slot));
+    const pouring = [...drawn].reverse();
     const spots = spillSpots(pouring.length, floor);
     setSpill({ order: new Map(pouring.map((d, i) => [d.id, i])), spots: new Map(pouring.map((d, i) => [d.id, spots[i]])) });
   };
 
-  const drawn = [...pile.drawn].sort((a, b) => drawRank(a.slot) - drawRank(b.slot));
   const lines = [...STAT_LINES.map(({ status, text }) => ({ key: status, n: bucket.byStatus[status], text })), { key: 'bin', n: bucket.binned, text: 'in the bin' }].filter((l) => l.n > 0);
   // The count pops when it changes, not when the page opens.
   const [firstCount] = React.useState(bucket.count);
@@ -162,7 +164,7 @@ function BucketScene({ bucket }: { bucket: Bucket }) {
           className="comic-bucket-tip"
           initial={false}
           animate={tipping ? { rotate: [null, TIP_DEG, TIP_DEG + 6, TIP_DEG] } : { rotate: 0 }}
-          transition={{ duration: TIP_S, times: [0, 0.6, 0.8, 1], ease: ['easeIn', 'easeOut', 'easeIn'] }}
+          transition={{ duration: TIP_S, times: [0, 0.6, 0.8, 1], ease: [ease.inOut, ease.out, ease.inOut] }}
         >
           <m.div
             className="comic-bucket-lean"
@@ -212,7 +214,7 @@ function BucketScene({ bucket }: { bucket: Bucket }) {
             <m.span
               initial={{ scale: 0.3, rotate: -14, opacity: 0 }}
               animate={{ scale: [0.3, 1.1, 1, 1.05], rotate: [-14, -8, -6, -6], opacity: [0, 1, 1, 0] }}
-              transition={{ duration: dur.lazy + dur.slow + dur.instant, times: [0, 0.35, 0.7, 1], ease: 'easeOut', delay: dur.slow }}
+              transition={{ duration: dur.lazy + dur.slow + dur.instant, times: [0, 0.35, 0.7, 1], ease: ease.out, delay: dur.slow }}
             >
               TIP!
             </m.span>
@@ -240,6 +242,8 @@ function PileNugget({ nugget, purged, reduced, spill }: { nugget: Drawn; purged:
     const path = flight(home, spot, (order % 3) - 1);
     // In front of the bucket's front once it's out of the mouth (the second keyframe is above the rim).
     animate = { left: path.left, top: path.top, rotate: path.rotate, zIndex: path.times.map((_, k) => (k < 2 ? 1 : 3)), opacity: 1 };
+    // Linear between keyframes on purpose: they are a parabola sampled at even
+    // times, so linear steps through them are what make it a thrown arc.
     transition = { duration: FLIGHT_S, delay: POUR_AT + order * POUR_GAP, times: path.times, ease: 'linear' };
   }
   // How it leaves: a purged one at once, the oldest pushed out by an arrival
