@@ -1,75 +1,31 @@
-/* The Comic bucket, translated from the design's bucket view (.stage, .bucket-panel, .bucket-btn).
+/* The Comic bucket, translated from the design's bucket view (.bucket-btn, .sfx) onto a gingham mat.
    Values come from tokens.css. Imported by BucketView, so it ships in the Comic bucket chunk. */
 
+/* The mat: the bank tray's gingham, filling the page, with room for the spill to the bucket's left. */
 .comic-bucket {
-  flex: 1;
-  width: 100%;
-  max-width: 1240px;
-  margin: 0 auto;
-  box-sizing: border-box;
-  padding: var(--comic-page) var(--comic-page) 40px;
-  display: grid;
-  grid-template-columns: minmax(0, 500px) minmax(0, 1fr);
-  gap: var(--comic-gutter);
-}
-
-.comic-bucket-text {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: flex-start;
-  gap: 24px;
-  min-width: 0;
-  padding: 36px 34px;
-  border: var(--comic-line) solid var(--comic-ink);
-  border-radius: var(--comic-radius-panel);
-  background: var(--comic-paper);
-}
-.comic-bucket-headline {
-  margin: 0;
-  font-family: var(--comic-font-display);
-  font-weight: 800;
-  font-size: clamp(30px, 3.4vw, 46px);
-  line-height: 1;
-  letter-spacing: -0.03em;
-  text-wrap: balance;
-}
-.comic-bucket-n {
-  color: var(--comic-tomato);
-  font-size: 1.5em;
-}
-.comic-bucket-stats {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-family: var(--comic-font-mono);
-  font-size: 14px;
-}
-.comic-bucket-stats b {
-  font-size: 18px;
-}
-
-/* The panel: the bucket stands on a mayo ground and the spill leaves through its edge. */
-.comic-bucket-panel {
   position: relative;
+  flex: 1;
+  min-height: calc(100vh - 96px);
   overflow: hidden;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  min-height: 620px;
-  border: var(--comic-line) solid var(--comic-ink);
-  border-radius: var(--comic-radius-panel);
-  background: var(--comic-mayo);
+  padding: 40px var(--comic-page);
+  box-sizing: border-box;
+  background-color: var(--comic-paper);
+  background-image:
+    linear-gradient(90deg, color-mix(in srgb, var(--comic-tomato) 55%, transparent) 50%, transparent 50%),
+    linear-gradient(color-mix(in srgb, var(--comic-tomato) 55%, transparent) 50%, transparent 50%);
+  background-size: 40px 40px;
 }
-/* The prototype's sound-effect lettering, stamped over the bucket as it tips. */
+
+/* The prototype's sound-effect lettering, stamped above the bucket as it tips. */
 .comic-bucket-sfx {
   position: absolute;
-  z-index: 2;
-  left: 12%;
-  top: 10%;
+  z-index: 4;
+  left: 50%;
+  top: 8%;
+  margin-left: -340px;
   font-family: var(--comic-font-sfx);
   font-size: clamp(64px, 9vw, 120px);
   line-height: 1;
@@ -79,14 +35,25 @@
   text-shadow: 6px 6px 0 var(--comic-ink);
   pointer-events: none;
 }
-.comic-bucket-stage {
+
+/* The bucket's box. Back (the open mouth), the heap, then the front (body, lip, label), stacked in that order. */
+.comic-bucket-box {
   position: relative;
-  width: min(600px, 92%);
+  margin: 0;
+  width: min(460px, 70vw);
   aspect-ratio: 560 / 640;
-  transform-origin: 62% 92%;
 }
-.comic-bucket-back,
-.comic-bucket-front svg {
+.comic-bucket-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transform-origin: 18% 95%;
+  pointer-events: none;
+}
+.comic-bucket-layer--front {
+  z-index: 3;
+}
+.comic-bucket-layer svg {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -94,15 +61,16 @@
   display: block;
 }
 
-/* The heap sits between the bucket's back and its front lip, so nuggets rise out of the mouth. */
 .comic-bucket-pile {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 .comic-bucket-nugget {
   position: absolute;
-  cursor: pointer;
 }
 .comic-bucket-nugget .comic-card-art {
   position: absolute;
@@ -111,8 +79,12 @@
   height: 100%;
   overflow: visible;
 }
+/* Once spilled, the nuggets lie on the mat in front of the bucket. */
+.comic-bucket[data-tipping="true"] .comic-bucket-pile {
+  z-index: 4;
+}
 
-/* The front is the bucket's own tip button, but only its drawing takes clicks, so the nuggets above the lip can be hovered. */
+/* The front is the bucket's tip button, but only its drawing takes clicks, so nuggets above the lip can be hovered. */
 .comic-bucket-front {
   position: absolute;
   inset: 0;
@@ -129,28 +101,52 @@
   outline: 3px solid var(--comic-focus);
   outline-offset: -6px;
 }
+
+/* The label, printed on the bucket's mayo panel: the count, then the stats. Clicks pass through to the bucket. */
 .comic-bucket-label {
   position: absolute;
-  left: 31%;
-  top: 56%;
-  width: 40%;
-  height: 18%;
+  left: 26%;
+  top: 47.5%;
+  width: 49%;
+  height: 38.5%;
+  box-sizing: border-box;
+  padding: 4% 3%;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
+  gap: 6%;
   transform: rotate(-1.6deg);
+  pointer-events: none;
+  overflow: hidden;
+}
+.comic-bucket-headline {
+  margin: 0;
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: clamp(11px, 1.3vw, 15px);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-wrap: balance;
+}
+.comic-bucket-n {
+  display: block;
   font-family: var(--comic-font-sfx);
-  font-size: clamp(28px, 4.2vw, 56px);
+  font-weight: 400;
+  font-size: clamp(36px, 4.6vw, 58px);
+  line-height: 0.95;
   letter-spacing: 0.03em;
   color: var(--comic-tomato);
-  pointer-events: none;
 }
-
-@media (max-width: 900px) {
-  .comic-bucket {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .comic-bucket-panel {
-    min-height: 460px;
-  }
+.comic-bucket-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: var(--comic-font-mono);
+  font-size: clamp(9px, 0.95vw, 11px);
+  line-height: 1.25;
+  text-align: center;
 }
