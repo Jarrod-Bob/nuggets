@@ -130,7 +130,7 @@ export function BucketView({ bucket }: { bucket: Bucket }) {
           <m.div
             className="comic-bucket-stage"
             animate={tipping ? { rotate: -34, x: '-4%', y: '4%' } : { rotate: 0, x: '0%', y: '0%' }}
-            whileHover={tipping ? undefined : { rotate: -3 }}
+            whileHover={tipping || reduced ? undefined : { rotate: -3 }}
             transition={{ duration: 0.42, ease: ease.bounce }}
           >
             <svg className="comic-bucket-back" viewBox={`0 0 ${BOX_W} ${BOX_H}`} aria-hidden="true">

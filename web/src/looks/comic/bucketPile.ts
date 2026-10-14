@@ -52,6 +52,6 @@ export function dropNext(state: PileState): PileState {
 }
 
 function place(drawn: Drawn[], n: PileNugget, fresh: boolean): Drawn[] {
-  const kept = drawn.length >= PILE_SIZE ? drawn.slice(1) : drawn;
-  return [...kept, { ...n, slot: drawn.length >= PILE_SIZE ? drawn[0].slot : lowestFreeSlot(drawn), fresh }];
+  const full = drawn.length >= PILE_SIZE;
+  return [...(full ? drawn.slice(1) : drawn), { ...n, slot: full ? drawn[0].slot : lowestFreeSlot(drawn), fresh }];
 }

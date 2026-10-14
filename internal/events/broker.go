@@ -1,8 +1,8 @@
 // Package events tells open browser tabs that something changed in the
 // background, so they refetch instead of waiting for a reload. Importers
 // and the API's nugget write routes publish a small named Event after their
-// writes commit; the Broker fans it
-// out to every GET /api/events stream (internal/httpapi/events.go). The
+// writes commit; the Broker fans it out to every GET /api/events stream
+// (internal/httpapi/events.go). The
 // GitHub sender publishes the same way when a feature request lands, and the
 // jev Suggester when a tag check changes a nugget's suggestions. An event
 // carries no data: the page refetches what it shows through the regular API.
