@@ -1,22 +1,35 @@
 /* The Comic bucket, translated from the design's bucket view (.bucket-btn, .sfx) onto a gingham mat.
    Values come from tokens.css. Imported by BucketView, so it ships in the Comic bucket chunk. */
 
-/* The mat: the bank tray's gingham, filling the page, with room for the spill to the bucket's left. */
+/* The mat: the bank's tray, a gingham border around a paper liner, filling the page.
+   The liner leaves room for the spill to the bucket's left. */
 .comic-bucket {
   position: relative;
   flex: 1;
-  min-height: calc(100vh - 96px);
+  display: flex;
+  margin: 0 var(--comic-page) var(--comic-page);
+  padding: 22px;
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-panel);
+  background-color: var(--comic-paper);
+  background-image:
+    linear-gradient(90deg, color-mix(in srgb, var(--comic-tomato) 55%, transparent) 50%, transparent 50%),
+    linear-gradient(color-mix(in srgb, var(--comic-tomato) 55%, transparent) 50%, transparent 50%);
+  background-size: 40px 40px;
+}
+.comic-bucket-liner {
+  position: relative;
+  flex: 1;
+  min-height: calc(100vh - 170px);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px var(--comic-page);
   box-sizing: border-box;
-  background-color: var(--comic-paper);
-  background-image:
-    linear-gradient(90deg, color-mix(in srgb, var(--comic-tomato) 55%, transparent) 50%, transparent 50%),
-    linear-gradient(color-mix(in srgb, var(--comic-tomato) 55%, transparent) 50%, transparent 50%);
-  background-size: 40px 40px;
+  border: var(--comic-line) solid var(--comic-ink);
+  border-radius: var(--comic-radius-panel);
+  background: var(--comic-paper);
 }
 
 /* The prototype's sound-effect lettering, stamped above the bucket as it tips. */
@@ -61,16 +74,19 @@
   display: block;
 }
 
+.comic-bucket-layer--pile {
+  z-index: 2;
+}
 .comic-bucket-pile {
   position: absolute;
   inset: 0;
-  z-index: 2;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 .comic-bucket-nugget {
   position: absolute;
+  pointer-events: auto;
 }
 .comic-bucket-nugget .comic-card-art {
   position: absolute;
@@ -80,7 +96,7 @@
   overflow: visible;
 }
 /* Once spilled, the nuggets lie on the mat in front of the bucket. */
-.comic-bucket[data-tipping="true"] .comic-bucket-pile {
+.comic-bucket[data-tipping="true"] .comic-bucket-layer--pile {
   z-index: 4;
 }
 
