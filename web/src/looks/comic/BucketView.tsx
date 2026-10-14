@@ -8,7 +8,7 @@ import type { Bucket } from '../../models/useBucket';
 import { BucketBack, BucketFront, BucketShadow } from './BucketArt';
 import { HEAP, NUGGET_H, NUGGET_W, TIP_DEG, drawRank, floorFrom, flight, pctX, pctY, spillSpots, type Place } from './bucketGeometry';
 import { dropNext, initialPile, syncPile, type Drawn, type PileState } from './bucketPile';
-import { CardArt } from './ui';
+import { Button, CardArt, EmptyState } from './ui';
 
 /** The stats under the count, in the order they read, then the bin. */
 const STAT_LINES: ReadonlyArray<{ status: Status; text: string }> = [
@@ -61,6 +61,17 @@ export function BucketView({ bucket }: { bucket: Bucket }) {
           <div className="comic-liner comic-bucket-liner">
             {bucket.state === 'ready' ? (
               <BucketScene bucket={bucket} />
+            ) : bucket.state === 'failed' ? (
+              <EmptyState
+                eyebrow="Meanwhile, at the bucket…"
+                headline="The bucket wouldn't load"
+                body={bucket.loadError}
+                action={
+                  <Button variant="tomato" size="sm" onClick={bucket.retry}>
+                    Try again
+                  </Button>
+                }
+              />
             ) : null}
           </div>
         </section>
