@@ -51,6 +51,10 @@
   align-items: center;
   gap: 10px;
 }
+/* The bucket button is a link drawn as a pill; inked while you're on the bucket. */
+.comic-strip-right a.comic-pill {
+  text-decoration: none;
+}
 
 .comic-footer {
   padding: 0 var(--comic-page) 72px;

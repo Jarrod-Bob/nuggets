@@ -1,5 +1,5 @@
 /** The Comic look's line icons: 24px grid, 3px stroke in currentColor, round caps. They always sit beside a text label. */
-export type IconName = 'search' | 'arrow-right' | 'arrow-left' | 'plus' | 'close' | 'check' | 'pencil' | 'dice' | 'trash' | 'archive' | 'settings';
+export type IconName = 'search' | 'arrow-right' | 'arrow-left' | 'plus' | 'close' | 'check' | 'pencil' | 'dice' | 'trash' | 'archive' | 'settings' | 'bucket';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   search: (
@@ -34,6 +34,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   trash: <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />,
+  bucket: (
+    <>
+      <ellipse cx="12" cy="7" rx="8" ry="2.5" />
+      <path d="M4 7l2 13h12l2-13" />
+    </>
+  ),
   archive: (
     <>
       <rect x="3" y="4" width="18" height="5" rx="1" />

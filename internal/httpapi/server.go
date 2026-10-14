@@ -18,10 +18,15 @@ import (
 // settingsStore, syncer, sender, kimiClient, suggester and broker may be nil
 // only in tests that don't exercise the spices, GitHub, kimi, tag-suggestion
 // or live-update routes; cmd/nuggets/main.go always wires all six. broker is
-// what the spices syncer, the GitHub sender and the jev suggester publish to,
+// what the nugget write routes, the spices syncer, the GitHub sender and the jev suggester publish to,
 // and GET /api/events streams it to the page.
 func NewServer(store *idea.Store, settingsStore *settings.Store, syncer *spices.Syncer, sender *github.Sender, kimiClient *kimi.Client, suggester *jev.Suggester, broker *events.Broker, frontend http.Handler) http.Handler {
-	h := &handlers{store: store}
+	// A nil broker (tests of routes that never stream) publishes nowhere.
+	var publisher events.Publisher = events.Nop{}
+	if broker != nil {
+		publisher = broker
+	}
+	h := &handlers{store: store, events: publisher}
 	sh := &spicesHandlers{settings: settingsStore, ideas: store, syncer: syncer}
 	gh := &githubHandlers{settings: settingsStore, sender: sender}
 	kh := &kimiHandlers{settings: settingsStore, client: kimiClient}

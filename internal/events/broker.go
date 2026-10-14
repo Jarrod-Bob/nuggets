@@ -1,6 +1,7 @@
 // Package events tells open browser tabs that something changed in the
 // background, so they refetch instead of waiting for a reload. Importers
-// publish a small named Event after their writes commit; the Broker fans it
+// and the API's nugget write routes publish a small named Event after their
+// writes commit; the Broker fans it
 // out to every GET /api/events stream (internal/httpapi/events.go). The
 // GitHub sender publishes the same way when a feature request lands, and the
 // jev Suggester when a tag check changes a nugget's suggestions. An event
@@ -14,8 +15,9 @@ import "sync"
 type Event string
 
 const (
-	// IdeasChanged means a background import created, refreshed, archived or
-	// detached nuggets. Sent at most once per sync pass, never per item.
+	// IdeasChanged means nuggets were created, edited, binned, restored or
+	// purged: by a background import (sent at most once per sync pass, never
+	// per item) or by a write through the API (once per request).
 	IdeasChanged Event = "ideas-changed"
 	// SpicesStatus means the spices status shown in settings changed: the
 	// last sync time, the last error, or needs-resync.
@@ -28,7 +30,7 @@ const (
 	TagSuggestionsChanged Event = "tag-suggestions-changed"
 )
 
-// Publisher is what an importer needs to announce a change. Publish must
+// Publisher is what an importer or handler needs to announce a change. Publish must
 // never block the caller.
 type Publisher interface {
 	Publish(Event)

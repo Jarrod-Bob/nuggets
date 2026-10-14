@@ -1,0 +1,206 @@
+/* The Comic bucket: the bucket on the tray's liner, its heap and its label. Values come from tokens.css.
+   Imported by BucketView, so it ships in the bucket's own chunk. Positions inside the bucket are
+   percentages of its 560 by 640 box (bucketGeometry.ts), so the drawing scales as one. */
+
+.comic-bucket {
+  flex: 1;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--comic-page);
+  display: flex;
+  flex-direction: column;
+}
+.comic-bucket-tray {
+  flex: 1;
+  display: flex;
+}
+/* The liner clips an arrival falling in from above it; the spill is placed to land inside it. */
+.comic-bucket-liner {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* The stage takes what the viewport leaves under the top bar (at 1280 by 800, 510px) and the
+   bucket stands at its foot, centred, as tall as the stage allows: there's liner to its left
+   for the spill. */
+.comic-bucket-stage {
+  --comic-bucket-stage: clamp(280px, calc(100svh - 290px), 720px);
+  height: var(--comic-bucket-stage);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+.comic-bucket-box {
+  position: relative;
+  margin: 0;
+  width: min(100%, calc(var(--comic-bucket-stage) * 0.875));
+  aspect-ratio: 560 / 640;
+  container-type: inline-size;
+}
+/* On a portrait screen (a phone, a tablet held upright) there's little liner beside the
+   bucket, so it stands at the top, no taller than 60% of the stage, and the liner in front
+   of it (below) is where the spill lands. */
+@media (orientation: portrait) {
+  .comic-bucket-stage {
+    align-items: flex-start;
+  }
+  .comic-bucket-box {
+    width: min(100%, calc(var(--comic-bucket-stage) * 0.6));
+  }
+}
+@media (max-width: 700px) {
+  .comic-bucket {
+    padding: 16px;
+  }
+  .comic-bucket-liner {
+    padding: 12px;
+  }
+}
+
+.comic-bucket-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* The bucket's two frames: the tip turns it about its middle, the lean about its right foot
+   (the prototype's 62% 92%). Neither takes the pointer; the nuggets and the bucket's solid
+   parts do. */
+.comic-bucket-tip,
+.comic-bucket-lean {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.comic-bucket-tip {
+  transform-origin: 50% 62.5%;
+}
+.comic-bucket-lean {
+  transform-origin: 62% 92%;
+}
+
+/* The heap sits between the mouth and the front. No z-index on the list itself: its nuggets
+   stack against the front (2) directly, so one pouring out can pass in front of it (3). */
+.comic-bucket-pile {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.comic-bucket-nugget {
+  position: absolute;
+  z-index: 1;
+  aspect-ratio: 372 / 272;
+  pointer-events: auto;
+}
+
+.comic-bucket-tipper {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: none;
+  cursor: pointer;
+}
+.comic-bucket-tipper .comic-bucket-solid {
+  pointer-events: visiblePainted;
+}
+.comic-bucket-tipper:focus-visible {
+  outline: 3px solid var(--comic-focus);
+  outline-offset: 3px;
+  border-radius: var(--comic-radius-panel);
+}
+
+/* The label's writing, inside the plate (BucketArt's LABEL): x 144..416, y 284..576. */
+.comic-bucket-label {
+  position: absolute;
+  z-index: 2;
+  left: 25.71%;
+  top: 44.375%;
+  width: 48.57%;
+  height: 45.625%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.8cqw;
+  text-align: center;
+  color: var(--comic-ink);
+  pointer-events: none;
+}
+.comic-bucket-headline {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--comic-font-display);
+  font-weight: 800;
+  font-size: clamp(11px, 3.9cqw, 26px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.comic-bucket-lede {
+  display: block;
+}
+.comic-bucket-count {
+  display: block;
+  margin: 0.6cqw 0 0.2cqw;
+  font-family: var(--comic-font-sfx);
+  font-weight: 400;
+  font-size: clamp(30px, 14cqw, 92px);
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  color: var(--comic-tomato);
+  -webkit-text-stroke: clamp(1.5px, 0.45cqw, 3px) var(--comic-ink);
+  paint-order: stroke fill;
+  text-shadow: 0.6cqw 0.6cqw 0 var(--comic-ink);
+}
+.comic-bucket-stats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--comic-font-body);
+  font-weight: 600;
+  font-size: clamp(10px, 2.75cqw, 17px);
+  line-height: 1.2;
+}
+.comic-bucket-stats b {
+  font-family: var(--comic-font-mono);
+  font-weight: 700;
+}
+
+/* TIP!, the prototype's sound effect lettering, at (70, 96): just above the tipped mouth's upper
+   end (118, 142), clear of the nuggets pouring out to its left and below. */
+.comic-bucket-sfx {
+  position: absolute;
+  z-index: 5;
+  left: 12.5%;
+  top: 15%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.comic-bucket-sfx > span {
+  display: block;
+  font-family: var(--comic-font-sfx);
+  font-size: clamp(48px, 20cqw, 120px);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--comic-nugget);
+  -webkit-text-stroke: 4px var(--comic-ink);
+  paint-order: stroke fill;
+  text-shadow: 6px 6px 0 var(--comic-ink);
+}

@@ -114,3 +114,68 @@ func TestEventsStreamEndsWhenTheBrokerCloses(t *testing.T) {
 		t.Fatal("stream still open after the broker closed")
 	}
 }
+
+// TestNuggetWritesPublishIdeasChanged: a hand edit in one tab reaches every
+// other open page, so each of the API's nugget writes announces itself once
+// it has committed.
+func TestNuggetWritesPublishIdeasChanged(t *testing.T) {
+	broker := events.NewBroker()
+	t.Cleanup(broker.Close)
+	srv := newTestServerWith(t, broker)
+	ch, cancel := broker.Subscribe()
+	defer cancel()
+
+	do := func(method, path, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		return rec
+	}
+	expectEvent := func(step string) {
+		t.Helper()
+		select {
+		case e := <-ch:
+			if e != events.IdeasChanged {
+				t.Fatalf("%s: published %q, want %q", step, e, events.IdeasChanged)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("%s: no ideas-changed event", step)
+		}
+	}
+	expectQuiet := func(step string) {
+		t.Helper()
+		select {
+		case e := <-ch:
+			t.Fatalf("%s: published %q, want nothing", step, e)
+		default:
+		}
+	}
+
+	if rec := do("POST", "/api/ideas", `{"title":"a pickle","description":"x"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", rec.Code, rec.Body)
+	}
+	expectEvent("create")
+	if rec := do("PATCH", "/api/ideas/1", `{"title":"a better pickle"}`); rec.Code != http.StatusOK {
+		t.Fatalf("edit: %d %s", rec.Code, rec.Body)
+	}
+	expectEvent("edit")
+	if rec := do("POST", "/api/ideas/1/archive", ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("bin: %d", rec.Code)
+	}
+	expectEvent("bin")
+	if rec := do("POST", "/api/ideas/1/restore", ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("restore: %d", rec.Code)
+	}
+	expectEvent("restore")
+	if rec := do("DELETE", "/api/ideas/1", ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("purge: %d", rec.Code)
+	}
+	expectEvent("purge")
+
+	// A write that fails commits nothing, so announces nothing.
+	if rec := do("PATCH", "/api/ideas/999", `{"title":"ghost"}`); rec.Code != http.StatusNotFound {
+		t.Fatalf("edit missing: %d", rec.Code)
+	}
+	expectQuiet("failed edit")
+}

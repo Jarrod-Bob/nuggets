@@ -4,6 +4,7 @@ import { LookShell } from './looks/LookShell';
 import { TagsProvider } from './tags/TagsProvider';
 import { LiveUpdatesProvider } from './live/LiveUpdates';
 import { BankRoute } from './pages/BankRoute';
+import { BucketRoute } from './pages/BucketRoute';
 import { NuggetPage } from './pages/NuggetPage';
 import { TrashRoute } from './pages/TrashRoute';
 
@@ -30,6 +31,8 @@ function App() {
             <Route path="/" element={<BankRoute />} />
             <Route path="/nuggets/:id" element={<NuggetPage />} />
             <Route path="/trash" element={<TrashRoute />} />
+            {/* The Comic look's live counter; Classic goes back to the bank. */}
+            <Route path="/bucket" element={<BucketRoute />} />
             {/* Any other path falls back to the bank rather than a dead end. */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

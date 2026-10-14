@@ -25,6 +25,11 @@ func ptr[T any](v T) *T { return &v }
 
 func newTestServer(t *testing.T) http.Handler {
 	t.Helper()
+	return newTestServerWith(t, events.NewBroker())
+}
+
+func newTestServerWith(t *testing.T, broker *events.Broker) http.Handler {
+	t.Helper()
 	database, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("opening test db: %v", err)
@@ -45,7 +50,7 @@ func newTestServer(t *testing.T) http.Handler {
 	ideaStore := idea.NewStore(database, idea.WithTagsAdded(outbox.TagsAdded))
 	syncer := spices.NewSyncer(ideaStore, settingsStore)
 	sender := github.NewSender(outbox, ideaStore, settingsStore)
-	return NewServer(ideaStore, settingsStore, syncer, sender, nil, nil, events.NewBroker(), stubFrontend)
+	return NewServer(ideaStore, settingsStore, syncer, sender, nil, nil, broker, stubFrontend)
 }
 
 func do(t *testing.T, srv http.Handler, method, target string, body any) *httptest.ResponseRecorder {

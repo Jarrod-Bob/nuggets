@@ -6,11 +6,14 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/Jarrod-Bob/nuggets/internal/events"
 	"github.com/Jarrod-Bob/nuggets/internal/idea"
 )
 
 type handlers struct {
 	store *idea.Store
+	// events hears about every write, so other open pages refetch. Never nil.
+	events events.Publisher
 }
 
 // pathID reads {id} and writes the 400 itself when it is not a number.
@@ -57,6 +60,7 @@ func (h *handlers) create(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err)
 		return
 	}
+	h.events.Publish(events.IdeasChanged)
 	writeJSON(w, http.StatusCreated, created)
 }
 
@@ -87,6 +91,7 @@ func (h *handlers) update(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err)
 		return
 	}
+	h.events.Publish(events.IdeasChanged)
 	writeJSON(w, http.StatusOK, updated)
 }
 
@@ -102,7 +107,7 @@ func (h *handlers) purge(w http.ResponseWriter, r *http.Request) {
 	h.mutate(w, r, h.store.Purge)
 }
 
-// mutate runs an id-only state change and returns 204.
+// mutate runs an id-only state change, announces it and returns 204.
 func (h *handlers) mutate(w http.ResponseWriter, r *http.Request, action func(context.Context, int64) error) {
 	id, ok := pathID(w, r)
 	if !ok {
@@ -112,6 +117,7 @@ func (h *handlers) mutate(w http.ResponseWriter, r *http.Request, action func(co
 		writeStoreError(w, err)
 		return
 	}
+	h.events.Publish(events.IdeasChanged)
 	w.WriteHeader(http.StatusNoContent)
 }
 

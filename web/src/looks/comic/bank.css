@@ -1,4 +1,4 @@
-/* The Comic bank: filters, the gingham tray and its liner, and the drawn nugget. Values come from tokens.css.
+/* The Comic bank: filters, the tray's grid (the tray itself is the kit's, in ui/ui.css), and the drawn nugget. Values come from tokens.css.
    Imported by BankView, so it ships in the Comic bank chunk. */
 
 .comic-bank {
@@ -34,24 +34,6 @@
   color: var(--comic-ink);
 }
 
-/* The tray: a gingham border (two 50% tomato gradients at a 40px pitch) around a paper liner. */
-.comic-tray {
-  padding: 22px;
-  border: var(--comic-line) solid var(--comic-ink);
-  border-radius: var(--comic-radius-panel);
-  background-color: var(--comic-paper);
-  background-image:
-    linear-gradient(90deg, color-mix(in srgb, var(--comic-tomato) 55%, transparent) 50%, transparent 50%),
-    linear-gradient(color-mix(in srgb, var(--comic-tomato) 55%, transparent) 50%, transparent 50%);
-  background-size: 40px 40px;
-}
-.comic-liner {
-  padding: var(--comic-panel-pad);
-  border: var(--comic-line) solid var(--comic-ink);
-  border-radius: var(--comic-radius-panel);
-  background: var(--comic-paper);
-}
-
 .comic-tray-grid {
   list-style: none;
   margin: 0;
@@ -72,12 +54,6 @@
   .comic-bank {
     padding-left: 16px;
     padding-right: 16px;
-  }
-  .comic-tray {
-    padding: 12px;
-  }
-  .comic-liner {
-    padding: 20px;
   }
 }
 .comic-tray-item {
