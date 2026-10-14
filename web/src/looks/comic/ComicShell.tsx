@@ -3,15 +3,16 @@ import './tokens.css';
 import './comic.css';
 import './ui/ui.css';
 import './ui/card.css';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { BugReportButton } from '../../components/feedback/BugReportButton';
 import { TopBarSlot, type TopBarContent } from '../../components/navigation/TopBarSlot';
+import { Icon, cx } from './ui';
 
 /**
  * The Comic look's top bar (the design's Strip): the `nuggets.` wordmark, which
  * links back to the bank, then whatever the page's view gives its top bar —
- * search first, actions after. Each page's view supplies the
- * content; this draws only the frame.
+ * search first, actions after — and the bucket (issue #57), on every page.
+ * Each page's view supplies the content; this draws only the frame.
  */
 function drawTopBar({ center, right }: TopBarContent) {
   return (
@@ -20,7 +21,13 @@ function drawTopBar({ center, right }: TopBarContent) {
         nuggets.
       </Link>
       <div className="comic-strip-center">{center}</div>
-      <div className="comic-strip-right">{right}</div>
+      <div className="comic-strip-right">
+        <NavLink to="/bucket" className={({ isActive }) => cx('comic-pill', 'comic-pill--sm', isActive && 'comic-pill--ink')}>
+          <Icon name="bucket" />
+          The bucket
+        </NavLink>
+        {right}
+      </div>
     </header>
   );
 }
