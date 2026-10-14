@@ -23,7 +23,7 @@ export function BucketRoute() {
 
 function ComicBucket() {
   const bucket = useBucket();
-  if (!bucket.ready) return null;
+  if (!bucket.ready && !bucket.loadError) return null;
   return (
     <React.Suspense fallback={null}>
       <ComicBucketView bucket={bucket} />

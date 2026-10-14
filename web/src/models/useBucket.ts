@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, type Idea } from '../api';
+import { api, describeError, type Idea } from '../api';
 import { useLiveRefresh } from '../live/LiveUpdates';
 import { STATUSES, type Status } from '../lib/status';
 
@@ -20,7 +20,8 @@ export interface PileNugget {
  * 30 as a pile. It's computed from the regular lists, `GET /api/ideas` plus
  * the bin's, and refetched on every `ideas-changed` event. `ready` stays
  * false until the first answer, so a view can draw the pile that's already
- * there without pouring it in.
+ * there without pouring it in. If that first answer fails, `loadError` says
+ * why and `retry` asks again.
  */
 export interface Bucket {
   ready: boolean;
@@ -33,6 +34,9 @@ export interface Bucket {
   pile: PileNugget[];
   /** Every id that still exists, so a view can tell a nugget that left the newest 30 from one that was purged. */
   existing: ReadonlySet<number>;
+  /** Why the first fetch failed, until one succeeds. Later failures keep the last count. */
+  loadError: string | undefined;
+  retry: () => void;
   backToBank: () => void;
 }
 
@@ -43,12 +47,17 @@ const byAge = (a: Idea, b: Idea) => (a.created_at < b.created_at ? -1 : a.create
 export function useBucket(): Bucket {
   const navigate = useNavigate();
   const [lists, setLists] = React.useState<{ bank: Idea[]; bin: Idea[] } | null>(null);
+  const [loadError, setLoadError] = React.useState<string | undefined>(undefined);
 
   const refresh = React.useCallback(() => {
     Promise.all([api.list({}), api.list({ archived: true })])
-      .then(([bank, bin]) => setLists({ bank, bin }))
+      .then(([bank, bin]) => {
+        setLists({ bank, bin });
+        setLoadError(undefined);
+      })
       // A failed refetch leaves the last count showing; the next event retries.
-      .catch(() => {});
+      // Only a bucket that never loaded has nothing to show but the error.
+      .catch((err) => setLoadError(describeError(err)));
   }, []);
   React.useEffect(() => {
     refresh();
@@ -72,6 +81,8 @@ export function useBucket(): Bucket {
     binned: lists?.bin.length ?? 0,
     pile,
     existing: new Set(everything.map((n) => n.id)),
+    loadError: lists === null ? loadError : undefined,
+    retry: refresh,
     backToBank,
   };
 }

@@ -64,6 +64,21 @@
   border-radius: var(--comic-radius-panel);
   background: var(--comic-mayo);
 }
+/* The prototype's sound-effect lettering, stamped over the bucket as it tips. */
+.comic-bucket-sfx {
+  position: absolute;
+  z-index: 2;
+  left: 12%;
+  top: 10%;
+  font-family: var(--comic-font-sfx);
+  font-size: clamp(64px, 9vw, 120px);
+  line-height: 1;
+  color: var(--comic-nugget);
+  -webkit-text-stroke: 4px var(--comic-ink);
+  paint-order: stroke fill;
+  text-shadow: 6px 6px 0 var(--comic-ink);
+  pointer-events: none;
+}
 .comic-bucket-stage {
   position: relative;
   width: min(600px, 92%);

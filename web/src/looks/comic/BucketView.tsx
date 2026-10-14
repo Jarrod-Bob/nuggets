@@ -7,7 +7,7 @@ import type { Status } from '../../lib/status';
 import type { Bucket } from '../../models/useBucket';
 import { dropNext, initialPile, syncPile, type Drawn } from './bucketPile';
 import { SettingsButton } from './settings/SettingsButton';
-import { Button, CardArt } from './ui';
+import { Button, CardArt, EmptyState } from './ui';
 
 /** How long between one arrival dropping in and the next. */
 export const DROP_MS = 400;
@@ -51,6 +51,43 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
  * Reduced motion: no drops, no spill, the number and the pile just update.
  */
 export function BucketView({ bucket }: { bucket: Bucket }) {
+  const topBar = (
+    <TopBar
+      right={
+        <>
+          <SettingsButton />
+          <Button size="sm" icon="arrow-left" onClick={bucket.backToBank}>
+            Back to the bank
+          </Button>
+        </>
+      }
+    />
+  );
+  // Before the first answer there's nothing to count, only why. The full page
+  // mounts once it loads, so the pile that's already there doesn't pour in.
+  if (!bucket.ready) {
+    return (
+      <>
+        {topBar}
+        <main className="comic-bucket">
+          <EmptyState
+            eyebrow="Meanwhile, at the bucket…"
+            headline="The bucket wouldn't load"
+            body={bucket.loadError}
+            action={
+              <Button variant="tomato" size="sm" onClick={bucket.retry}>
+                Try again
+              </Button>
+            }
+          />
+        </main>
+      </>
+    );
+  }
+  return <BucketPage bucket={bucket} topBar={topBar} />;
+}
+
+function BucketPage({ bucket, topBar }: { bucket: Bucket; topBar: React.ReactNode }) {
   const reduced = useReducedMotion() ?? false;
   const [pile, setPile] = React.useState(() => initialPile(bucket.pile));
   const [tipping, setTipping] = React.useState(false);
@@ -98,16 +135,7 @@ export function BucketView({ bucket }: { bucket: Bucket }) {
 
   return (
     <>
-      <TopBar
-        right={
-          <>
-            <SettingsButton />
-            <Button size="sm" icon="arrow-left" onClick={bucket.backToBank}>
-              Back to the bank
-            </Button>
-          </>
-        }
-      />
+      {topBar}
 
       <main className="comic-bucket">
         <section className="comic-bucket-text">
@@ -127,6 +155,17 @@ export function BucketView({ bucket }: { bucket: Bucket }) {
         </section>
 
         <div className="comic-bucket-panel" data-tipping={tipping}>
+          {tipping && (
+            <m.span
+              className="comic-bucket-sfx"
+              aria-hidden="true"
+              initial={{ scale: 0.4, rotate: -16, opacity: 0 }}
+              animate={{ scale: 1, rotate: -8, opacity: 1 }}
+              transition={{ duration: 0.32, ease: ease.bounce }}
+            >
+              TIP!
+            </m.span>
+          )}
           <m.div
             className="comic-bucket-stage"
             animate={tipping ? { rotate: -34, x: '-4%', y: '4%' } : { rotate: 0, x: '0%', y: '0%' }}
@@ -140,7 +179,7 @@ export function BucketView({ bucket }: { bucket: Bucket }) {
 
             <ul className="comic-bucket-pile" aria-label="The pile">
               {drawn.map((n, i) => (
-                <PileItem key={n.id} nugget={n} tipping={tipping} rank={i} onTip={tip} />
+                <PileItem key={n.id} nugget={n} tipping={tipping} rank={i} />
               ))}
             </ul>
 
@@ -163,7 +202,7 @@ export function BucketView({ bucket }: { bucket: Bucket }) {
 }
 
 /** One nugget in the heap. A fresh arrival drops in from above; a tipped bucket sends it flying out of the mouth. */
-function PileItem({ nugget, tipping, rank, onTip }: { nugget: Drawn; tipping: boolean; rank: number; onTip: () => void }) {
+function PileItem({ nugget, tipping, rank }: { nugget: Drawn; tipping: boolean; rank: number }) {
   const place = slotPlace(nugget.slot);
   const spin = (rank % 2 ? 1 : -1) * (40 + rank * 12);
   return (
@@ -174,7 +213,6 @@ function PileItem({ nugget, tipping, rank, onTip }: { nugget: Drawn; tipping: bo
       initial={nugget.fresh ? { y: -360, opacity: 0 } : false}
       animate={tipping ? { x: -480, y: 520, rotate: place.tilt + spin, scale: 0.8, opacity: 0 } : { x: 0, y: 0, opacity: 1 }}
       transition={tipping ? { duration: 0.76, delay: 0.38 + rank * 0.03, ease: ease.out } : transitions.appear}
-      onClick={onTip}
     >
       <CardArt shape={nugget.id} status={nugget.status} />
     </m.li>
