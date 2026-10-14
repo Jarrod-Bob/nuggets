@@ -103,3 +103,123 @@ export const HEAP_SIZE = HEAP.length;
  */
 const LAYER_OF = LAYERS.flatMap((layer, l) => layer.map(() => l));
 export const drawRank = (slot: number) => LAYER_OF[slot] * 1000 + HEAP[slot].y;
+
+/*
+ * The tip. The bucket falls over to its left, turning about its middle,
+ * (280, 400), by 81°. Why those numbers: the body's left side runs from
+ * (50, 200) to (110, 590), 8.7° off vertical, so turning by 90 − 8.7 ≈ 81°
+ * lays that side flat; about (280, 400) it lands at y ≈ 596..598, on the
+ * shadow (y 586..638), and the whole tipped bucket stays inside x 46..494,
+ * the box it stood in, so tipping never pushes it out of view. The mouth then
+ * faces left: its middle moves to (82, 369), its rim from (47, 596) to
+ * (118, 142).
+ */
+export const TIP_DEG = -81;
+export const TIP_PIVOT: Point = { x: 280, y: 400 };
+export const TIP_ORIGIN = `${(TIP_PIVOT.x / BOX_W) * 100}% ${(TIP_PIVOT.y / BOX_H) * 100}%`;
+/** Where the tipped bucket lies, padded a little: spilled nuggets land outside it. */
+const TIPPED: { x0: number; x1: number; y0: number; y1: number } = { x0: 30, x1: 510, y0: 125, y1: 612 };
+/** Just outside the tipped mouth, on the floor: the spill fans out from here. */
+const SPILL_FROM: Point = { x: 30, y: 560 };
+
+const rad = (deg: number) => (deg * Math.PI) / 180;
+
+/** Turns a point about the pivot, the way CSS `rotate(deg)` does (positive is clockwise on screen). */
+function turn(p: Point, deg: number): Point {
+  const c = Math.cos(rad(deg));
+  const s = Math.sin(rad(deg));
+  const dx = p.x - TIP_PIVOT.x;
+  const dy = p.y - TIP_PIVOT.y;
+  return { x: TIP_PIVOT.x + dx * c - dy * s, y: TIP_PIVOT.y + dx * s + dy * c };
+}
+/** A point in the tipped bucket's own units, as it lands on the liner. */
+export const toLiner = (p: Point) => turn(p, TIP_DEG);
+/** A point on the liner, in the tipped bucket's own units: the heap rides in the bucket, so that's where its flight is drawn. */
+export const toBucket = (p: Point) => turn(p, -TIP_DEG);
+
+/** The visible floor, in bucket units: the liner's inside as far as it is on screen. */
+export interface Floor {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+/** The floor in bucket units, from the bucket box's and the visible liner's screen rectangles. */
+export function floorFrom(box: DOMRect, visible: { left: number; top: number; right: number; bottom: number }): Floor {
+  const unit = box.width / BOX_W || 1;
+  return {
+    x0: (visible.left - box.left) / unit,
+    x1: (visible.right - box.left) / unit,
+    y0: (visible.top - box.top) / unit,
+    y1: (visible.bottom - box.top) / unit,
+  };
+}
+
+// The R2 sequence: well-spread points in the unit square, the same every time.
+const r2 = (n: number): Point => ({ x: (0.5 + n * 0.7548776662) % 1, y: (0.5 + n * 0.569840291) % 1 });
+
+/**
+ * Where `count` spilled nuggets come to rest, in liner terms (bucket units,
+ * untipped). Each lands whole on the visible floor, with its half-size kept
+ * clear of the edge, and outside the tipped bucket; of the spots that allows,
+ * the 3·count nearest the mouth are kept and `count` of them picked spread
+ * among those, so the spill fans out from the mouth however much floor the
+ * screen has: to the left on a wide screen, in front on a phone. Where the
+ * floor is too small for that, the rest land wherever they fit on it.
+ */
+export function spillSpots(count: number, floor: Floor): Place[] {
+  const mx = NUGGET_W / 2 + 6;
+  const my = NUGGET_H / 2 + 6;
+  const x0 = floor.x0 + mx;
+  const y0 = floor.y0 + my;
+  const w = Math.max(0, floor.x1 - mx - x0);
+  const h = Math.max(0, floor.y1 - my - y0);
+  const candidates = Array.from({ length: 600 }, (_, n) => {
+    const u = r2(n);
+    return { n, x: x0 + u.x * w, y: y0 + u.y * h };
+  });
+  const clear = (p: Point) => p.x < TIPPED.x0 || p.x > TIPPED.x1 || p.y < TIPPED.y0 || p.y > TIPPED.y1;
+  const dist = (p: Point) => Math.hypot(p.x - SPILL_FROM.x, (p.y - SPILL_FROM.y) * 1.4);
+  const near = candidates
+    .filter(clear)
+    .sort((a, b) => dist(a) - dist(b))
+    .slice(0, count * 3)
+    .sort((a, b) => a.n - b.n)
+    .slice(0, count);
+  const rest = candidates.filter((c) => !near.includes(c)).slice(0, count - near.length);
+  return [...near, ...rest].map((p, i) => ({ x: p.x, y: p.y, tilt: ((i * 71 + 13) % 70) - 35 }));
+}
+
+/**
+ * One spilled nugget's flight, in the tipped bucket's units, as keyframes:
+ * up out of the mouth from its place in the heap, then an arc across the
+ * liner (a quadratic Bézier sampled at even times, which is a thrown thing's
+ * parabola) to its spot, and a small hop as it lands.
+ */
+export function flight(home: Place, spot: Place, turns: number): { left: string[]; top: string[]; rotate: number[]; times: number[] } {
+  // Out of the mouth: straight up in the bucket, which is to the left once it has tipped.
+  const out: Point = { x: 280 + (home.x - 280) * 0.6, y: Math.min(home.y, 150) - 70 };
+  const a = toLiner(out);
+  const ctrl: Point = { x: (a.x + spot.x) / 2 - 40, y: Math.min(a.y, spot.y) - 150 };
+  const ARC = 6;
+  const arc: Point[] = [];
+  for (let k = 1; k <= ARC; k++) {
+    const t = k / ARC;
+    const u = 1 - t;
+    arc.push({ x: u * u * a.x + 2 * u * t * ctrl.x + t * t * spot.x, y: u * u * a.y + 2 * u * t * ctrl.y + t * t * spot.y });
+  }
+  const hop: Point = { x: spot.x, y: spot.y - 16 };
+  const path = [home, ...[a, ...arc, hop, spot].map(toBucket)];
+  const times = [0, 0.18, ...arc.map((_, k) => 0.18 + ((k + 1) / ARC) * 0.64), 0.91, 1];
+  // On the liner a nugget lies at its own tilt, which in the tipped bucket is
+  // 81° more; `turns` whole turns on the way make it tumble.
+  const landed = spot.tilt - TIP_DEG + turns * 360;
+  const rotate = times.map((t) => home.tilt + (landed - home.tilt) * Math.min(1, t / 0.82));
+  return {
+    left: path.map((p) => pctX(p.x - NUGGET_W / 2)),
+    top: path.map((p) => pctY(p.y - NUGGET_H / 2)),
+    rotate,
+    times,
+  };
+}
