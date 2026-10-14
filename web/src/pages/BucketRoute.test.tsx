@@ -196,6 +196,21 @@ describe('the bucket, in the Comic look', () => {
     expect(await headline()).toBe('Till date, 6 nuggets have gone in the bucket:');
   });
 
+  it('puts an older nugget that a purge lets back into the newest 30 straight in, without dropping it like an arrival', async () => {
+    bank = Array.from({ length: 31 }, (_, i) => nugget(i + 1));
+    renderBucket();
+    await waitFor(() => expect(pile()).toHaveLength(30));
+    expect(pileTitles()).not.toContain('Nugget 1');
+
+    bank = [...bank.filter((n) => n.id !== 20 && n.id !== 21), nugget(32)];
+    TestEventSource.last!.emit('ideas-changed');
+    // In the same moment as the count; only Nugget 32 is new.
+    await waitFor(async () => expect(await headline()).toBe('Till date, 30 nuggets have gone in the bucket:'));
+    expect(pileTitles()).toContain('Nugget 1');
+    await waitFor(() => expect(pileTitles()).toContain('Nugget 32'), DROPS);
+    expect(pile()).toHaveLength(30);
+  });
+
   it('draws an edited nugget in place', async () => {
     bank = [nugget(1)];
     renderBucket();
