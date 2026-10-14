@@ -175,23 +175,25 @@ describe('the bucket', () => {
       await waitFor(() => expect(pile()).toHaveLength(1));
     });
 
-    it('spills when tipped, then goes to the bank', async () => {
-      bank = [nugget(1)];
+    it('writes the count and the stats on the bucket itself, with no separate tip button', async () => {
+      bank = [nugget(1, 'done')];
       renderBucket();
-      await waitFor(() => expect(pile()).toHaveLength(1));
-      fireEvent.click(screen.getByRole('button', { name: 'Tip the bucket' }));
-      // The spill plays first.
-      expect(screen.queryByText('the bank')).toBeNull();
-      expect(await screen.findByText('the bank', {}, { timeout: 3000 })).toBeTruthy();
+      const bucketFigure = await screen.findByRole('figure', { name: 'The bucket' });
+      expect(within(bucketFigure).getByRole('heading', { level: 1 }).textContent).toBe('Till date, 1 nugget has gone in the bucket:');
+      expect(within(bucketFigure).getByRole('list', { name: 'Nugget counts' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Tip the bucket' })).toBeNull();
     });
 
-    it('tips when the bucket itself is clicked, with a TIP!', async () => {
+    it('tips when the bucket is clicked: a TIP!, the spill lands on the mat and rests, then the bank', async () => {
       bank = [nugget(1)];
       renderBucket();
       await waitFor(() => expect(pile()).toHaveLength(1));
       expect(screen.queryByText('TIP!')).toBeNull();
       fireEvent.click(screen.getByRole('button', { name: 'Tip the bucket and spill the nuggets' }));
       expect(screen.getByText('TIP!')).toBeTruthy();
+      // The spill lands and rests before the bank.
+      await new Promise((r) => setTimeout(r, 2000));
+      expect(screen.queryByText('the bank')).toBeNull();
       expect(await screen.findByText('the bank', {}, { timeout: 3000 })).toBeTruthy();
     });
 

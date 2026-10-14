@@ -93,6 +93,6 @@ it('just updates the number and the pile at once, with no drops', async () => {
 it('goes straight to the bank when tipped, with no spill', async () => {
   renderBucket();
   await waitFor(() => expect(pile()).toHaveLength(2));
-  fireEvent.click(screen.getByRole('button', { name: 'Tip the bucket' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Tip the bucket and spill the nuggets' }));
   expect(await screen.findByText('the bank', {}, { timeout: 300 })).toBeTruthy();
 });
