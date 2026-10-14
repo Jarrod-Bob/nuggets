@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Idea, Status } from '../api';
@@ -92,6 +92,8 @@ const pile = () => within(screen.getByRole('list', { name: 'The pile' })).queryA
 const pileTitles = () => pile().map((li) => li.getAttribute('title'));
 /** Long enough for a few arrivals to drop in one after another. */
 const DROPS = { timeout: 4000 };
+
+const sleep = (ms: number) => act(() => new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
 const headline = async () => (await screen.findByRole('heading', { level: 1 })).textContent;
 
@@ -201,5 +203,32 @@ describe('the bucket, in the Comic look', () => {
     bank = [{ ...nugget(1), title: 'Renamed' }];
     TestEventSource.last!.emit('ideas-changed');
     await waitFor(() => expect(pileTitles()).toEqual(['Renamed']));
+  });
+
+  it('tips only from the bucket itself: a TIP!, the spill rests on the liner, then the bank', async () => {
+    bank = [nugget(1), nugget(2)];
+    renderBucket();
+    await waitFor(() => expect(pile()).toHaveLength(2));
+    const tippers = screen.getAllByRole('button', { name: /tip/i });
+    expect(tippers).toHaveLength(1);
+    expect(within(screen.getByRole('figure', { name: 'The bucket' })).getByRole('button', { name: 'Tip the bucket and spill the nuggets' })).toBe(tippers[0]);
+    expect(screen.queryByText('TIP!')).toBeNull();
+
+    fireEvent.click(tippers[0]);
+    expect(screen.getByText('TIP!')).toBeTruthy();
+    // The bucket tips, the nuggets pour out and land, and rest there a while.
+    await sleep(2200);
+    expect(screen.queryByText('the bank')).toBeNull();
+    expect(await screen.findByText('the bank', {}, { timeout: 3000 })).toBeTruthy();
+  }, 10000);
+
+  it('does nothing when a nugget in the pile is clicked', async () => {
+    bank = [nugget(1)];
+    renderBucket();
+    await waitFor(() => expect(pile()).toHaveLength(1));
+    fireEvent.click(screen.getByTitle('Nugget 1'));
+    expect(screen.queryByText('TIP!')).toBeNull();
+    await sleep(1500);
+    expect(screen.queryByText('the bank')).toBeNull();
   });
 });
