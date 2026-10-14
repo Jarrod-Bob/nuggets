@@ -44,17 +44,23 @@
   aspect-ratio: 560 / 640;
   container-type: inline-size;
 }
-/* On a phone the bucket is as wide as the liner, so it stands at the top and the liner in
-   front of it (below) is where the spill lands. */
+/* On a portrait screen (a phone, a tablet held upright) there's little liner beside the
+   bucket, so it stands at the top, no taller than 60% of the stage, and the liner in front
+   of it (below) is where the spill lands. */
+@media (orientation: portrait) {
+  .comic-bucket-stage {
+    align-items: flex-start;
+  }
+  .comic-bucket-box {
+    width: min(100%, calc(var(--comic-bucket-stage) * 0.6));
+  }
+}
 @media (max-width: 700px) {
   .comic-bucket {
     padding: 16px;
   }
   .comic-bucket-liner {
     padding: 12px;
-  }
-  .comic-bucket-stage {
-    align-items: flex-start;
   }
 }
 
